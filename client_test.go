@@ -1,4 +1,4 @@
-package tupelo
+package client
 
 import (
 	"context"
