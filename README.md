@@ -1,2 +1,2 @@
 # tupelo-go-client
-Go client
+Tupelo Go SDK.
