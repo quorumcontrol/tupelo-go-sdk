@@ -24,8 +24,9 @@ require (
 	github.com/google/uuid v1.1.0 // indirect
 	github.com/gorilla/websocket v1.4.0 // indirect
 	github.com/gxed/hashland/keccakpg v0.0.1 // indirect
-	github.com/hashicorp/go-immutable-radix v1.0.0 // indirect
+	github.com/hashicorp/go-immutable-radix v1.0.0
 	github.com/hashicorp/go-multierror v1.0.0 // indirect
+	github.com/hashicorp/golang-lru v0.5.0
 	github.com/ipfs/go-block-format v0.2.0 // indirect
 	github.com/ipfs/go-cid v0.9.0
 	github.com/ipfs/go-ipfs-util v1.2.8 // indirect
@@ -57,6 +58,7 @@ require (
 	github.com/serialx/hashring v0.0.0-20180504054112-49a4782e9908 // indirect
 	github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72 // indirect
 	github.com/stretchr/testify v1.3.0
+	github.com/syndtr/goleveldb v1.0.0 // indirect
 	github.com/tinylib/msgp v1.1.0
 	github.com/whyrusleeping/base32 v0.0.0-20170828182744-c30ac30633cc // indirect
 	github.com/whyrusleeping/go-logging v0.0.0-20170515211332-0457bb6b88fc // indirect

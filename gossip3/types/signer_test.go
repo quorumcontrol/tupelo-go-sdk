@@ -3,8 +3,8 @@ package types
 import (
 	"testing"
 
-	"github.com/quorumcontrol/tupelo/p2p"
-	"github.com/quorumcontrol/tupelo/testnotarygroup"
+	"github.com/quorumcontrol/tupelo-go-client/p2p"
+	"github.com/quorumcontrol/tupelo-go-client/testnotarygroup"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

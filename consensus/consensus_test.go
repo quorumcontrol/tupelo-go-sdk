@@ -5,7 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/quorumcontrol/chaintree/chaintree"
-	"github.com/quorumcontrol/tupelo/bls"
+	"github.com/quorumcontrol/tupelo-go-client/bls"
 	"github.com/stretchr/testify/assert"
 )
 
