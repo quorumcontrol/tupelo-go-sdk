@@ -20,6 +20,9 @@ build: vendor $(gosources)
 
 test: $(gosources)
 	go test ./...
+	
+integration-test: docker-image
+	docker run -v /var/run/docker.sock:/var/run/docker.sock -v $(PWD):/src quorumcontrol/tupelo-integration-runner
 
 docker-image: vendor Dockerfile .dockerignore
 	docker build -t quorumcontrol/tupelo-go-client:$(TAG) .
@@ -31,4 +34,4 @@ clean:
 	go clean
 	rm -rf vendor
 
-.PHONY: all build test docker-image clean
+.PHONY: all build test integration-test docker-image clean

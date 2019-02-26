@@ -1,5 +1,6 @@
 tupeloImages:
   - quorumcontrol/tupelo:latest rpc-server -l 3
 tester:
-  build: .
-  command: ["npx", "mocha", "--exit"]
+  imageID: quorumcontrol/tupelo-go-client
+  command:
+    ["go", "test", "-mod=vendor", "-tags=integration", "-timeout=2m", "./..."]
