@@ -20,7 +20,7 @@ build: vendor $(gosources)
 
 test: $(gosources)
 	go test ./...
-	
+
 integration-test: docker-image
 	docker run -v /var/run/docker.sock:/var/run/docker.sock -v $(PWD):/src quorumcontrol/tupelo-integration-runner
 
