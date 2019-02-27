@@ -5,6 +5,7 @@ require (
 	github.com/AndreasBriese/bbloom v0.0.0-20180913140656-343706a395b7 // indirect
 	github.com/AsynkronIT/protoactor-go v0.0.0-20190103141422-46ce3cc7fd18
 	github.com/Workiva/go-datastructures v1.0.50
+	github.com/allegro/bigcache v1.2.0 // indirect
 	github.com/bifurcation/mint v0.0.0-20181105071958-a14404e9a861 // indirect
 	github.com/bren2010/proquint v0.0.0-20160323162903-38337c27106d // indirect
 	github.com/btcsuite/btcd v0.0.0-20190213025234-306aecffea32 // indirect
@@ -16,13 +17,14 @@ require (
 	github.com/dgryski/go-farm v0.0.0-20190104051053-3adb47b1fb0f // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/emirpasic/gods v1.12.0 // indirect
-	github.com/ethereum/go-ethereum v1.8.1
+	github.com/ethereum/go-ethereum v1.8.23
 	github.com/facebookgo/atomicfile v0.0.0-20151019160806-2de1f203e7d5 // indirect
 	github.com/fd/go-nat v1.0.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gogo/protobuf v1.2.1 // indirect
 	github.com/google/uuid v1.1.0 // indirect
 	github.com/gorilla/websocket v1.4.0 // indirect
+	github.com/goware/modvendor v0.0.0-20180827175348-07a105bce74a // indirect
 	github.com/gxed/hashland/keccakpg v0.0.1 // indirect
 	github.com/hashicorp/go-immutable-radix v1.0.0
 	github.com/hashicorp/go-multierror v1.0.0 // indirect
@@ -39,6 +41,7 @@ require (
 	github.com/lucas-clemente/aes12 v0.0.0-20171027163421-cd47fb39b79f // indirect
 	github.com/lucas-clemente/quic-go-certificates v0.0.0-20160823095156-d2f86524cced // indirect
 	github.com/mattn/go-colorable v0.1.1 // indirect
+	github.com/mattn/go-zglob v0.0.1 // indirect
 	github.com/miekg/dns v1.1.4 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1 // indirect
 	github.com/minio/sha256-simd v0.0.0-20190131020904-2d45a736cd16 // indirect

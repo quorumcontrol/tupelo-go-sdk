@@ -106,13 +106,21 @@ func DidToAddr(did string) string {
 // ToEcdsaPub returns the ecdsa typed key from the bytes in the PublicKey
 // at this time there is no error checking.
 func (pk *PublicKey) ToEcdsaPub() *ecdsa.PublicKey {
-	return crypto.ToECDSAPub(pk.PublicKey)
+	ecdsaPk, err := crypto.UnmarshalPubkey(pk.PublicKey)
+	if err != nil {
+		panic("Failed to unmarshal public key")
+	}
+	return ecdsaPk
 }
 
 func PublicKeyToAddr(key *PublicKey) string {
 	switch key.Type {
 	case KeyTypeSecp256k1:
-		return crypto.PubkeyToAddress(*crypto.ToECDSAPub(key.PublicKey)).String()
+		ecdsaPk, err := crypto.UnmarshalPubkey(key.PublicKey)
+		if err != nil {
+			panic("Failed to unmarshal public key")
+		}
+		return crypto.PubkeyToAddress(*ecdsaPk).String()
 	case KeyTypeBLSGroupSig:
 		return BlsVerKeyToAddress(key.PublicKey).String()
 	default:
