@@ -12,17 +12,20 @@ import (
 
 var suite = bn256.NewSuite()
 
+// SignKey represents a signkey.
 type SignKey struct {
 	private kyber.Scalar
 	verKey  *VerKey
 	value   []byte
 }
 
+// VerKey represents a verkey.
 type VerKey struct {
 	value  []byte
 	public kyber.Point
 }
 
+// BytesToSignKey converts a byte array to a SignKey.
 func BytesToSignKey(keyBytes []byte) *SignKey {
 	scalar := suite.G2().Scalar()
 	err := scalar.UnmarshalBinary(keyBytes)
@@ -41,6 +44,7 @@ func BytesToSignKey(keyBytes []byte) *SignKey {
 	}
 }
 
+// BytesToVerKey converts a byte array to a VerKey.
 func BytesToVerKey(keyBytes []byte) *VerKey {
 	point := suite.G2().Point()
 	err := point.UnmarshalBinary(keyBytes)
@@ -53,6 +57,7 @@ func BytesToVerKey(keyBytes []byte) *VerKey {
 	}
 }
 
+// NewSignKey instantiates a new SignKey.
 func NewSignKey() (*SignKey, error) {
 	private, public := dedisbls.NewKeyPair(suite, random.New())
 	privBytes, err := private.MarshalBinary()
@@ -73,6 +78,7 @@ func NewSignKey() (*SignKey, error) {
 	}, nil
 }
 
+// MustNewSignKey is like NewSignKey, but will panic on error.
 func MustNewSignKey() *SignKey {
 	key, err := NewSignKey()
 	if err != nil {
@@ -81,18 +87,22 @@ func MustNewSignKey() *SignKey {
 	return key
 }
 
+// Bytes converts a SignKey to a byte array.
 func (sk *SignKey) Bytes() []byte {
 	return sk.value
 }
 
+// Sign signs a message.
 func (sk *SignKey) Sign(msg []byte) ([]byte, error) {
 	return dedisbls.Sign(suite, sk.private, msg)
 }
 
+// VerKey gets the VerKey for a SignKey.
 func (sk *SignKey) VerKey() (*VerKey, error) {
 	return sk.verKey, nil
 }
 
+// MustVerKey is like VerKey except it panics on error.
 func (sk *SignKey) MustVerKey() *VerKey {
 	verKey, err := sk.VerKey()
 	if err != nil {
@@ -101,10 +111,12 @@ func (sk *SignKey) MustVerKey() *VerKey {
 	return verKey
 }
 
+// Bytes gets the bytes for a VerKey.
 func (vk *VerKey) Bytes() []byte {
 	return vk.value
 }
 
+// Verify verifies a message given a signature.
 func (vk *VerKey) Verify(sig, msg []byte) (bool, error) {
 	err := dedisbls.Verify(suite, vk.public, msg, sig)
 	if err != nil {
@@ -113,10 +125,12 @@ func (vk *VerKey) Verify(sig, msg []byte) (bool, error) {
 	return true, nil
 }
 
+// SumSignatures aggregates signatures.
 func SumSignatures(sigs [][]byte) ([]byte, error) {
 	return dedisbls.AggregateSignatures(suite, sigs...)
 }
 
+// VerifyMultiSig verifies a message using a multi signature.
 //TODO: let's pass in real verkeys and not binary
 func VerifyMultiSig(sig, msg []byte, verKeys [][]byte) (bool, error) {
 	points := make([]kyber.Point, len(verKeys))
