@@ -18,6 +18,9 @@ vendor: go.mod go.sum $(FIRSTGOPATH)/bin/modvendor
 build: vendor $(gosources)
 	go build ./...
 
+test: $(gosources)
+	go test ./...
+
 docker-image: vendor Dockerfile .dockerignore
 	docker build -t quorumcontrol/tupelo-go-client:$(TAG) .
 
@@ -28,4 +31,4 @@ clean:
 	go clean
 	rm -rf vendor
 
-.PHONY: all build docker-image clean
+.PHONY: all build test docker-image clean
