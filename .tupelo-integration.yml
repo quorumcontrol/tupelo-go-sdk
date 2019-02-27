@@ -3,4 +3,4 @@ tupeloImages:
 tester:
   imageID: quorumcontrol/tupelo-go-client
   command:
-    ["go", "test", "-mod=vendor", "-tags=integration", "-timeout=2m", "./..."]
+    ["go", "test", "-mod=vendor", "-tags=integration", "-timeout=1m", "./..."]
