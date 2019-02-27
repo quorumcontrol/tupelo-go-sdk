@@ -26,9 +26,8 @@ require (
 	github.com/gorilla/websocket v1.4.0 // indirect
 	github.com/goware/modvendor v0.0.0-20180827175348-07a105bce74a // indirect
 	github.com/gxed/hashland/keccakpg v0.0.1 // indirect
-	github.com/hashicorp/go-immutable-radix v1.0.0
+	github.com/hashicorp/go-immutable-radix v1.0.0 // indirect
 	github.com/hashicorp/go-multierror v1.0.0 // indirect
-	github.com/hashicorp/golang-lru v0.5.0
 	github.com/ipfs/go-block-format v0.2.0 // indirect
 	github.com/ipfs/go-cid v0.9.0
 	github.com/ipfs/go-ipfs-util v1.2.8 // indirect
