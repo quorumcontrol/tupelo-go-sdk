@@ -1,6 +1,7 @@
 FROM golang:1.12.0
 
-WORKDIR /app
+WORKDIR /go/src/github.com/quorumcontrol/tupelo-go-client
+
 
 COPY . .
 
