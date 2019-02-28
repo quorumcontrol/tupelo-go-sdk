@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"log"
 
-	"go.dedis.ch/kyber/v3"
-	"go.dedis.ch/kyber/v3/pairing/bn256"
-	dedisbls "go.dedis.ch/kyber/v3/sign/bls"
-	"go.dedis.ch/kyber/v3/util/random"
+	"github.com/dedis/kyber"
+	"github.com/dedis/kyber/pairing/bn256"
+	dedisbls "github.com/dedis/kyber/sign/bls"
+	"github.com/dedis/kyber/util/random"
 )
 
 var suite = bn256.NewSuite()
