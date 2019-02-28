@@ -19,7 +19,6 @@ import (
 	"github.com/quorumcontrol/storage"
 	"github.com/quorumcontrol/tupelo-go-client/bls"
 	"github.com/quorumcontrol/tupelo-go-client/consensus"
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/remote"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/testhelpers"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/types"
@@ -109,10 +108,6 @@ func TestClientSubscribe(t *testing.T) {
 	ng, err := setupNotaryGroup(ctx)
 	require.Nil(t, err)
 
-	for _, s := range ng.AllSigners() {
-		s.Actor.Tell(&messages.StartGossip{})
-	}
-
 	trans := testhelpers.NewValidTransaction(t)
 	client := New(ng)
 	defer client.Stop()
@@ -135,10 +130,6 @@ func TestPlayTransactions(t *testing.T) {
 
 	ng, err := setupNotaryGroup(ctx)
 	require.Nil(t, err)
-
-	for _, s := range ng.AllSigners() {
-		s.Actor.Tell(&messages.StartGossip{})
-	}
 
 	client := New(ng)
 	defer client.Stop()
@@ -192,28 +183,3 @@ func TestPlayTransactions(t *testing.T) {
 		assert.Equal(t, resp.Tip.Bytes(), chain.Tip().Bytes())
 	})
 }
-
-// func newTupeloSystem(ctx context.Context, testSet *testnotarygroup.TestSet) (*types.NotaryGroup, error) {
-// 	ng := types.NewNotaryGroup("testnotary")
-// 	for i, signKey := range testSet.SignKeys {
-// 		sk := signKey
-// 		signer := types.NewLocalSigner(testSet.PubKeys[i].ToEcdsaPub(), sk)
-// 		// Replace spawning of actor with using notary launched by test runner.
-// 		syncer, err := actor.SpawnNamed(actors.NewTupeloNodeProps(&actors.TupeloConfig{
-// 			Self:              signer,
-// 			NotaryGroup:       ng,
-// 			CommitStore:       storage.NewMemStorage(),
-// 			CurrentStateStore: storage.NewMemStorage(),
-// 		}), "tupelo-"+signer.ID)
-// 		if err != nil {
-// 			return nil, fmt.Errorf("error spawning: %v", err)
-// 		}
-// 		signer.Actor = syncer
-// 		go func() {
-// 			<-ctx.Done()
-// 			syncer.Poison()
-// 		}()
-// 		ng.AddSigner(signer)
-// 	}
-// 	return ng, nil
-// }
