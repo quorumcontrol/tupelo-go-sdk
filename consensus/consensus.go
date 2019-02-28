@@ -113,6 +113,7 @@ func (pk *PublicKey) ToEcdsaPub() *ecdsa.PublicKey {
 	return ecdsaPk
 }
 
+// PublicKeyToAddr converts a public key to an address.
 func PublicKeyToAddr(key *PublicKey) string {
 	switch key.Type {
 	case KeyTypeSecp256k1:

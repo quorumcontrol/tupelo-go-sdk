@@ -33,6 +33,7 @@
     "log",
     "mailbox",
     "plugin",
+    "router",
   ]
   pruneopts = ""
   revision = "46ce3cc7fd18ffbf137a56c6e2d7e1e9bd328f39"
@@ -803,7 +804,7 @@
   revision = "8b1e46de349b0c099d425ed8fddee3ff6eff3eef"
 
 [[projects]]
-  digest = "1:6916bf1bdb22af12f722d3faa643b06500f3388eb83b71829e696135d02aa3ac"
+  digest = "1:cae15017b89f3c5eb4711621012bdfe63b6a67eabffa319329eda772725b200e"
   name = "github.com/quorumcontrol/chaintree"
   packages = [
     "chaintree",
@@ -813,9 +814,9 @@
     "typecaster",
   ]
   pruneopts = ""
-  revision = "055fd461c134faba77c596d0010c29b72bca9c2e"
+  revision = "f4580f8bb2692f23ab25cef3ed9522d67a485d95"
   source = "git@github.com:quorumcontrol/chaintree.git"
-  version = "v4.0.1"
+  version = "v5.0.1"
 
 [[projects]]
   digest = "1:0f81944e3477cd8e974a49b8b51403c33d48b47a1ef7d69951ce01095c4a2766"
@@ -844,6 +845,22 @@
   revision = "c5e9df97b7f4aa63a9de7f3c30405f5acac9b4d9"
   source = "git@github.com:quorumcontrol/storage.git"
   version = "v1.1.1"
+
+[[projects]]
+  branch = "arve/separate-go-client"
+  digest = "1:16b93784048785e250f8b2e82576b95ca729ecbf76e87466cc64973a76a0d990"
+  name = "github.com/quorumcontrol/tupelo"
+  packages = ["gossip3/actors"]
+  pruneopts = ""
+  revision = "2516b10b410dba06346ff5ade88a91d8464fac6a"
+
+[[projects]]
+  branch = "master"
+  digest = "1:4176436b905cb4846fc4664cd673d7f941b9aca1ba7d407ce70fe2838695b338"
+  name = "github.com/serialx/hashring"
+  packages = ["."]
+  pruneopts = ""
+  revision = "49a4782e9908fe098c907022a1bd7519c79803d6"
 
 [[projects]]
   digest = "1:633b5b39909d9d794f5543baee4971890e1866f5c082cdf4694954c1ff489a18"
@@ -1056,6 +1073,7 @@
     "github.com/quorumcontrol/chaintree/typecaster",
     "github.com/quorumcontrol/differencedigest/ibf",
     "github.com/quorumcontrol/storage",
+    "github.com/quorumcontrol/tupelo/gossip3/actors",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/require",
     "github.com/tinylib/msgp/msgp",
