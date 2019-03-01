@@ -1,4 +1,4 @@
-package messages
+package serializer
 
 import (
 	"fmt"

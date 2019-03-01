@@ -33,7 +33,6 @@
     "log",
     "mailbox",
     "plugin",
-    "router",
   ]
   pruneopts = ""
   revision = "46ce3cc7fd18ffbf137a56c6e2d7e1e9bd328f39"
@@ -847,22 +846,6 @@
   version = "v1.1.1"
 
 [[projects]]
-  branch = "arve/separate-go-client"
-  digest = "1:16b93784048785e250f8b2e82576b95ca729ecbf76e87466cc64973a76a0d990"
-  name = "github.com/quorumcontrol/tupelo"
-  packages = ["gossip3/actors"]
-  pruneopts = ""
-  revision = "2516b10b410dba06346ff5ade88a91d8464fac6a"
-
-[[projects]]
-  branch = "master"
-  digest = "1:4176436b905cb4846fc4664cd673d7f941b9aca1ba7d407ce70fe2838695b338"
-  name = "github.com/serialx/hashring"
-  packages = ["."]
-  pruneopts = ""
-  revision = "49a4782e9908fe098c907022a1bd7519c79803d6"
-
-[[projects]]
   digest = "1:633b5b39909d9d794f5543baee4971890e1866f5c082cdf4694954c1ff489a18"
   name = "github.com/spaolacci/murmur3"
   packages = ["."]
@@ -1073,7 +1056,6 @@
     "github.com/quorumcontrol/chaintree/typecaster",
     "github.com/quorumcontrol/differencedigest/ibf",
     "github.com/quorumcontrol/storage",
-    "github.com/quorumcontrol/tupelo/gossip3/actors",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/require",
     "github.com/tinylib/msgp/msgp",

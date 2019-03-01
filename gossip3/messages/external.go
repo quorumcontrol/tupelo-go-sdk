@@ -9,26 +9,27 @@ import (
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/quorumcontrol/differencedigest/ibf"
+	"github.com/quorumcontrol/tupelo-go-client/gossip3/serializer"
 )
 
 func init() {
-	RegisterEncodable(Ping{})
-	RegisterEncodable(Pong{})
-	RegisterEncodable(Store{})
-	RegisterEncodable(GetSyncer{})
-	RegisterEncodable(SyncDone{})
-	RegisterEncodable(NoSyncersAvailable{})
-	RegisterEncodable(SyncerAvailable{})
-	RegisterEncodable(CurrentState{})
-	RegisterEncodable(Signature{})
-	RegisterEncodable(Transaction{})
-	RegisterEncodable(GetTip{})
-	RegisterEncodable(ActorPID{})
-	RegisterEncodable(ProvideStrata{})
-	RegisterEncodable(ProvideBloomFilter{})
-	RegisterEncodable(RequestKeys{})
-	RegisterEncodable(RequestIBF{})
-	RegisterEncodable(TipSubscription{})
+	serializer.RegisterEncodable(Ping{})
+	serializer.RegisterEncodable(Pong{})
+	serializer.RegisterEncodable(Store{})
+	serializer.RegisterEncodable(GetSyncer{})
+	serializer.RegisterEncodable(SyncDone{})
+	serializer.RegisterEncodable(NoSyncersAvailable{})
+	serializer.RegisterEncodable(SyncerAvailable{})
+	serializer.RegisterEncodable(CurrentState{})
+	serializer.RegisterEncodable(Signature{})
+	serializer.RegisterEncodable(Transaction{})
+	serializer.RegisterEncodable(GetTip{})
+	serializer.RegisterEncodable(ActorPID{})
+	serializer.RegisterEncodable(ProvideStrata{})
+	serializer.RegisterEncodable(ProvideBloomFilter{})
+	serializer.RegisterEncodable(RequestKeys{})
+	serializer.RegisterEncodable(RequestIBF{})
+	serializer.RegisterEncodable(TipSubscription{})
 }
 
 type DestinationHolder struct {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
+	"github.com/quorumcontrol/tupelo-go-client/gossip3/serializer"
 	"github.com/tinylib/msgp/msgp"
 )
 
@@ -25,7 +26,7 @@ func toWireDelivery(rd *remoteDeliver) *wireDelivery {
 	}
 	wd := &wireDelivery{
 		Message: marshaled,
-		Type:    messages.GetTypeCode(rd.message),
+		Type:    serializer.GetTypeCode(rd.message),
 		Target:  messages.ToActorPid(rd.target),
 		Sender:  messages.ToActorPid(rd.sender),
 	}
@@ -50,7 +51,7 @@ type wireDelivery struct {
 }
 
 func (wd *wireDelivery) GetMessage() (msgp.Unmarshaler, error) {
-	msg := messages.GetUnmarshaler(wd.Type)
+	msg := serializer.GetUnmarshaler(wd.Type)
 	_, err := msg.UnmarshalMsg(wd.Message)
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshaling message: %v", err)
