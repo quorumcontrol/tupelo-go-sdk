@@ -4,7 +4,6 @@ package client
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -17,12 +16,7 @@ import (
 	cid "github.com/ipfs/go-cid"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/quorumcontrol/chaintree/chaintree"
-	"github.com/quorumcontrol/chaintree/nodestore"
-	"github.com/quorumcontrol/chaintree/safewrap"
-	"github.com/quorumcontrol/storage"
 	"github.com/quorumcontrol/tupelo-go-client/bls"
-	"github.com/quorumcontrol/tupelo-go-client/consensus"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/remote"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/testhelpers"
@@ -66,7 +60,10 @@ func setupNotaryGroup(ctx context.Context) (*types.NotaryGroup, error) {
 		return nil, fmt.Errorf("error setting up p2p host: %s", err)
 	}
 	p2pHost.Bootstrap(p2p.BootstrapNodes())
-	p2pHost.WaitForBootstrap(1, 15*time.Second)
+	if err = p2pHost.WaitForBootstrap(1, 15*time.Second); err != nil {
+		return nil, err
+	}
+
 	remote.NewRouter(p2pHost)
 
 	keys, err := loadSignerKeys()
@@ -106,18 +103,19 @@ func TestClientSendTransaction(t *testing.T) {
 }
 
 func TestClientSubscribe(t *testing.T) {
-	// ts := testnotarygroup.NewTestSet(t, 3)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	ng, err := setupNotaryGroup(ctx)
 	require.Nil(t, err)
 
-	trans := testhelpers.NewValidTransaction(t)
 	client := New(ng)
 	defer client.Stop()
 
-	newTip, _ := cid.Cast(trans.NewTip)
+	trans := testhelpers.NewValidTransaction(t)
+
+	newTip, err := cid.Cast(trans.NewTip)
+	require.Nil(t, err)
 	signer := ng.GetRandomSigner()
 	ch, err := client.Subscribe(signer, string(trans.ObjectID), newTip, 5*time.Second)
 	require.Nil(t, err)

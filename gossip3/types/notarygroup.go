@@ -12,6 +12,7 @@ import (
 	"github.com/AsynkronIT/protoactor-go/actor"
 )
 
+// NotaryGroup represents a notary group.
 type NotaryGroup struct {
 	ID        string
 	Signers   map[string]*Signer
@@ -26,6 +27,7 @@ func (ng *NotaryGroup) GetMajorityCount() int64 {
 	return required
 }
 
+// NewNotaryGroup instantiates a new NotaryGroup.
 func NewNotaryGroup(id string) *NotaryGroup {
 	return &NotaryGroup{
 		ID:      id,
@@ -33,6 +35,7 @@ func NewNotaryGroup(id string) *NotaryGroup {
 	}
 }
 
+// AddSigner adds a signer to group.
 func (ng *NotaryGroup) AddSigner(signer *Signer) {
 	ng.Signers[signer.ID] = signer
 	ng.sortedIds = append(ng.sortedIds, signer.ID)

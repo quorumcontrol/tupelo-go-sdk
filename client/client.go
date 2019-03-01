@@ -100,7 +100,7 @@ func (c *Client) TipRequest(chainID string) (*messages.CurrentState, error) {
 	return res.(*messages.CurrentState), nil
 }
 
-// Subscribe ...
+// Subscribe creates a subscription on a chain tree.
 func (c *Client) Subscribe(signer *types.Signer, treeDid string, expectedTip cid.Cid, timeout time.Duration) (chan interface{}, error) {
 	ch := make(chan interface{}, 1)
 	act, err := actor.SpawnPrefix(newSubscriberActorProps(ch, timeout), "sub-"+treeDid)
@@ -115,7 +115,7 @@ func (c *Client) Subscribe(signer *types.Signer, treeDid string, expectedTip cid
 	return ch, nil
 }
 
-// SendTransaction sends a transaction.
+// SendTransaction sends a transaction to a signer.
 func (c *Client) SendTransaction(signer *types.Signer, trans *messages.Transaction) error {
 	value, err := trans.MarshalMsg(nil)
 	if err != nil {
