@@ -353,10 +353,6 @@ func TestInvalidPreviousTipOnSnoozedTransaction(t *testing.T) {
 	ng, err := setupNotaryGroup(ctx)
 	require.Nil(t, err)
 
-	for _, s := range ng.AllSigners() {
-		s.Actor.Tell(&messages.StartGossip{})
-	}
-
 	client := New(ng)
 	defer client.Stop()
 
