@@ -8,7 +8,6 @@ import (
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/quorumcontrol/differencedigest/ibf"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/serializer"
 )
 
@@ -16,32 +15,12 @@ func init() {
 	serializer.RegisterEncodable(Ping{})
 	serializer.RegisterEncodable(Pong{})
 	serializer.RegisterEncodable(Store{})
-	serializer.RegisterEncodable(GetSyncer{})
-	serializer.RegisterEncodable(SyncDone{})
-	serializer.RegisterEncodable(NoSyncersAvailable{})
-	serializer.RegisterEncodable(SyncerAvailable{})
 	serializer.RegisterEncodable(CurrentState{})
 	serializer.RegisterEncodable(Signature{})
 	serializer.RegisterEncodable(Transaction{})
 	serializer.RegisterEncodable(GetTip{})
 	serializer.RegisterEncodable(ActorPID{})
-	serializer.RegisterEncodable(ProvideStrata{})
-	serializer.RegisterEncodable(ProvideBloomFilter{})
-	serializer.RegisterEncodable(RequestKeys{})
-	serializer.RegisterEncodable(RequestIBF{})
 	serializer.RegisterEncodable(TipSubscription{})
-}
-
-type DestinationHolder struct {
-	Destination *ActorPID
-}
-
-func (dh *DestinationHolder) SetDestination(newDestination *ActorPID) {
-	dh.Destination = newDestination
-}
-
-func (dh *DestinationHolder) GetDestination() *ActorPID {
-	return dh.Destination
 }
 
 type DestinationSettable interface {
@@ -61,22 +40,6 @@ type Store struct {
 	Key        []byte
 	Value      []byte
 	SkipNotify bool `msg:"-"`
-}
-
-type GetSyncer struct {
-	Kind string
-}
-
-type RequestIBF struct {
-	Count int
-}
-
-type SyncDone struct{}
-
-type NoSyncersAvailable struct{}
-
-type SyncerAvailable struct {
-	DestinationHolder
 }
 
 type TipSubscription struct {
@@ -107,10 +70,6 @@ func (cs *CurrentState) MustBytes() []byte {
 
 type GetTip struct {
 	ObjectID []byte
-}
-
-type RequestKeys struct {
-	Keys []uint64
 }
 
 type Signature struct {
@@ -154,18 +113,6 @@ func (t *Transaction) ConflictSetID() string {
 
 func ConflictSetID(objectID []byte, height uint64) string {
 	return string(crypto.Keccak256(append(objectID, uint64ToBytes(height)...)))
-}
-
-type ProvideStrata struct {
-	DestinationHolder
-
-	Strata *ibf.DifferenceStrata
-}
-
-type ProvideBloomFilter struct {
-	DestinationHolder
-
-	Filter *ibf.InvertibleBloomFilter
 }
 
 type ActorPID struct {
