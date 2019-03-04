@@ -21,7 +21,7 @@ vendor: Gopkg.toml Gopkg.lock
 build: vendor $(gosources) $(generated)
 	go build ./...
 
-test: $(gosources)
+test: vendor $(gosources)
 	go test ./...
 
 integration-test: docker-image
