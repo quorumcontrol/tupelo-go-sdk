@@ -4,6 +4,7 @@ package client
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -16,7 +17,12 @@ import (
 	cid "github.com/ipfs/go-cid"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/quorumcontrol/chaintree/chaintree"
+	"github.com/quorumcontrol/chaintree/nodestore"
+	"github.com/quorumcontrol/chaintree/safewrap"
+	"github.com/quorumcontrol/storage"
 	"github.com/quorumcontrol/tupelo-go-client/bls"
+	"github.com/quorumcontrol/tupelo-go-client/consensus"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/remote"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/testhelpers"
@@ -239,7 +245,6 @@ func TestNonNilPreviousTipOnFirstTransaction(t *testing.T) {
 	require.Nil(t, err)
 
 	remoteTip = chain1.Tip()
-	signer := ng.GetRandomSigner()
 	transaction := &chaintree.Transaction{
 		Type: "SET_DATA",
 		Payload: map[string]string{
@@ -276,6 +281,7 @@ func TestNonNilPreviousTipOnFirstTransaction(t *testing.T) {
 		ObjectID:    []byte(chain2.MustId()),
 	}
 
+	signer := ng.GetRandomSigner()
 	respChan, err := client.Subscribe(signer, chain2.MustId(), cid.Undef, 5*time.Second)
 	require.Nil(t, err)
 
