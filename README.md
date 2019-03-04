@@ -19,16 +19,25 @@ make docker-image
 
 ## Testing
 
+In order to run the regular test suite (i.e. non-integration tests), execute the following
+command: `make test`.
+
 ### Integration Testing
-We launch our integration tests using the
-[Tupelo Integration Runner](https://github.com/quorumcontrol/tupelo-integration-runner),
-which executes the (integration) test suite against a version of Tupelo. The runner
-can be configured to launch the suite for a number of Tupelo versions.
+We run our integration tests in a Docker container, against a network of Tupelo signers
+(and a bootstrap node) launched via `docker-compose`. The tests must run in a container in order
+to connect to the network created by `docker-compose`.
 
-The integration test runner runs the tests inside a Docker container, so this project needs
-a Dockerfile from which the runner can build the required image. 
+To execute the integration test suite, first bring a Tupelo network up by executing the following
+commands in the Tupelo repository and waiting for the signer nodes to be ready:
+```
+make vendor
+docker-compose -f docker-compose-signers.yml up --build --remove-orphans --force-recreate
+```
 
-Furthermore, the runner launches the tests container in tandem with a Tupelo network container.
-The tests container gets the RPC server host address via an environment variable injected by the
-runner, `$TUPELO_RPC_HOST`, so that it can connect during execution.
-
+Then, in the Tupelo Go client repository, execute the following commands:
+```
+make docker-image
+docker run -e TUPELO_BOOTSTRAP_NODES=/ip4/172.16.238.10/tcp/34001/ipfs/ \
+QmW2hgZqe6UcQ6kTaF8kS6CA3RDo7wbCvnGctCetbSt85n --net tupelo_default \
+quorumcontrol/tupelo-go-client go test -tags=integration -timeout=2m ./...
+```
