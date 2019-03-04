@@ -12,6 +12,7 @@ import (
 )
 
 func init() {
+	serializer.RegisterEncodable(Error{})
 	serializer.RegisterEncodable(Ping{})
 	serializer.RegisterEncodable(Pong{})
 	serializer.RegisterEncodable(Store{})
@@ -26,6 +27,13 @@ func init() {
 type DestinationSettable interface {
 	SetDestination(*ActorPID)
 	GetDestination() *ActorPID
+}
+
+// Error represents an error message.
+type Error struct {
+	Source string
+	Code   int
+	Memo   string
 }
 
 type Ping struct {
