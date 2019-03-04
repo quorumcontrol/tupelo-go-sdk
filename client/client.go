@@ -53,6 +53,7 @@ func (sa *subscriberActor) Receive(ctx actor.Context) {
 		ctx.SetReceiveTimeout(sa.timeout)
 	case *actor.ReceiveTimeout:
 		ctx.Self().Poison()
+		sa.ch <- msg
 		close(sa.ch)
 	case *actor.Terminated:
 		// For some reason we never seem to receive this when we timeout and self-poison
@@ -100,7 +101,7 @@ func (c *Client) TipRequest(chainID string) (*messages.CurrentState, error) {
 	return res.(*messages.CurrentState), nil
 }
 
-// Subscribe creates a subscription on a chain tree.
+// Subscribe creates a subscription to a chain tree.
 func (c *Client) Subscribe(signer *types.Signer, treeDid string, expectedTip cid.Cid, timeout time.Duration) (chan interface{}, error) {
 	ch := make(chan interface{}, 1)
 	act, err := actor.SpawnPrefix(newSubscriberActorProps(ch, timeout), "sub-"+treeDid)

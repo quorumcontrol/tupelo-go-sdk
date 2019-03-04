@@ -210,6 +210,7 @@ func TestNonNilPreviousTipOnFirstTransaction(t *testing.T) {
 	require.Nil(t, err)
 	nodeStore := nodestore.NewStorageBasedStore(storage.NewMemStorage())
 	chain1, err := consensus.NewSignedChainTree(treeKey.PublicKey, nodeStore)
+	require.Nil(t, err)
 
 	var remoteTip cid.Cid
 	if !chain1.IsGenesis() {
@@ -235,6 +236,7 @@ func TestNonNilPreviousTipOnFirstTransaction(t *testing.T) {
 	treeKey, err = crypto.GenerateKey()
 	require.Nil(t, err)
 	chain2, err := consensus.NewSignedChainTree(treeKey.PublicKey, nodeStore)
+	require.Nil(t, err)
 
 	remoteTip = chain1.Tip()
 	signer := ng.GetRandomSigner()
@@ -253,6 +255,7 @@ func TestNonNilPreviousTipOnFirstTransaction(t *testing.T) {
 		},
 	}
 	blockWithHeaders, err := consensus.SignBlock(unsignedBlock, treeKey)
+	require.Nil(t, err)
 
 	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(treeKey.PublicKey).String())
 	emptyTree := consensus.NewEmptyTree(treeDID, nodeStore)
@@ -274,6 +277,7 @@ func TestNonNilPreviousTipOnFirstTransaction(t *testing.T) {
 	}
 
 	respChan, err := client.Subscribe(signer, chain2.MustId(), cid.Undef, 5*time.Second)
+	require.Nil(t, err)
 
 	err = client.SendTransaction(signer, transactionMsg)
 	require.Nil(t, err)
