@@ -26,18 +26,18 @@ func (ref *process) SendUserMessage(pid *actor.PID, message interface{}) {
 }
 
 func sendMessage(gateway, pid *actor.PID, header actor.ReadonlyMessageHeader, message interface{}, sender *actor.PID, serializerID int32) {
+	_, ok := message.(msgp.Marshaler)
+	if !ok {
+		log.Printf("error sending message, cannot marshal type %s\n", reflect.TypeOf(message))
+		return
+	}
+
 	rd := &remoteDeliver{
 		header:       header,
 		message:      message,
 		sender:       sender,
 		target:       pid,
 		serializerID: serializerID,
-	}
-
-	_, ok := rd.message.(msgp.Marshaler)
-	if !ok {
-		log.Printf("error sending message, cannot marshal type %s\n", reflect.TypeOf(rd.message))
-		return
 	}
 	wd := toWireDelivery(rd)
 	wd.Outgoing = true
@@ -69,15 +69,4 @@ func (ref *process) SendSystemMessage(pid *actor.PID, message interface{}) {
 
 func (ref *process) Stop(pid *actor.PID) {
 	panic("remote stop is unsupported")
-}
-
-func (ref *process) remoteDeliver(rd *remoteDeliver) {
-	_, ok := rd.message.(msgp.Marshaler)
-	if !ok {
-		log.Printf("error delivering message, cannot marshal type %s\n", reflect.TypeOf(rd.message))
-		return
-	}
-	wd := toWireDelivery(rd)
-	wd.Outgoing = true
-	ref.gateway.Tell(wd)
 }

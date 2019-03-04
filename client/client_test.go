@@ -93,7 +93,6 @@ func setupNotaryGroup(ctx context.Context) (*types.NotaryGroup, error) {
 }
 
 func TestClientSendTransaction(t *testing.T) {
-	// ts := testnotarygroup.NewTestSet(t, 3)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -139,7 +138,6 @@ func TestClientSubscribe(t *testing.T) {
 }
 
 func TestPlayTransactions(t *testing.T) {
-	// ts := testnotarygroup.NewTestSet(t, 3)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -202,7 +200,6 @@ func TestPlayTransactions(t *testing.T) {
 }
 
 func TestNonNilPreviousTipOnFirstTransaction(t *testing.T) {
-	// ts := testnotarygroup.NewTestSet(t, 3)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -354,7 +351,6 @@ func transactRemote(t testing.TB, client *Client, signer *types.Signer, treeID s
 }
 
 func TestInvalidPreviousTipOnSnoozedTransaction(t *testing.T) {
-	// ts := testnotarygroup.NewTestSet(t, 3)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -411,7 +407,6 @@ func TestInvalidPreviousTipOnSnoozedTransaction(t *testing.T) {
 }
 
 func TestNonOwnerTransactions(t *testing.T) {
-	// ts := testnotarygroup.NewTestSet(t, 3)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
