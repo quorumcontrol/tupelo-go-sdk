@@ -25,7 +25,9 @@ test: vendor $(gosources)
 	go test ./...
 
 integration-test: docker-image
-	docker run -v /var/run/docker.sock:/var/run/docker.sock -v $(PWD):/src quorumcontrol/tupelo-integration-runner
+	docker run -e TUPELO_BOOTSTRAP_NODES=/ip4/172.16.238.10/tcp/34001/ipfs/\
+QmW2hgZqe6UcQ6kTaF8kS6CA3RDo7wbCvnGctCetbSt85n --net tupelo_default \
+quorumcontrol/tupelo-go-client go test -tags=integration -timeout=2m ./...
 
 docker-image: vendor Dockerfile .dockerignore
 	docker build -t quorumcontrol/tupelo-go-client:$(TAG) .
@@ -37,4 +39,4 @@ clean:
 	go clean
 	rm -rf vendor
 
-.PHONY: all build test integration-test docker-image clean
+.PHONY: all vendor build test integration-test docker-image clean

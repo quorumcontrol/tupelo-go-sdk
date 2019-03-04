@@ -818,17 +818,6 @@
   version = "v5.0.1"
 
 [[projects]]
-  digest = "1:0f81944e3477cd8e974a49b8b51403c33d48b47a1ef7d69951ce01095c4a2766"
-  name = "github.com/quorumcontrol/differencedigest"
-  packages = [
-    "hashes",
-    "ibf",
-  ]
-  pruneopts = ""
-  revision = "7b29957cbe66ed8049526f7fcb8684a3c8c81c9d"
-  version = "v0.0.3"
-
-[[projects]]
   branch = "master"
   digest = "1:09af781fcd348813b35d053b14c818038daa5fa392d800762ecab21a041e51a1"
   name = "github.com/quorumcontrol/namedlocker"
@@ -1054,7 +1043,6 @@
     "github.com/quorumcontrol/chaintree/nodestore",
     "github.com/quorumcontrol/chaintree/safewrap",
     "github.com/quorumcontrol/chaintree/typecaster",
-    "github.com/quorumcontrol/differencedigest/ibf",
     "github.com/quorumcontrol/storage",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/require",
