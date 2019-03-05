@@ -164,7 +164,7 @@ func EstablishCoinTransaction(tree *dag.Dag, transaction *chaintree.Transaction)
 		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error, coin at path %v already exists", coinPath)}
 	}
 
-	newTree, err = tree.SetAsLink(coinPath, &Coin{})
+	_, err = tree.SetAsLink(coinPath, &Coin{})
 	if err != nil {
 		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error setting: %v", err)}
 	}

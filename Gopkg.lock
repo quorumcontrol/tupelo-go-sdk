@@ -766,7 +766,6 @@
     "github.com/ipfs/go-ipld-cbor",
     "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-datastore",
     "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-datastore/sync",
-    "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-ipfs-config",
     "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-log",
     "github.com/ipsn/go-ipfs/gxlibs/github.com/jbenet/goprocess",
     "github.com/ipsn/go-ipfs/gxlibs/github.com/jbenet/goprocess/context",
