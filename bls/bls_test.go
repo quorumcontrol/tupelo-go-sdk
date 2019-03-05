@@ -104,6 +104,7 @@ func TestVerifyMultiSig(t *testing.T) {
 	verKey2, err := key2.VerKey()
 	assert.Nil(t, err)
 	verKey3, err := key3.VerKey()
+	assert.Nil(t, err)
 
 	verKeys[0] = verKey1.Bytes()
 	verKeys[1] = verKey2.Bytes()

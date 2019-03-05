@@ -57,7 +57,8 @@ func NewValidTransactionWithPathAndValue(t testing.TB, treeKey *ecdsa.PrivateKey
 	blockWithHeaders, err := consensus.SignBlock(unsignedBlock, treeKey)
 	require.Nil(t, err)
 
-	testTree.ProcessBlock(blockWithHeaders)
+	_, err = testTree.ProcessBlock(blockWithHeaders)
+	require.Nil(t, err)
 	nodes := DagToByteNodes(t, emptyTree)
 
 	bits := sw.WrapObject(blockWithHeaders).RawData()

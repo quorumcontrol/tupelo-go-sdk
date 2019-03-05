@@ -166,7 +166,9 @@ func (b *bridge) clearStream(id uint64) {
 		return
 	}
 	if b.stream != nil {
-		b.stream.Reset()
+		if err := b.stream.Reset(); err != nil {
+			panic("Resetting stream failed")
+		}
 	}
 	if b.streamCancel != nil {
 		b.streamCancel()

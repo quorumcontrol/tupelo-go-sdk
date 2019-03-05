@@ -40,6 +40,7 @@ func TestSignedChainTree_IsGenesis(t *testing.T) {
 
 	isValid, err := newTree.ChainTree.ProcessBlock(blockWithHeaders)
 	require.True(t, isValid)
+	require.Nil(t, err)
 
 	require.False(t, newTree.IsGenesis())
 
