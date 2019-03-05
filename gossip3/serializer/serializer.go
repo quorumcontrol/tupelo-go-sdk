@@ -11,6 +11,7 @@ var encodableRegister = make(map[int8]func() msgp.Unmarshaler)
 var typesToCodes = make(map[string]int8)
 var internalEncodableRegisterCounter int8 = 1
 
+// RegisterEncodable registers a type as encodable.
 func RegisterEncodable(obj interface{}) {
 	typ := reflect.TypeOf(obj)
 	typPtr := reflect.PtrTo(typ)
@@ -23,6 +24,7 @@ func RegisterEncodable(obj interface{}) {
 	internalEncodableRegisterCounter++
 }
 
+// GetUnmarshaler gets an unmarshaler for the corresponding type code.
 func GetUnmarshaler(typeCode int8) msgp.Unmarshaler {
 	obj, ok := encodableRegister[typeCode]
 	if !ok {
@@ -31,6 +33,7 @@ func GetUnmarshaler(typeCode int8) msgp.Unmarshaler {
 	return obj()
 }
 
+// GetTypeCode gets the type code for the type of an object.
 func GetTypeCode(obj interface{}) int8 {
 	code, ok := typesToCodes[reflect.TypeOf(obj).String()]
 	if !ok {
