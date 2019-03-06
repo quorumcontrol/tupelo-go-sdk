@@ -7,33 +7,14 @@ import (
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/serializer"
-	"github.com/tinylib/msgp/msgp"
 )
 
 type remoteDeliver struct {
 	header       actor.ReadonlyMessageHeader
-	message      interface{}
+	message      messages.WireMessage
 	target       *actor.PID
 	sender       *actor.PID
 	serializerID int32
-}
-
-func toWireDelivery(rd *remoteDeliver) *wireDelivery {
-	marshaled, err := rd.message.(msgp.Marshaler).MarshalMsg(nil)
-	if err != nil {
-		panic(fmt.Errorf("could not marshal message: %v", err))
-	}
-	wd := &wireDelivery{
-		Message: marshaled,
-		Type:    serializer.GetTypeCode(rd.message),
-		Target:  messages.ToActorPid(rd.target),
-		Sender:  messages.ToActorPid(rd.sender),
-	}
-	if rd.header != nil {
-		wd.Header = rd.header.ToMap()
-	}
-	return wd
 }
 
 type registerBridge struct {
@@ -50,11 +31,14 @@ type wireDelivery struct {
 	Outgoing bool `msg:"-"`
 }
 
-func (wd *wireDelivery) GetMessage() (msgp.Unmarshaler, error) {
-	msg := serializer.GetUnmarshaler(wd.Type)
-	_, err := msg.UnmarshalMsg(wd.Message)
+// GetMessage deserializes a WireMessage.
+func (wd *wireDelivery) GetMessage() (messages.WireMessage, error) {
+	msg, err := messages.GetUnmarshaler(wd.Type)
 	if err != nil {
-		return nil, fmt.Errorf("error unmarshaling message: %v", err)
+		return nil, err
+	}
+	if _, err = msg.UnmarshalMsg(wd.Message); err != nil {
+		return nil, fmt.Errorf("error unmarshaling message: %s", err)
 	}
 	return msg, nil
 }

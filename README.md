@@ -35,3 +35,8 @@ docker-compose -f docker-compose-signers.yml up --build --remove-orphans --force
 ```
 
 Then, in the Tupelo Go client repository, execute the following command: `make integration-test`.
+
+## Message Serialization
+Before a message gets sent over the wire, it gets serialized to the
+[MessagePack](https://msgpack.org/) format. The serialized message gets sent along with a code
+describing its type, so that the recipient knows what type of object to deserialize it to.

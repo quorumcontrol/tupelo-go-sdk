@@ -1,11 +1,12 @@
 package remote
 
 import (
+	"fmt"
 	"log"
 	"reflect"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
-	"github.com/tinylib/msgp/msgp"
+	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
 )
 
 type process struct {
@@ -20,32 +21,38 @@ func newProcess(pid, gateway *actor.PID) actor.Process {
 	}
 }
 
+// Send user message, implements actor.Process.
 func (ref *process) SendUserMessage(pid *actor.PID, message interface{}) {
 	header, msg, sender := actor.UnwrapEnvelope(message)
-	sendMessage(ref.gateway, pid, header, msg, sender, -1)
-}
-
-func sendMessage(gateway, pid *actor.PID, header actor.ReadonlyMessageHeader, message interface{}, sender *actor.PID, serializerID int32) {
-	_, ok := message.(msgp.Marshaler)
+	wireMsg, ok := msg.(messages.WireMessage)
 	if !ok {
-		log.Printf("error sending message, cannot marshal type %s\n", reflect.TypeOf(message))
+		log.Printf("error sending user message, message doesn't implement messages.WireMessage: %s\n",
+			reflect.TypeOf(msg))
 		return
 	}
+	sendMessage(ref.gateway, pid, header, wireMsg, sender, -1)
+}
 
-	rd := &remoteDeliver{
-		header:       header,
-		message:      message,
-		sender:       sender,
-		target:       pid,
-		serializerID: serializerID,
+func sendMessage(gateway, pid *actor.PID, header actor.ReadonlyMessageHeader, message messages.WireMessage, sender *actor.PID, serializerID int32) {
+	marshaled, err := message.MarshalMsg(nil)
+	if err != nil {
+		panic(fmt.Errorf("could not marshal message: %v", err))
 	}
-	wd := toWireDelivery(rd)
+	wd := &wireDelivery{
+		Message: marshaled,
+		Type:    message.TypeCode(),
+		Target:  messages.ToActorPid(pid),
+		Sender:  messages.ToActorPid(sender),
+	}
+	if header != nil {
+		wd.Header = header.ToMap()
+	}
 	wd.Outgoing = true
+
 	gateway.Tell(wd)
 }
 
 func (ref *process) SendSystemMessage(pid *actor.PID, message interface{}) {
-
 	//intercept any Watch messages and direct them to the endpoint manager
 	switch msg := message.(type) {
 	case *actor.Watch:
@@ -62,8 +69,12 @@ func (ref *process) SendSystemMessage(pid *actor.PID, message interface{}) {
 		// 	Watchee: pid,
 		// }
 		// endpointManager.remoteUnwatch(ruw)
-	default:
+	case messages.WireMessage:
 		sendMessage(ref.gateway, pid, nil, msg, nil, -1)
+	default:
+		log.Printf("error sending system message, not convertible to WireMessage: %s\n",
+			reflect.TypeOf(message))
+		return
 	}
 }
 

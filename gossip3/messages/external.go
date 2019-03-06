@@ -8,20 +8,19 @@ import (
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/serializer"
 )
 
 func init() {
-	serializer.RegisterEncodable(Error{})
-	serializer.RegisterEncodable(Ping{})
-	serializer.RegisterEncodable(Pong{})
-	serializer.RegisterEncodable(Store{})
-	serializer.RegisterEncodable(CurrentState{})
-	serializer.RegisterEncodable(Signature{})
-	serializer.RegisterEncodable(Transaction{})
-	serializer.RegisterEncodable(GetTip{})
-	serializer.RegisterEncodable(ActorPID{})
-	serializer.RegisterEncodable(TipSubscription{})
+	RegisterMessage(&Error{})
+	RegisterMessage(&Ping{})
+	RegisterMessage(&Pong{})
+	RegisterMessage(&Store{})
+	RegisterMessage(&CurrentState{})
+	RegisterMessage(&Signature{})
+	RegisterMessage(&Transaction{})
+	RegisterMessage(&GetTip{})
+	RegisterMessage(&ActorPID{})
+	RegisterMessage(&TipSubscription{})
 }
 
 type DestinationSettable interface {
@@ -36,12 +35,24 @@ type Error struct {
 	Memo   string
 }
 
+func (Error) TypeCode() int8 {
+	return -1
+}
+
 type Ping struct {
 	Msg string
 }
 
+func (Ping) TypeCode() int8 {
+	return -2
+}
+
 type Pong struct {
 	Msg string
+}
+
+func (Pong) TypeCode() int8 {
+	return -3
 }
 
 type Store struct {
@@ -50,14 +61,26 @@ type Store struct {
 	SkipNotify bool `msg:"-"`
 }
 
+func (Store) TypeCode() int8 {
+	return -4
+}
+
 type TipSubscription struct {
 	Unsubscribe bool
 	ObjectID    []byte
 	TipValue    []byte
 }
 
+func (TipSubscription) TypeCode() int8 {
+	return -5
+}
+
 type CurrentState struct {
 	Signature *Signature
+}
+
+func (CurrentState) TypeCode() int8 {
+	return -6
 }
 
 func (cs *CurrentState) CommittedKey() []byte {
@@ -80,6 +103,10 @@ type GetTip struct {
 	ObjectID []byte
 }
 
+func (GetTip) TypeCode() int8 {
+	return -7
+}
+
 type Signature struct {
 	TransactionID []byte
 	ObjectID      []byte
@@ -90,6 +117,10 @@ type Signature struct {
 	Cycle         uint64
 	Signers       []byte // this is a marshaled BitArray from github.com/Workiva/go-datastructures
 	Signature     []byte
+}
+
+func (Signature) TypeCode() int8 {
+	return -8
 }
 
 func (sig *Signature) GetSignable() []byte {
@@ -115,6 +146,10 @@ type Transaction struct {
 	State       [][]byte
 }
 
+func (Transaction) TypeCode() int8 {
+	return -9
+}
+
 func (t *Transaction) ConflictSetID() string {
 	return ConflictSetID(t.ObjectID, t.Height)
 }
@@ -126,6 +161,10 @@ func ConflictSetID(objectID []byte, height uint64) string {
 type ActorPID struct {
 	Address string
 	Id      string
+}
+
+func (ActorPID) TypeCode() int8 {
+	return -10
 }
 
 func ToActorPid(a *actor.PID) *ActorPID {
