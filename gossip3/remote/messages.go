@@ -5,22 +5,8 @@ package remote
 import (
 	"fmt"
 
-	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
 )
-
-type remoteDeliver struct {
-	header       actor.ReadonlyMessageHeader
-	message      messages.WireMessage
-	target       *actor.PID
-	sender       *actor.PID
-	serializerID int32
-}
-
-type registerBridge struct {
-	Peer    string
-	Handler *actor.PID
-}
 
 type wireDelivery struct {
 	Header   map[string]string
