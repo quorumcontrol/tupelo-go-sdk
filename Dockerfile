@@ -1,4 +1,4 @@
-FROM golang:1.12.0
+FROM golang:1.11.5
 
 WORKDIR /go/src/github.com/quorumcontrol/tupelo-go-client
 
