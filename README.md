@@ -31,7 +31,7 @@ To execute the integration test suite, first bring a Tupelo network up by execut
 commands in the Tupelo repository and waiting for the signer nodes to be ready:
 ```
 make vendor
-docker-compose -f docker-compose-signers.yml up --build --remove-orphans --force-recreate
+docker-compose up --build --remove-orphans --force-recreate
 ```
 
 Then, in the Tupelo Go client repository, execute the following command: `make integration-test`.
