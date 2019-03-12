@@ -70,7 +70,7 @@ func setupNotaryGroup(ctx context.Context) (*types.NotaryGroup, error) {
 		return nil, err
 	}
 
-	remote.NewRouter(ctx, p2pHost)
+	remote.NewRouter(p2pHost)
 
 	keys, err := loadSignerKeys()
 	if err != nil {
