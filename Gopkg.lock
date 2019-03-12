@@ -11,7 +11,7 @@
 
 [[projects]]
   branch = "dev"
-  digest = "1:40abf821bcb27fdd4f151093ab3cb1f09605eb3954bde8a8aabaa978d5f9c256"
+  digest = "1:f3a881d4a11f4300aab7519d80f0aeacb21ee4827316c3b34f09a88ea1f1d6c4"
   name = "github.com/AsynkronIT/protoactor-go"
   packages = [
     "actor",
@@ -23,7 +23,7 @@
     "plugin",
   ]
   pruneopts = ""
-  revision = "46ce3cc7fd18ffbf137a56c6e2d7e1e9bd328f39"
+  revision = "ffaa0eb15dcbc5dc2af7998128015a887dc005c0"
 
 [[projects]]
   digest = "1:631c9e9dc0894d1b7ba7d9f2a0120f60cc8478a1769b23b8a04a16b824c7322d"

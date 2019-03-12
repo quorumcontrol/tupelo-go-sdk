@@ -37,16 +37,21 @@ type bridge struct {
 	streamCtx    gocontext.Context
 	streamCancel gocontext.CancelFunc
 	backoffCount int
+
+	behavior actor.Behavior
 }
 
 func newBridgeProps(host p2p.Node, remoteAddress peer.ID) *actor.Props {
-	return actor.FromProducer(func() actor.Actor {
-		return &bridge{
+	return actor.PropsFromProducer(func() actor.Actor {
+		b := &bridge{
 			host:          host,
 			localAddress:  types.NewRoutableAddress(host.Identity(), remoteAddress.Pretty()).String(),
 			remoteAddress: remoteAddress,
+			behavior:      actor.NewBehavior(),
 		}
-	}).WithMiddleware(
+		b.behavior.Become(b.NormalState)
+		return b
+	}).WithReceiverMiddleware(
 		middleware.LoggingMiddleware,
 		plugin.Use(&middleware.LogPlugin{}),
 	)
@@ -55,6 +60,10 @@ func newBridgeProps(host p2p.Node, remoteAddress peer.ID) *actor.Props {
 var bridgeReceiveTimeout = 60 * time.Second
 
 func (b *bridge) Receive(context actor.Context) {
+	b.behavior.Receive(context)
+}
+
+func (b *bridge) NormalState(context actor.Context) {
 	// defer func() {
 	// 	if re := recover(); re != nil {
 	// 		b.Log.Errorw("recover", "re", re)
@@ -64,7 +73,7 @@ func (b *bridge) Receive(context actor.Context) {
 	switch msg := context.Message().(type) {
 	case *actor.ReceiveTimeout:
 		b.Log.Infow("terminating stream due to lack of activity")
-		context.SetBehavior(b.TerminatedState)
+		b.behavior.Become(b.TerminatedState)
 		b.clearStream(b.streamID)
 		context.Self().Poison()
 	case *actor.Terminated:
@@ -216,10 +225,10 @@ func (b *bridge) setupNewStream(ctx gocontext.Context, cancelFunc gocontext.Canc
 				var wd wireDelivery
 				err := wd.DecodeMsg(reader)
 				if err != nil {
-					act.Tell(internalStreamDied{id: id, err: err})
+					context.Send(act, internalStreamDied{id: id, err: err})
 					return
 				}
-				act.Tell(&wd)
+				context.Send(act, &wd)
 			}
 		}
 	}(b.streamCtx, context.Self(), stream, b.streamID)

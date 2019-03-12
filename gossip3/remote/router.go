@@ -23,12 +23,12 @@ type router struct {
 }
 
 func newRouterProps(host p2p.Node) *actor.Props {
-	return actor.FromProducer(func() actor.Actor {
+	return actor.PropsFromProducer(func() actor.Actor {
 		return &router{
 			host:    host,
 			bridges: make(actorRegistry),
 		}
-	}).WithMiddleware(
+	}).WithReceiverMiddleware(
 		middleware.LoggingMiddleware,
 		plugin.Use(&middleware.LogPlugin{}),
 	)
@@ -55,7 +55,7 @@ func (r *router) Receive(context actor.Context) {
 	case *actor.Started:
 		//TODO: what happens when the bridge dies?
 		r.host.SetStreamHandler(p2pProtocol, func(s pnet.Stream) {
-			context.Self().Tell(s)
+			context.Send(context.Self(), s)
 		})
 	case pnet.Stream:
 		remoteGateway := msg.Conn().RemotePeer().Pretty()

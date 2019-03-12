@@ -34,9 +34,9 @@ func Stop() {
 }
 
 // NewRouter instantiates a new router given a certain host node.
-func NewRouter(host p2p.Node) *actor.PID {
+func NewRouter(ctx *actor.RootContext, host p2p.Node) *actor.PID {
 	middleware.Log.Infow("registering router", "host", host.Identity())
-	router, err := actor.SpawnNamed(newRouterProps(host), "router-"+host.Identity())
+	router, err := ctx.SpawnNamed(newRouterProps(host), "router-"+host.Identity())
 	if err != nil {
 		panic(fmt.Sprintf("error spawning router: %v", err))
 	}
