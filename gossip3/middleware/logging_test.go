@@ -8,11 +8,13 @@ import (
 )
 
 func TestSetLogLevel(t *testing.T) {
-	SetLogLevel("error")
+	err := SetLogLevel("error")
+	assert.Nil(t, err)
 	assert.True(t, Log.Desugar().Core().Enabled(zapcore.ErrorLevel))
 	assert.False(t, Log.Desugar().Core().Enabled(zapcore.DebugLevel))
 
-	SetLogLevel("debug")
+	err = SetLogLevel("debug")
+	assert.Nil(t, err)
 	assert.True(t, Log.Desugar().Core().Enabled(zapcore.ErrorLevel))
 	assert.True(t, Log.Desugar().Core().Enabled(zapcore.DebugLevel))
 }
