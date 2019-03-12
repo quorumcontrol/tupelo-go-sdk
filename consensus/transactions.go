@@ -164,7 +164,7 @@ func EstablishTokenTransaction(tree *dag.Dag, transaction *chaintree.Transaction
 		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error, token at path %v already exists", tokenPath)}
 	}
 
-	newTree, err = tree.SetAsLink(tokenPath, &Token{})
+	_, err = tree.SetAsLink(tokenPath, &Token})
 	if err != nil {
 		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error setting: %v", err)}
 	}
@@ -192,10 +192,6 @@ func MintTokenTransaction(tree *dag.Dag, transaction *chaintree.Transaction) (ne
 
 	if err != nil {
 		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error setting: %v", err)}
-	}
-
-	if payload.Amount <= 0 {
-		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: "error, can not mint an amount < 0"}
 	}
 
 	tokenName := payload.Name
