@@ -88,10 +88,10 @@ func (c *Client) Stop() {
 }
 
 // TipRequest requests the tip of a chain tree.
-func (c *Client) TipRequest(context actor.Context, chainID string) (*messages.CurrentState, error) {
+func (c *Client) TipRequest(chainID string) (*messages.CurrentState, error) {
 	target := c.Group.GetRandomSyncer()
 	fut := actor.NewFuture(10 * time.Second)
-	context.RequestWithCustomSender(target, &messages.GetTip{
+	actor.EmptyRootContext.RequestWithCustomSender(target, &messages.GetTip{
 		ObjectID: []byte(chainID),
 	}, fut.PID())
 	res, err := fut.Result()
@@ -102,11 +102,11 @@ func (c *Client) TipRequest(context actor.Context, chainID string) (*messages.Cu
 }
 
 // Subscribe creates a subscription to a chain tree.
-func (c *Client) Subscribe(context actor.Context, signer *types.Signer, treeDid string, expectedTip cid.Cid, timeout time.Duration) (chan interface{}, error) {
+func (c *Client) Subscribe(signer *types.Signer, treeDid string, expectedTip cid.Cid, timeout time.Duration) (chan interface{}, error) {
 	ch := make(chan interface{}, 1)
-	act := context.SpawnPrefix(newSubscriberActorProps(ch, timeout), "sub-"+treeDid)
+	act := actor.EmptyRootContext.SpawnPrefix(newSubscriberActorProps(ch, timeout), "sub-"+treeDid)
 	c.subscriberActors = append(c.subscriberActors, act)
-	context.RequestWithCustomSender(signer.Actor, &messages.TipSubscription{
+	actor.EmptyRootContext.RequestWithCustomSender(signer.Actor, &messages.TipSubscription{
 		ObjectID: []byte(treeDid),
 		TipValue: expectedTip.Bytes(),
 	}, act)
@@ -114,13 +114,13 @@ func (c *Client) Subscribe(context actor.Context, signer *types.Signer, treeDid 
 }
 
 // SendTransaction sends a transaction to a signer.
-func (c *Client) SendTransaction(context actor.Context, signer *types.Signer, trans *messages.Transaction) error {
+func (c *Client) SendTransaction(signer *types.Signer, trans *messages.Transaction) error {
 	value, err := trans.MarshalMsg(nil)
 	if err != nil {
 		return fmt.Errorf("error marshaling: %v", err)
 	}
 	key := crypto.Keccak256(value)
-	context.Send(signer.Actor, &messages.Store{
+	actor.EmptyRootContext.Send(signer.Actor, &messages.Store{
 		Key:   key,
 		Value: value,
 	})
@@ -128,7 +128,7 @@ func (c *Client) SendTransaction(context actor.Context, signer *types.Signer, tr
 }
 
 // PlayTransactions plays transactions in chain tree.
-func (c *Client) PlayTransactions(context actor.Context, tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*chaintree.Transaction) (*consensus.AddBlockResponse, error) {
+func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*chaintree.Transaction) (*consensus.AddBlockResponse, error) {
 	sw := safewrap.SafeWrap{}
 
 	if remoteTip != nil && cid.Undef.Equals(*remoteTip) {
@@ -194,12 +194,12 @@ func (c *Client) PlayTransactions(context actor.Context, tree *consensus.SignedC
 
 	target := c.Group.GetRandomSigner()
 
-	respChan, err := c.Subscribe(context, target, tree.MustId(), expectedTip, 60*time.Second)
+	respChan, err := c.Subscribe(target, tree.MustId(), expectedTip, 60*time.Second)
 	if err != nil {
 		return nil, fmt.Errorf("error subscribing: %v", err)
 	}
 
-	err = c.SendTransaction(context, target, &transaction)
+	err = c.SendTransaction(target, &transaction)
 	if err != nil {
 		panic(fmt.Errorf("error sending transaction %v", err))
 	}
