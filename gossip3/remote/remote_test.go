@@ -97,9 +97,9 @@ func TestRemoteMessageSending(t *testing.T) {
 	Start()
 	defer Stop()
 
-	NewRouter(rootContext, host1)
-	NewRouter(rootContext, host2)
-	NewRouter(rootContext, host3)
+	NewRouter(host1)
+	NewRouter(host2)
+	NewRouter(host3)
 
 	t.Run("ping", func(t *testing.T) {
 		remotePing := actor.NewPID(types.NewRoutableAddress(host1.Identity(), host3.Identity()).String(), host3Ping.GetId())
@@ -123,7 +123,7 @@ func TestRemoteMessageSending(t *testing.T) {
 		require.Nil(t, err)
 		remote4Ping := actor.NewPID(types.NewRoutableAddress(host1.Identity(), host4.Identity()).String(), host4Ping.GetId())
 
-		NewRouter(rootContext, host4)
+		NewRouter(host4)
 
 		resp, err := rootContext.RequestFuture(remote4Ping, &messages.Ping{Msg: "hi"}, 100*time.Millisecond).Result()
 		assert.Equal(t, resp.(*messages.Pong).Msg, "hi")
