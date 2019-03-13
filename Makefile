@@ -25,7 +25,10 @@ vendor: go.mod go.sum $(FIRSTGOPATH)/bin/modvendor
 build: $(gosources) $(generated) go.mod go.sum
 	go build ./...
 
-test: $(gosources) $(generated) go.mod go.sum
+lint: $(FIRSTGOPATH)/bin/golangci-lint
+	$(FIRSTGOPATH)/bin/golangci-lint run
+
+test: vendor $(gosources)
 	go test ./...
 
 integration-test: docker-image
@@ -35,6 +38,9 @@ quorumcontrol/tupelo-go-client go test -mod=vendor -tags=integration -timeout=2m
 
 docker-image: vendor $(gosources) $(generated) Dockerfile .dockerignore
 	docker build -t quorumcontrol/tupelo-go-client:$(TAG) .
+
+$(FIRSTGOPATH)/bin/golangci-lint:
+	./scripts/download-golangci-lint.sh
 
 clean:
 	go clean ./...
