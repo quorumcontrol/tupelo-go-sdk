@@ -40,7 +40,7 @@
 
 [[constraint]]
   name = "github.com/AsynkronIT/protoactor-go"
-  revision = "ffaa0eb15dcbc5dc2af7998128015a887dc005c0"
+  revision = "0d2db0f2915c63ee18832b7ed7216d80b1019bc9"
 
 [[override]]
   name = "github.com/ipfs/go-ipfs-http-client"
