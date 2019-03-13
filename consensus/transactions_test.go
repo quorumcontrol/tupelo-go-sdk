@@ -279,7 +279,8 @@ func TestSetData(t *testing.T) {
 
 	unsignedBlock = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: nil,
+			Height:      1,
+			PreviousTip: &testTree.Dag.Tip,
 			Transactions: []*chaintree.Transaction{
 				{
 					Type: "SET_DATA",
@@ -355,7 +356,8 @@ func TestSetOwnership(t *testing.T) {
 
 	unsignedBlock = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: nil,
+			PreviousTip: &testTree.Dag.Tip,
+			Height:      1,
 			Transactions: []*chaintree.Transaction{
 				{
 					Type: "SET_OWNERSHIP",
