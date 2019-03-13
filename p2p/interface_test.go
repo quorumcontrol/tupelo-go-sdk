@@ -13,9 +13,9 @@ import (
 
 type nodeGenerator func(ctx context.Context, t *testing.T) Node
 
-func NodeTests(t *testing.T, generator nodeGenerator) {
-	BootstrapTest(t, generator)
-	SendTest(t, generator)
+func nodeTests(t *testing.T, generator nodeGenerator) {
+	bootstrapTest(t, generator)
+	sendTest(t, generator)
 	SendAndReceiveTest(t, generator)
 }
 
