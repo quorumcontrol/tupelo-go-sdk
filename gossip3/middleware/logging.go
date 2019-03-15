@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	//"reflect"
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"go.uber.org/zap"
 )
@@ -37,8 +38,12 @@ func (p *LogPlugin) OnOtherMessage(ctx actor.ReceiverContext, env *actor.Message
 // Logger is message middleware which logs messages before continuing to the next middleware
 func LoggingMiddleware(next actor.ReceiverFunc) actor.ReceiverFunc {
 	fn := func(c actor.ReceiverContext, env *actor.MessageEnvelope) {
-		// message := c.Message()
-		// Log.Debugw("message", "id", c.Self(), "type", reflect.TypeOf(message), "sender", c.Sender().GetId()) //, "msg", message)
+		//message := env.Message
+		//sender := "nil"
+		//if env.Sender != nil {
+		//	sender = env.Sender.Id
+		//}
+		//Log.Debugw("message", "id", c.Self(), "type", reflect.TypeOf(message), "sender", sender) //, "msg", message)
 		next(c, env)
 	}
 
