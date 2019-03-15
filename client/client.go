@@ -36,12 +36,12 @@ type subscriberActor struct {
 }
 
 func newSubscriberActorProps(ch chan interface{}, timeout time.Duration) *actor.Props {
-	return actor.FromProducer(func() actor.Actor {
+	return actor.PropsFromProducer(func() actor.Actor {
 		return &subscriberActor{
 			ch:      ch,
 			timeout: timeout,
 		}
-	}).WithMiddleware(
+	}).WithReceiverMiddleware(
 		middleware.LoggingMiddleware,
 		plugin.Use(&middleware.LogPlugin{}),
 	)
@@ -91,7 +91,7 @@ func (c *Client) Stop() {
 func (c *Client) TipRequest(chainID string) (*messages.CurrentState, error) {
 	target := c.Group.GetRandomSyncer()
 	fut := actor.NewFuture(10 * time.Second)
-	target.Request(&messages.GetTip{
+	actor.EmptyRootContext.RequestWithCustomSender(target, &messages.GetTip{
 		ObjectID: []byte(chainID),
 	}, fut.PID())
 	res, err := fut.Result()
@@ -104,12 +104,9 @@ func (c *Client) TipRequest(chainID string) (*messages.CurrentState, error) {
 // Subscribe creates a subscription to a chain tree.
 func (c *Client) Subscribe(signer *types.Signer, treeDid string, expectedTip cid.Cid, timeout time.Duration) (chan interface{}, error) {
 	ch := make(chan interface{}, 1)
-	act, err := actor.SpawnPrefix(newSubscriberActorProps(ch, timeout), "sub-"+treeDid)
-	if err != nil {
-		return nil, fmt.Errorf("error spawning: %v", err)
-	}
+	act := actor.EmptyRootContext.SpawnPrefix(newSubscriberActorProps(ch, timeout), "sub-"+treeDid)
 	c.subscriberActors = append(c.subscriberActors, act)
-	signer.Actor.Request(&messages.TipSubscription{
+	actor.EmptyRootContext.RequestWithCustomSender(signer.Actor, &messages.TipSubscription{
 		ObjectID: []byte(treeDid),
 		TipValue: expectedTip.Bytes(),
 	}, act)
@@ -123,7 +120,7 @@ func (c *Client) SendTransaction(signer *types.Signer, trans *messages.Transacti
 		return fmt.Errorf("error marshaling: %v", err)
 	}
 	key := crypto.Keccak256(value)
-	signer.Actor.Tell(&messages.Store{
+	actor.EmptyRootContext.Send(signer.Actor, &messages.Store{
 		Key:   key,
 		Value: value,
 	})

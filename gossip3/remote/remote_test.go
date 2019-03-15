@@ -31,14 +31,16 @@ func TestLocalStillWorks(t *testing.T) {
 	Start()
 	defer Stop()
 
-	localPing := actor.Spawn(actor.FromFunc(func(ctx actor.Context) {
+	rootContext := actor.EmptyRootContext
+
+	localPing := rootContext.Spawn(actor.PropsFromFunc(func(ctx actor.Context) {
 		switch msg := ctx.Message().(type) {
 		case *messages.Ping:
 			ctx.Respond(&messages.Pong{Msg: msg.Msg})
 		}
 	}))
 
-	resp, err := localPing.RequestFuture(&messages.Ping{Msg: "hi"}, 1*time.Second).Result()
+	resp, err := rootContext.RequestFuture(localPing, &messages.Ping{Msg: "hi"}, 1*time.Second).Result()
 	require.Nil(t, err)
 	assert.Equal(t, resp.(*messages.Pong).Msg, "hi")
 }
@@ -78,15 +80,17 @@ func TestRemoteMessageSending(t *testing.T) {
 		}
 	}
 
-	host1Ping, err := actor.SpawnNamed(actor.FromFunc(pingFunc), "ping-host1")
+	rootContext := actor.EmptyRootContext
+
+	host1Ping, err := rootContext.SpawnNamed(actor.PropsFromFunc(pingFunc), "ping-host1")
 	require.Nil(t, err)
 	defer host1Ping.Poison()
 
-	host2Ping, err := actor.SpawnNamed(actor.FromFunc(pingFunc), "ping-host2")
+	host2Ping, err := rootContext.SpawnNamed(actor.PropsFromFunc(pingFunc), "ping-host2")
 	require.Nil(t, err)
 	defer host2Ping.Poison()
 
-	host3Ping, err := actor.SpawnNamed(actor.FromFunc(pingFunc), "ping-host3")
+	host3Ping, err := rootContext.SpawnNamed(actor.PropsFromFunc(pingFunc), "ping-host3")
 	require.Nil(t, err)
 	defer host3Ping.Poison()
 
@@ -100,7 +104,7 @@ func TestRemoteMessageSending(t *testing.T) {
 	t.Run("ping", func(t *testing.T) {
 		remotePing := actor.NewPID(types.NewRoutableAddress(host1.Identity(), host3.Identity()).String(), host3Ping.GetId())
 
-		resp, err := remotePing.RequestFuture(&messages.Ping{Msg: "hi"}, 100*time.Millisecond).Result()
+		resp, err := rootContext.RequestFuture(remotePing, &messages.Ping{Msg: "hi"}, 100*time.Millisecond).Result()
 
 		assert.Nil(t, err)
 		assert.Equal(t, resp.(*messages.Pong).Msg, "hi")
@@ -115,20 +119,20 @@ func TestRemoteMessageSending(t *testing.T) {
 		host4.Bootstrap(testnotarygroup.BootstrapAddresses(bootstrap))
 		err = host4.WaitForBootstrap(1, 1*time.Second)
 		require.Nil(t, err)
-		host4Ping, err := actor.SpawnNamed(actor.FromFunc(pingFunc), "ping-host4")
+		host4Ping, err := rootContext.SpawnNamed(actor.PropsFromFunc(pingFunc), "ping-host4")
 		require.Nil(t, err)
 		remote4Ping := actor.NewPID(types.NewRoutableAddress(host1.Identity(), host4.Identity()).String(), host4Ping.GetId())
 
 		NewRouter(host4)
 
-		resp, err := remote4Ping.RequestFuture(&messages.Ping{Msg: "hi"}, 100*time.Millisecond).Result()
+		resp, err := rootContext.RequestFuture(remote4Ping, &messages.Ping{Msg: "hi"}, 100*time.Millisecond).Result()
 		assert.Equal(t, resp.(*messages.Pong).Msg, "hi")
 		assert.Nil(t, err)
 
 		host4Ping.Stop()
 		cancel()
 
-		resp, err = remote4Ping.RequestFuture(&messages.Ping{Msg: "hi"}, 100*time.Millisecond).Result()
+		resp, err = rootContext.RequestFuture(remote4Ping, &messages.Ping{Msg: "hi"}, 100*time.Millisecond).Result()
 		assert.NotNil(t, err)
 		assert.Nil(t, resp)
 	})
