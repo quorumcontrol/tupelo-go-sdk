@@ -16,6 +16,7 @@ type nodeGenerator func(ctx context.Context, t *testing.T) Node
 func NodeTests(t *testing.T, generator nodeGenerator) {
 	BootstrapTest(t, generator)
 	SendTest(t, generator)
+	SendAndReceiveTest(t, generator)
 }
 
 func bootstrapAddresses(bootstrapHost Node) []string {
