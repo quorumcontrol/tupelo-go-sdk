@@ -59,7 +59,7 @@ func sendMessage(gateway, pid *actor.PID, header actor.ReadonlyMessageHeader, me
 		}
 	}
 
-	gateway.Tell(wd)
+	actor.EmptyRootContext.Send(gateway, wd)
 }
 
 func (ref *process) SendSystemMessage(pid *actor.PID, message interface{}) {
