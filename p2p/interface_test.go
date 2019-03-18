@@ -13,9 +13,9 @@ import (
 
 type nodeGenerator func(ctx context.Context, t *testing.T) Node
 
-func nodeTests(t *testing.T, generator nodeGenerator) {
-	bootstrapTest(t, generator)
-	sendTest(t, generator)
+func NodeTests(t *testing.T, generator nodeGenerator) {
+	BootstrapTest(t, generator)
+	SendTest(t, generator)
 	SendAndReceiveTest(t, generator)
 }
 
@@ -59,7 +59,7 @@ func SendTest(t *testing.T, generator nodeGenerator) {
 	})
 
 	err = nodeA.Send(nodeB.PublicKey(), "test/protocol", []byte("hi"))
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	received := <-msgs
 	assert.Len(t, received, 2)
