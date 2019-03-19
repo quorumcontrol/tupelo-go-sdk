@@ -7,6 +7,8 @@ import (
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
+	"github.com/quorumcontrol/tupelo-go-client/gossip3/middleware"
+	"github.com/quorumcontrol/tupelo-go-client/tracing"
 )
 
 type process struct {
@@ -34,15 +36,31 @@ func (ref *process) SendUserMessage(pid *actor.PID, message interface{}) {
 }
 
 func sendMessage(gateway, pid *actor.PID, header actor.ReadonlyMessageHeader, message messages.WireMessage, sender *actor.PID, serializerID int32) {
+	var serializedContext map[string]string
+
+	traceableMsg, ok := message.(tracing.Traceable)
+
+	if ok {
+		traceableMsg.NewSpan("sendMessage").Finish()
+
+		serialized, err := traceableMsg.SerializedContext()
+		if err == nil {
+			serializedContext = serialized
+		} else {
+			middleware.Log.Errorw("error serializing", "err", err)
+		}
+	}
+
 	marshaled, err := message.MarshalMsg(nil)
 	if err != nil {
 		panic(fmt.Errorf("could not marshal message: %v", err))
 	}
-	wd := &wireDelivery{
-		Message: marshaled,
-		Type:    message.TypeCode(),
-		Target:  messages.ToActorPid(pid),
-		Sender:  messages.ToActorPid(sender),
+	wd := &WireDelivery{
+		Message:           marshaled,
+		Type:              message.TypeCode(),
+		Target:            messages.ToActorPid(pid),
+		Sender:            messages.ToActorPid(sender),
+		SerializedContext: serializedContext,
 	}
 	if header != nil {
 		wd.Header = header.ToMap()

@@ -8,17 +8,18 @@ import (
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
 )
 
-type wireDelivery struct {
-	Header   map[string]string
-	Message  []byte
-	Type     int8
-	Target   *messages.ActorPID
-	Sender   *messages.ActorPID
-	Outgoing bool `msg:"-"`
+type WireDelivery struct {
+	Header            map[string]string
+	Message           []byte
+	Type              int8
+	Target            *messages.ActorPID
+	Sender            *messages.ActorPID
+	Outgoing          bool `msg:"-"`
+	SerializedContext map[string]string
 }
 
 // GetMessage deserializes a WireMessage.
-func (wd *wireDelivery) GetMessage() (messages.WireMessage, error) {
+func (wd *WireDelivery) GetMessage() (messages.WireMessage, error) {
 	msg, err := messages.GetUnmarshaler(wd.Type)
 	if err != nil {
 		return nil, err

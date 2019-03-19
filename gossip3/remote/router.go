@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
+	"github.com/AsynkronIT/protoactor-go/mailbox"
 	"github.com/AsynkronIT/protoactor-go/plugin"
 	pnet "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-net"
 	peer "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-peer"
@@ -31,13 +32,8 @@ func newRouterProps(host p2p.Node) *actor.Props {
 	}).WithReceiverMiddleware(
 		middleware.LoggingMiddleware,
 		plugin.Use(&middleware.LogPlugin{}),
-	)
+	).WithDispatcher(mailbox.NewSynchronizedDispatcher(300))
 }
-
-// type internalCreateBridge struct {
-// 	from string
-// 	to   *ecdsa.PublicKey
-// }
 
 func (r *router) Receive(context actor.Context) {
 	// defer func() {
@@ -53,7 +49,6 @@ func (r *router) Receive(context actor.Context) {
 			delete(r.bridges, to)
 		}
 	case *actor.Started:
-		//TODO: what happens when the bridge dies?
 		r.host.SetStreamHandler(p2pProtocol, func(s pnet.Stream) {
 			context.Send(context.Self(), s)
 		})
@@ -64,7 +59,7 @@ func (r *router) Receive(context actor.Context) {
 			handler = r.createBridge(context, remoteGateway)
 		}
 		context.Forward(handler)
-	case *wireDelivery:
+	case *WireDelivery:
 		target := types.RoutableAddress(msg.Target.Address)
 		handler, ok := r.bridges[target.To()]
 		if !ok {

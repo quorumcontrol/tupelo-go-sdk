@@ -14,6 +14,7 @@ import (
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/middleware"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/types"
 	"github.com/quorumcontrol/tupelo-go-client/p2p"
+	"github.com/quorumcontrol/tupelo-go-client/tracing"
 	"github.com/tinylib/msgp/msgp"
 )
 
@@ -83,7 +84,7 @@ func (b *bridge) NormalState(context actor.Context) {
 		b.handleIncomingStream(context, msg)
 	case *internalStreamDied:
 		b.handleStreamDied(context, msg)
-	case *wireDelivery:
+	case *WireDelivery:
 		context.SetReceiveTimeout(bridgeReceiveTimeout)
 		if msg.Outgoing {
 			b.handleOutgoingWireDelivery(context, msg)
@@ -108,7 +109,7 @@ func (b *bridge) handleIncomingStream(context actor.Context, stream pnet.Stream)
 	b.setupNewStream(ctx, cancel, context, stream)
 }
 
-func (b *bridge) handleIncomingWireDelivery(context actor.Context, wd *wireDelivery) {
+func (b *bridge) handleIncomingWireDelivery(context actor.Context, wd *WireDelivery) {
 	// b.Log.Debugw("received", "target", wd.Target, "sender", wd.Sender, "msgHash", crypto.Keccak256(wd.Message))
 	var sender *actor.PID
 	target := messages.FromActorPid(wd.Target)
@@ -128,10 +129,21 @@ func (b *bridge) handleIncomingWireDelivery(context actor.Context, wd *wireDeliv
 		orig.Address = b.localAddress
 		dest.SetDestination(orig)
 	}
+
+	traceable, ok := msg.(tracing.Traceable)
+	if ok && wd.SerializedContext != nil {
+		sp, err := traceable.RehydrateSerialized(wd.SerializedContext, "bridge")
+		if err == nil {
+			defer sp.Finish()
+		} else {
+			middleware.Log.Errorw("error rehydrating", "err", err)
+		}
+	}
+
 	target.Request(msg, sender)
 }
 
-func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *wireDelivery) {
+func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDelivery) {
 	if b.writer == nil {
 		err := b.handleCreateNewStream(context)
 		if err != nil {
@@ -222,7 +234,7 @@ func (b *bridge) setupNewStream(ctx gocontext.Context, cancelFunc gocontext.Canc
 				s.Close()
 				return
 			default:
-				var wd wireDelivery
+				var wd WireDelivery
 				err := wd.DecodeMsg(reader)
 				if err != nil {
 					context.Send(act, internalStreamDied{id: id, err: err})
