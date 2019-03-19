@@ -136,7 +136,7 @@ func (b *bridge) handleIncomingWireDelivery(context actor.Context, wd *WireDeliv
 		if err == nil {
 			defer sp.Finish()
 		} else {
-			middleware.Log.Errorw("error rehydrating", "err", err)
+			middleware.Log.Debugw("error rehydrating", "err", err)
 		}
 	}
 

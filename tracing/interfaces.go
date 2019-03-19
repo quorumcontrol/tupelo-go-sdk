@@ -27,7 +27,7 @@ type Contextable interface {
 // Traceable defines the interface necessary to make an
 // actor struct traceable. ContextHolder implements this interface.
 type Traceable interface {
-	StartTrace() opentracing.Span
+	StartTrace(name string) opentracing.Span
 	StopTrace()
 	NewSpan(name string) opentracing.Span
 	LogKV(key string, value interface{})
@@ -46,7 +46,9 @@ func (ch *ContextHolder) StartTrace(name string) opentracing.Span {
 // StopTrace stops the parent trace of a transactionwrapper
 func (ch *ContextHolder) StopTrace() {
 	val := ch.context.Value(parentSpanKey)
-	val.(opentracing.Span).Finish()
+	if val != nil {
+		val.(opentracing.Span).Finish()
+	}
 }
 
 // NewSpan returns a new span as a child of whatever span is
@@ -65,6 +67,9 @@ func (ch *ContextHolder) LogKV(key string, value interface{}) {
 
 // SetContext overrides the current context of the ContextHolder
 func (ch *ContextHolder) SetContext(ctx context.Context) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	parent := opentracing.SpanFromContext(ctx)
 	if parent != nil {
 		ctx = context.WithValue(ctx, parentSpanKey, parent)
@@ -74,6 +79,9 @@ func (ch *ContextHolder) SetContext(ctx context.Context) {
 
 // GetContext returns the current context
 func (ch *ContextHolder) GetContext() context.Context {
+	if ch.context == nil {
+		return context.Background()
+	}
 	return ch.context
 }
 
