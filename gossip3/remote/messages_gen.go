@@ -8,7 +8,7 @@ import (
 )
 
 // DecodeMsg implements msgp.Decodable
-func (z *wireDelivery) DecodeMsg(dc *msgp.Reader) (err error) {
+func (z *WireDelivery) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
 	var zb0001 uint32
@@ -103,6 +103,36 @@ func (z *wireDelivery) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
+		case "SerializedContext":
+			var zb0003 uint32
+			zb0003, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "SerializedContext")
+				return
+			}
+			if z.SerializedContext == nil {
+				z.SerializedContext = make(map[string]string, zb0003)
+			} else if len(z.SerializedContext) > 0 {
+				for key := range z.SerializedContext {
+					delete(z.SerializedContext, key)
+				}
+			}
+			for zb0003 > 0 {
+				zb0003--
+				var za0003 string
+				var za0004 string
+				za0003, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "SerializedContext")
+					return
+				}
+				za0004, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "SerializedContext", za0003)
+					return
+				}
+				z.SerializedContext[za0003] = za0004
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -115,10 +145,10 @@ func (z *wireDelivery) DecodeMsg(dc *msgp.Reader) (err error) {
 }
 
 // EncodeMsg implements msgp.Encodable
-func (z *wireDelivery) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 5
+func (z *WireDelivery) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 6
 	// write "Header"
-	err = en.Append(0x85, 0xa6, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72)
+	err = en.Append(0x86, 0xa6, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72)
 	if err != nil {
 		return
 	}
@@ -193,15 +223,37 @@ func (z *wireDelivery) EncodeMsg(en *msgp.Writer) (err error) {
 			return
 		}
 	}
+	// write "SerializedContext"
+	err = en.Append(0xb1, 0x53, 0x65, 0x72, 0x69, 0x61, 0x6c, 0x69, 0x7a, 0x65, 0x64, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x78, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteMapHeader(uint32(len(z.SerializedContext)))
+	if err != nil {
+		err = msgp.WrapError(err, "SerializedContext")
+		return
+	}
+	for za0003, za0004 := range z.SerializedContext {
+		err = en.WriteString(za0003)
+		if err != nil {
+			err = msgp.WrapError(err, "SerializedContext")
+			return
+		}
+		err = en.WriteString(za0004)
+		if err != nil {
+			err = msgp.WrapError(err, "SerializedContext", za0003)
+			return
+		}
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
-func (z *wireDelivery) MarshalMsg(b []byte) (o []byte, err error) {
+func (z *WireDelivery) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 5
+	// map header, size 6
 	// string "Header"
-	o = append(o, 0x85, 0xa6, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72)
+	o = append(o, 0x86, 0xa6, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72)
 	o = msgp.AppendMapHeader(o, uint32(len(z.Header)))
 	for za0001, za0002 := range z.Header {
 		o = msgp.AppendString(o, za0001)
@@ -235,11 +287,18 @@ func (z *wireDelivery) MarshalMsg(b []byte) (o []byte, err error) {
 			return
 		}
 	}
+	// string "SerializedContext"
+	o = append(o, 0xb1, 0x53, 0x65, 0x72, 0x69, 0x61, 0x6c, 0x69, 0x7a, 0x65, 0x64, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x78, 0x74)
+	o = msgp.AppendMapHeader(o, uint32(len(z.SerializedContext)))
+	for za0003, za0004 := range z.SerializedContext {
+		o = msgp.AppendString(o, za0003)
+		o = msgp.AppendString(o, za0004)
+	}
 	return
 }
 
 // UnmarshalMsg implements msgp.Unmarshaler
-func (z *wireDelivery) UnmarshalMsg(bts []byte) (o []byte, err error) {
+func (z *WireDelivery) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	var field []byte
 	_ = field
 	var zb0001 uint32
@@ -332,6 +391,36 @@ func (z *wireDelivery) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
+		case "SerializedContext":
+			var zb0003 uint32
+			zb0003, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "SerializedContext")
+				return
+			}
+			if z.SerializedContext == nil {
+				z.SerializedContext = make(map[string]string, zb0003)
+			} else if len(z.SerializedContext) > 0 {
+				for key := range z.SerializedContext {
+					delete(z.SerializedContext, key)
+				}
+			}
+			for zb0003 > 0 {
+				var za0003 string
+				var za0004 string
+				zb0003--
+				za0003, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "SerializedContext")
+					return
+				}
+				za0004, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "SerializedContext", za0003)
+					return
+				}
+				z.SerializedContext[za0003] = za0004
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -345,7 +434,7 @@ func (z *wireDelivery) UnmarshalMsg(bts []byte) (o []byte, err error) {
 }
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (z *wireDelivery) Msgsize() (s int) {
+func (z *WireDelivery) Msgsize() (s int) {
 	s = 1 + 7 + msgp.MapHeaderSize
 	if z.Header != nil {
 		for za0001, za0002 := range z.Header {
@@ -364,6 +453,13 @@ func (z *wireDelivery) Msgsize() (s int) {
 		s += msgp.NilSize
 	} else {
 		s += z.Sender.Msgsize()
+	}
+	s += 18 + msgp.MapHeaderSize
+	if z.SerializedContext != nil {
+		for za0003, za0004 := range z.SerializedContext {
+			_ = za0004
+			s += msgp.StringPrefixSize + len(za0003) + msgp.StringPrefixSize + len(za0004)
+		}
 	}
 	return
 }
