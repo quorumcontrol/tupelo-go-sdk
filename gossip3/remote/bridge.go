@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
+	"github.com/AsynkronIT/protoactor-go/mailbox"
 	"github.com/AsynkronIT/protoactor-go/plugin"
 	pnet "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-net"
 	peer "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-peer"
@@ -55,7 +56,7 @@ func newBridgeProps(host p2p.Node, remoteAddress peer.ID) *actor.Props {
 	}).WithReceiverMiddleware(
 		middleware.LoggingMiddleware,
 		plugin.Use(&middleware.LogPlugin{}),
-	)
+	).WithDispatcher(mailbox.NewSynchronizedDispatcher(300))
 }
 
 var bridgeReceiveTimeout = 60 * time.Second
@@ -140,7 +141,7 @@ func (b *bridge) handleIncomingWireDelivery(context actor.Context, wd *WireDeliv
 		}
 	}
 
-	target.Request(msg, sender)
+	context.RequestWithCustomSender(target, msg, sender)
 }
 
 func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDelivery) {
@@ -148,16 +149,14 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDeliv
 		err := b.handleCreateNewStream(context)
 		if err != nil {
 			b.Log.Infow("error opening stream", "err", err)
-			if err == p2p.ErrDialBackoff {
-				// back off dialing if we have trouble with the stream
-				// non-cryptographic random here to add jitter
-				time.Sleep(time.Duration(rand.Intn(500)) * time.Millisecond)
-				b.backoffCount++
-				if b.backoffCount > maxBridgeBackoffs {
-					context.Self().Stop()
-					b.Log.Infow("maximum backoff reached - possibly dropped messages", "count", b.backoffCount)
-					return
-				}
+			// back off dialing if we have trouble with the stream
+			// non-cryptographic random here to add jitter
+			time.Sleep(time.Duration(rand.Intn(500)) * time.Millisecond)
+			b.backoffCount++
+			if b.backoffCount > maxBridgeBackoffs {
+				context.Self().Stop()
+				b.Log.Errorw("maximum backoff reached - possibly dropped messages", "count", b.backoffCount)
+				return
 			}
 			context.Forward(context.Self())
 			return
@@ -173,7 +172,13 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDeliv
 		context.Forward(context.Self())
 		return
 	}
-	b.writer.Flush()
+	err = b.writer.Flush()
+	if err != nil {
+		b.clearStream(b.streamID)
+		context.Forward(context.Self())
+		return
+	}
+	b.backoffCount = 0
 }
 
 func (b *bridge) handleStreamDied(context actor.Context, msg *internalStreamDied) {
