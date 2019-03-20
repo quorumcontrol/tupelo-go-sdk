@@ -38,16 +38,18 @@ func (ref *process) SendUserMessage(pid *actor.PID, message interface{}) {
 func sendMessage(gateway, pid *actor.PID, header actor.ReadonlyMessageHeader, message messages.WireMessage, sender *actor.PID, serializerID int32) {
 	var serializedContext map[string]string
 
-	traceableMsg, ok := message.(tracing.Traceable)
+	if tracing.Enabled {
+		traceableMsg, ok := message.(tracing.Traceable)
 
-	if ok {
-		traceableMsg.NewSpan("sendMessage").Finish()
+		if ok {
+			traceableMsg.NewSpan("sendMessage").Finish()
 
-		serialized, err := traceableMsg.SerializedContext()
-		if err == nil {
-			serializedContext = serialized
-		} else {
-			middleware.Log.Errorw("error serializing", "err", err)
+			serialized, err := traceableMsg.SerializedContext()
+			if err == nil {
+				serializedContext = serialized
+			} else {
+				middleware.Log.Errorw("error serializing", "err", err)
+			}
 		}
 	}
 
