@@ -114,11 +114,9 @@ func (ch *ContextHolder) RehydrateSerialized(serialized map[string]string, child
 // SpanContextFromSerialized takes the output of SerializedContext and starts a new span with the childName
 func SpanContextFromSerialized(serialized map[string]string, childName string) (opentracing.Span, error) {
 	spanContext, err := opentracing.GlobalTracer().Extract(opentracing.TextMap, opentracing.TextMapCarrier(serialized))
-	var sp opentracing.Span
 	if err != nil {
 		return nil, fmt.Errorf("error rehydrating: %v", err)
 	}
 
-	sp = opentracing.StartSpan(childName, opentracing.ChildOf(spanContext))
-	return sp, nil
+	return opentracing.StartSpan(childName, opentracing.ChildOf(spanContext)), nil
 }
