@@ -54,11 +54,10 @@ func (r *router) Receive(context actor.Context) {
 		// don't keep a reference to the context around,
 		// instead create a closure which has just the PID
 		// of the router and uses the root context to send the streams
-		func(routerActor *actor.PID) {
-			r.host.SetStreamHandler(p2pProtocol, func(s pnet.Stream) {
-				actor.EmptyRootContext.Send(routerActor, s)
-			})
-		}(context.Self())
+		routerActor := context.Self()
+		r.host.SetStreamHandler(p2pProtocol, func(s pnet.Stream) {
+			actor.EmptyRootContext.Send(routerActor, s)
+		})
 	case pnet.Stream:
 		remoteGateway := msg.Conn().RemotePeer().Pretty()
 		handler, ok := r.bridges[remoteGateway]
