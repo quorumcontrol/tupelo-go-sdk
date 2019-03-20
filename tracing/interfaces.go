@@ -35,7 +35,7 @@ type Traceable interface {
 	RehydrateSerialized(serialized map[string]string, childName string) (opentracing.Span, error)
 }
 
-// StartTrace starts the parent trace of a transactionwrapper
+// StartTrace starts the parent trace of a ContextHolder
 func (ch *ContextHolder) StartTrace(name string) opentracing.Span {
 	parent, ctx := opentracing.StartSpanFromContext(context.Background(), name)
 	ctx = context.WithValue(ctx, parentSpanKey, parent)
@@ -43,7 +43,7 @@ func (ch *ContextHolder) StartTrace(name string) opentracing.Span {
 	return parent
 }
 
-// StopTrace stops the parent trace of a transactionwrapper
+// StopTrace stops the parent trace of a ContextHolder
 func (ch *ContextHolder) StopTrace() {
 	val := ch.context.Value(parentSpanKey)
 	if val != nil {
