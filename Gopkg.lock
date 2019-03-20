@@ -45,6 +45,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:c0bec5f9b98d0bc872ff5e834fac186b807b656683bd29cb82fb207a1513fabb"
+  name = "github.com/beorn7/perks"
+  packages = ["quantile"]
+  pruneopts = ""
+  revision = "3a771d992973f24aa725d07868b467d1ddfceafb"
+
+[[projects]]
+  branch = "master"
   digest = "1:057aee12ac2f820c94b04da39a3ebcd865bee3bdda697ee0e6bbf75e00476b5f"
   name = "github.com/btcsuite/btcd"
   packages = ["btcec"]
@@ -509,6 +517,14 @@
   version = "v0.0.4"
 
 [[projects]]
+  digest = "1:63722a4b1e1717be7b98fc686e0b30d5e7f734b9e93d7dee86293b6deab7ea28"
+  name = "github.com/matttproud/golang_protobuf_extensions"
+  packages = ["pbutil"]
+  pruneopts = ""
+  revision = "c12348ce28de40eed0136aa2b644d0ee0650e56c"
+  version = "v1.0.1"
+
+[[projects]]
   branch = "master"
   digest = "1:c485395b7f2482c29d261f62e1bc2d263de703eb02a6dba83c62810981b5860f"
   name = "github.com/minio/blake2b-simd"
@@ -613,6 +629,38 @@
   ]
   pruneopts = ""
   revision = "8b1e46de349b0c099d425ed8fddee3ff6eff3eef"
+
+[[projects]]
+  digest = "1:6f218995d6a74636cfcab45ce03005371e682b4b9bee0e5eb0ccfd83ef85364f"
+  name = "github.com/prometheus/client_golang"
+  packages = [
+    "prometheus",
+    "prometheus/internal",
+    "prometheus/promhttp",
+  ]
+  pruneopts = ""
+  revision = "505eaef017263e299324067d40ca2c48f6a2cf50"
+  version = "v0.9.2"
+
+[[projects]]
+  branch = "master"
+  digest = "1:cd67319ee7536399990c4b00fae07c3413035a53193c644549a676091507cadc"
+  name = "github.com/prometheus/client_model"
+  packages = ["go"]
+  pruneopts = ""
+  revision = "fd36f4220a901265f90734c3183c5f0c91daa0b8"
+
+[[projects]]
+  digest = "1:96af18a3819d2ff7d6aa07e6e50955b11e477dbc8b890324c67462b84adca56b"
+  name = "github.com/prometheus/common"
+  packages = [
+    "expfmt",
+    "internal/bitbucket.org/ww/goautoneg",
+    "model",
+  ]
+  pruneopts = ""
+  revision = "cfeb6f9992ffa54aaa4f2170ade4067ee478b250"
+  version = "v0.2.0"
 
 [[projects]]
   branch = "master"
@@ -939,6 +987,7 @@
     "github.com/ipsn/go-ipfs/gxlibs/github.com/multiformats/go-multiaddr",
     "github.com/ipsn/go-ipfs/thirdparty/math2",
     "github.com/opentracing/opentracing-go",
+    "github.com/prometheus/client_golang/prometheus/promhttp",
     "github.com/quorumcontrol/chaintree/chaintree",
     "github.com/quorumcontrol/chaintree/dag",
     "github.com/quorumcontrol/chaintree/nodestore",
