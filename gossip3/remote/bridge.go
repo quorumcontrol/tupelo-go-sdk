@@ -228,50 +228,50 @@ func (b *bridge) setupNewStream(ctx gocontext.Context, cancelFunc gocontext.Canc
 	b.streamCancel = cancelFunc
 	b.streamID++
 	b.writer = msgp.NewWriter(stream)
+	reader := msgp.NewReader(stream)
+	msgChan := make(chan WireDelivery)
 
-	go func(ctx gocontext.Context, act *actor.PID, s pnet.Stream, id uint64) {
-		reader := msgp.NewReader(stream)
-		msgChan := make(chan WireDelivery)
-		// there is a separate go routine handling message reading/delivery
-		// because the DecodeMsg blocks until a message is received
-		// or the stream fails (causing an error)
-		// previously this was all done in a single for/select loop
-		// however the code actually blocks in the `default:` section
-		// and so would ignore the <-done until an error came in
-		// now this go routine handling message delivery will do the same thing,
-		// but will allow the loop below to actually hit the <-done and close the stream
-		// which will trigger this go routine to get an error in the DecodeMsg
-		// and allow everything to unblock.
-		go func(ctx gocontext.Context, ch chan WireDelivery, reader *msgp.Reader, act *actor.PID, id uint64) {
-			done := ctx.Done()
-			for {
-				select {
-				case <-done:
-					return
-				default:
-					var wd WireDelivery
-					err := wd.DecodeMsg(reader)
-					if err != nil {
-						actor.EmptyRootContext.Send(act, internalStreamDied{id: id, err: err})
-						return
-					}
-					msgChan <- wd
-				}
+	self := context.Self()
 
-			}
-		}(ctx, msgChan, reader, act, id)
-
+	// there is a separate go routine handling message reading/delivery
+	// because the DecodeMsg blocks until a message is received
+	// or the stream fails (causing an error)
+	// previously this was all done in a single for/select loop
+	// however the code actually blocks in the `default:` section
+	// and so would ignore the <-done until an error came in
+	// now this go routine handling message delivery will do the same thing,
+	// but will allow the loop below to actually hit the <-done and close the stream
+	// which will trigger this go routine to get an error in the DecodeMsg
+	// and allow everything to unblock.
+	go func() {
 		done := ctx.Done()
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				var wd WireDelivery
+				err := wd.DecodeMsg(reader)
+				if err != nil {
+					actor.EmptyRootContext.Send(self, internalStreamDied{id: b.streamID, err: err})
+					return
+				}
+				msgChan <- wd
+			}
+		}
+	}()
 
+	go func() {
+		done := ctx.Done()
 		for {
 			select {
 			case <-done:
 				b.Log.Debugw("resetting stream due to done")
-				s.Close()
+				stream.Close()
 				return
 			case wd := <-msgChan:
-				actor.EmptyRootContext.Send(act, &wd)
+				actor.EmptyRootContext.Send(self, &wd)
 			}
 		}
-	}(b.streamCtx, context.Self(), stream, b.streamID)
+	}()
 }
