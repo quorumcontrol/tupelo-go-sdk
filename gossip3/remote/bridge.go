@@ -303,7 +303,10 @@ func (b *bridge) setupNewStream(ctx gocontext.Context, cancelFunc gocontext.Canc
 			select {
 			case <-done:
 				b.Log.Debugw("resetting stream due to done")
-				stream.Close()
+				err := stream.Close()
+				if err != nil {
+					b.Log.Errorw("error closing stream", "err", err)
+				}
 				return
 			case wd := <-msgChan:
 				actor.EmptyRootContext.Send(self, &wd)
