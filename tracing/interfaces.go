@@ -54,7 +54,10 @@ func (ch *ContextHolder) StopTrace() {
 // NewSpan returns a new span as a child of whatever span is
 // already in the context.
 func (ch *ContextHolder) NewSpan(name string) opentracing.Span {
-	sp, ctx := opentracing.StartSpanFromContext(ch.context, name)
+	sp, ctx := opentracing.StartSpanFromContext(ch.GetContext(), name)
+	if sp == nil {
+		sp = ch.StartTrace(name)
+	}
 	ch.context = ctx
 	return sp
 }

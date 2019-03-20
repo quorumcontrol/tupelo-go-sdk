@@ -12,17 +12,23 @@ import (
 	"go.elastic.co/apm/module/apmot"
 )
 
+var Enabled bool
+
 var jaegerCloser io.Closer
 
 func StartElastic() {
+	Enabled = true
 	opentracing.SetGlobalTracer(apmot.New())
 }
 
 func StopJaeger() {
+	Enabled = false
 	jaegerCloser.Close()
 }
 
 func StartJaeger(serviceName string) {
+	Enabled = true
+
 	// Sample configuration for testing. Use constant sampling to sample every trace
 	// and enable LogSpan to log every span via configured Logger.
 	cfg := jaegercfg.Configuration{
