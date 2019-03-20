@@ -148,7 +148,7 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDeliv
 	if b.writer == nil {
 		err := b.handleCreateNewStream(context)
 		if err != nil {
-			b.Log.Infow("error opening stream", "err", err)
+			b.Log.Warnw("error opening stream", "err", err)
 			// back off dialing if we have trouble with the stream
 			// non-cryptographic random here to add jitter
 			time.Sleep(time.Duration(rand.Intn(500)) * time.Millisecond)
@@ -242,10 +242,10 @@ func (b *bridge) setupNewStream(ctx gocontext.Context, cancelFunc gocontext.Canc
 				var wd WireDelivery
 				err := wd.DecodeMsg(reader)
 				if err != nil {
-					context.Send(act, internalStreamDied{id: id, err: err})
+					actor.EmptyRootContext.Send(act, internalStreamDied{id: id, err: err})
 					return
 				}
-				context.Send(act, &wd)
+				actor.EmptyRootContext.Send(act, &wd)
 			}
 		}
 	}(b.streamCtx, context.Self(), stream, b.streamID)
