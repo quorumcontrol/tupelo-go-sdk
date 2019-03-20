@@ -13,9 +13,9 @@ var prometheusRunning bool
 // StartPrometheus is a blocking function which starts serving the prometheus
 // metrics at /metrics. If you specify nil or 0 for the port, the port
 // will default to 2112
-func StartPrometheus(port int) {
+func StartPrometheus(port int) error {
 	if prometheusRunning {
-		return
+		return nil
 	}
 
 	if port == 0 {
@@ -32,5 +32,5 @@ func StartPrometheus(port int) {
 		MaxHeaderBytes: 1 << 20,
 	}
 	prometheusRunning = true
-	s.ListenAndServe()
+	return s.ListenAndServe()
 }
