@@ -60,8 +60,8 @@ func sendMessage(gateway, pid *actor.PID, header actor.ReadonlyMessageHeader, me
 	wd := &WireDelivery{
 		Message:           marshaled,
 		Type:              message.TypeCode(),
-		Target:            messages.ToActorPid(pid),
-		Sender:            messages.ToActorPid(sender),
+		Target:            ToActorPid(pid),
+		Sender:            ToActorPid(sender),
 		SerializedContext: serializedContext,
 	}
 	if header != nil {
