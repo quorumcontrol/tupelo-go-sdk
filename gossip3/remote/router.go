@@ -9,9 +9,11 @@ import (
 	"github.com/AsynkronIT/protoactor-go/plugin"
 	pnet "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-net"
 	peer "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-peer"
+	"github.com/opentracing/opentracing-go"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/middleware"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/types"
 	"github.com/quorumcontrol/tupelo-go-client/p2p"
+	"github.com/quorumcontrol/tupelo-go-client/tracing"
 )
 
 const p2pProtocol = "remoteactors/v1.0"
@@ -66,10 +68,35 @@ func (r *router) Receive(context actor.Context) {
 		}
 		context.Forward(handler)
 	case *WireDelivery:
+		wdMsg, err := msg.GetMessage()
+		if err != nil {
+			panic(fmt.Errorf("error unmarshaling message: %v", err))
+		}
+		traceable, ok := wdMsg.(tracing.Traceable)
+		var sp opentracing.Span
+		if ok && msg.SerializedContext != nil {
+			sp, err = traceable.RehydrateSerialized(msg.SerializedContext, "router")
+			if err == nil {
+				defer sp.Finish()
+			} else {
+				fmt.Printf("error rehydrating traceable: %v\n", err)
+				middleware.Log.Debugw("error rehydrating", "err", err)
+			}
+		}
+
 		target := types.RoutableAddress(msg.Target.Address)
+		if sp != nil {
+			sp.SetTag("target", target.To())
+		}
 		handler, ok := r.bridges[target.To()]
+		if sp != nil {
+			sp.SetTag("existing-bridge", handler.String())
+		}
 		if !ok {
 			handler = r.createBridge(context, target.To())
+			if sp != nil {
+				sp.SetTag("new-bridge", handler.String())
+			}
 		}
 		context.Forward(handler)
 	}
