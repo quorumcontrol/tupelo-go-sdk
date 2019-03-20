@@ -11,6 +11,7 @@ import (
 	"github.com/AsynkronIT/protoactor-go/plugin"
 	pnet "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-net"
 	peer "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-peer"
+	"github.com/opentracing/opentracing-go"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/middleware"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/types"
@@ -111,6 +112,22 @@ func (b *bridge) handleIncomingStream(context actor.Context, stream pnet.Stream)
 }
 
 func (b *bridge) handleIncomingWireDelivery(context actor.Context, wd *WireDelivery) {
+	msg, err := wd.GetMessage()
+	if err != nil {
+		panic(fmt.Sprintf("error unmarshaling message: %v", err))
+	}
+
+	traceable, ok := msg.(tracing.Traceable)
+	var sp opentracing.Span
+	if ok && wd.SerializedContext != nil {
+		sp, err = traceable.RehydrateSerialized(wd.SerializedContext, "bridge-incoming")
+		if err == nil {
+			defer sp.Finish()
+		} else {
+			middleware.Log.Debugw("error rehydrating", "err", err)
+		}
+	}
+
 	// b.Log.Debugw("received", "target", wd.Target, "sender", wd.Sender, "msgHash", crypto.Keccak256(wd.Message))
 	var sender *actor.PID
 	target := messages.FromActorPid(wd.Target)
@@ -120,32 +137,40 @@ func (b *bridge) handleIncomingWireDelivery(context actor.Context, wd *WireDeliv
 	}
 	// switch the target to the local actor system
 	target.Address = actor.ProcessRegistry.Address
-	msg, err := wd.GetMessage()
-	if err != nil {
-		panic(fmt.Sprintf("error unmarshaling message: %v", err))
-	}
+
 	dest, ok := msg.(messages.DestinationSettable)
 	if ok {
 		orig := dest.GetDestination()
 		orig.Address = b.localAddress
 		dest.SetDestination(orig)
 	}
-
-	traceable, ok := msg.(tracing.Traceable)
-	if ok && wd.SerializedContext != nil {
-		sp, err := traceable.RehydrateSerialized(wd.SerializedContext, "bridge")
-		if err == nil {
-			defer sp.Finish()
-		} else {
-			middleware.Log.Debugw("error rehydrating", "err", err)
-		}
+	if sp != nil {
+		sp.SetTag("sending-to-target", true)
 	}
 
 	context.RequestWithCustomSender(target, msg, sender)
 }
 
 func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDelivery) {
+	wdMsg, err := wd.GetMessage()
+	if err != nil {
+		panic(fmt.Errorf("error unmarshaling message: %v", err))
+	}
+	traceable, ok := wdMsg.(tracing.Traceable)
+	var sp opentracing.Span
+	if ok && wd.SerializedContext != nil {
+		sp, err = traceable.RehydrateSerialized(wd.SerializedContext, "bridge-outgoing")
+		if err == nil {
+			defer sp.Finish()
+		} else {
+			middleware.Log.Debugw("error rehydrating", "err", err)
+		}
+	}
+	
 	if b.writer == nil {
+		if sp != nil {
+			sp.SetTag("existing-stream", false)
+		}
 		err := b.handleCreateNewStream(context)
 		if err != nil {
 			b.Log.Warnw("error opening stream", "err", err)
@@ -158,16 +183,27 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDeliv
 				b.Log.Errorw("maximum backoff reached - possibly dropped messages", "count", b.backoffCount)
 				return
 			}
+			if sp != nil {
+				sp.SetTag("error", true)
+				sp.SetTag("error-opening-stream", err)
+			}
 			context.Forward(context.Self())
 			return
+		}
+		if sp != nil {
+			sp.SetTag("new-stream", true)
 		}
 	}
 	// b.Log.Debugw("writing", "target", wd.Target, "sender", wd.Sender, "msgHash", crypto.Keccak256(wd.Message))
 	if wd.Sender != nil && wd.Sender.Address == actor.ProcessRegistry.Address {
 		wd.Sender.Address = b.localAddress
 	}
-	err := wd.EncodeMsg(b.writer)
+	err = wd.EncodeMsg(b.writer)
 	if err != nil {
+		if sp != nil {
+			sp.SetTag("error", true)
+			sp.SetTag("error-encoding-message", err)
+		}
 		b.clearStream(b.streamID)
 		context.Forward(context.Self())
 		return
