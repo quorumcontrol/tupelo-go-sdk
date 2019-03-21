@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
-	"github.com/AsynkronIT/protoactor-go/mailbox"
 	"github.com/AsynkronIT/protoactor-go/plugin"
 	pnet "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-net"
 	peer "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-peer"
@@ -34,7 +33,7 @@ func newRouterProps(host p2p.Node) *actor.Props {
 	}).WithReceiverMiddleware(
 		middleware.LoggingMiddleware,
 		plugin.Use(&middleware.LogPlugin{}),
-	).WithDispatcher(mailbox.NewSynchronizedDispatcher(300))
+	)
 }
 
 func (r *router) Receive(context actor.Context) {

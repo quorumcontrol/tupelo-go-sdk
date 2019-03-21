@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
-	"github.com/AsynkronIT/protoactor-go/mailbox"
 	"github.com/AsynkronIT/protoactor-go/plugin"
 	pnet "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-net"
 	peer "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-peer"
@@ -57,7 +56,7 @@ func newBridgeProps(host p2p.Node, remoteAddress peer.ID) *actor.Props {
 	}).WithReceiverMiddleware(
 		middleware.LoggingMiddleware,
 		plugin.Use(&middleware.LogPlugin{}),
-	).WithDispatcher(mailbox.NewSynchronizedDispatcher(300))
+	)
 }
 
 var bridgeReceiveTimeout = 60 * time.Second
@@ -166,7 +165,7 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDeliv
 			middleware.Log.Debugw("error rehydrating", "err", err)
 		}
 	}
-	
+
 	if b.writer == nil {
 		if sp != nil {
 			sp.SetTag("existing-stream", false)
