@@ -33,7 +33,6 @@ type bridge struct {
 
 	remoteAddress peer.ID
 
-	writer       *msgp.Writer
 	streamID     uint64
 	stream       pnet.Stream
 	streamCtx    gocontext.Context
@@ -78,7 +77,7 @@ func (b *bridge) NormalState(context actor.Context) {
 		b.behavior.Become(b.TerminatedState)
 		b.clearStream(b.streamID)
 		context.Self().Poison()
-	case *actor.Terminated:
+	case *actor.Stopped:
 		b.clearStream(b.streamID)
 	case pnet.Stream:
 		context.SetReceiveTimeout(bridgeReceiveTimeout)
@@ -96,7 +95,7 @@ func (b *bridge) NormalState(context actor.Context) {
 }
 
 func (b *bridge) TerminatedState(context actor.Context) {
-	// do nothing
+	b.Log.Errorw("received message in terminated state", "msg", context.Message())
 }
 
 func (b *bridge) handleIncomingStream(context actor.Context, stream pnet.Stream) {
@@ -123,6 +122,7 @@ func (b *bridge) handleIncomingWireDelivery(context actor.Context, wd *WireDeliv
 		if ok && wd.Tracing != nil {
 			sp, err = traceable.RehydrateSerialized(wd.Tracing, "bridge-incoming")
 			if err == nil {
+				sp.SetTag("runthrough-"+time.Now().String(), true)
 				defer sp.Finish()
 			} else {
 				middleware.Log.Debugw("error rehydrating", "err", err)
@@ -171,7 +171,7 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDeliv
 		defer sp.Finish()
 	}
 
-	if b.writer == nil {
+	if b.stream == nil {
 		if sp != nil {
 			sp.SetTag("existing-stream", false)
 		}
@@ -190,6 +190,7 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDeliv
 			if sp != nil {
 				sp.SetTag("error", true)
 				sp.SetTag("error-opening-stream", err)
+				wd.NewSpan("resending").Finish()
 			}
 			context.Forward(context.Self())
 			return
@@ -202,24 +203,31 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDeliv
 	if wd.Sender != nil && wd.Sender.Address == actor.ProcessRegistry.Address {
 		wd.Sender.Address = b.localAddress
 	}
-	err := wd.EncodeMsg(b.writer)
+
+	var encSpan opentracing.Span
+	if sp != nil {
+		encSpan = opentracing.StartSpan("bridge-encodeMsg", opentracing.ChildOf(sp.Context()))
+	}
+
+	err := msgp.Encode(b.stream, wd)
 	if err != nil {
 		if sp != nil {
 			sp.SetTag("error", true)
 			sp.SetTag("error-encoding-message", err)
+			wd.NewSpan("resending").Finish()
 		}
 		b.clearStream(b.streamID)
 		context.Forward(context.Self())
+		if encSpan != nil {
+			encSpan.Finish()
+		}
 		return
 	}
-	err = b.writer.Flush()
-	if err != nil {
-		sp.SetTag("error", true)
-		sp.SetTag("error-flushing", err)
-		b.clearStream(b.streamID)
-		context.Forward(context.Self())
-		return
+
+	if encSpan != nil {
+		encSpan.Finish()
 	}
+
 	b.backoffCount = 0
 }
 
@@ -240,7 +248,6 @@ func (b *bridge) clearStream(id uint64) {
 		b.streamCancel()
 	}
 	b.stream = nil
-	b.writer = nil
 	b.streamCtx = nil
 }
 
@@ -269,8 +276,7 @@ func (b *bridge) setupNewStream(ctx gocontext.Context, cancelFunc gocontext.Canc
 	b.streamCtx = ctx
 	b.streamCancel = cancelFunc
 	b.streamID++
-	b.writer = msgp.NewWriter(stream)
-	reader := msgp.NewReader(stream)
+	// b.writer = msgp.NewWriter(stream)
 	msgChan := make(chan WireDelivery)
 
 	self := context.Self()
@@ -287,6 +293,8 @@ func (b *bridge) setupNewStream(ctx gocontext.Context, cancelFunc gocontext.Canc
 	// and allow everything to unblock.
 	go func() {
 		done := ctx.Done()
+		reader := msgp.NewReader(stream)
+
 		for {
 			select {
 			case <-done:
