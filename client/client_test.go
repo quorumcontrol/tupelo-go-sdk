@@ -477,7 +477,6 @@ func TestNonOwnerTransactions(t *testing.T) {
 			},
 		},
 	})
-	fmt.Println("1st non-owner tx error:", err)
 	require.NotNil(t, err)
 
 	// 2nd transaction with non-owner key should fail
@@ -491,6 +490,5 @@ func TestNonOwnerTransactions(t *testing.T) {
 			},
 		},
 	})
-	fmt.Println("2nd non-owner tx error:", err)
 	require.NotNil(t, err)
 }
