@@ -15,6 +15,7 @@ var parentSpanKey = contextSpanKey{}
 // in order to make them easily traceable
 type ContextHolder struct {
 	context context.Context
+	started bool
 }
 
 // Contextable defines an interface for getting and setting a context
@@ -27,8 +28,11 @@ type Contextable interface {
 // Traceable defines the interface necessary to make an
 // actor struct traceable. ContextHolder implements this interface.
 type Traceable interface {
+	Contextable
+
 	StartTrace(name string) opentracing.Span
 	StopTrace()
+	Started() bool
 	NewSpan(name string) opentracing.Span
 	LogKV(key string, value interface{})
 	SerializedContext() (map[string]string, error)
@@ -37,6 +41,7 @@ type Traceable interface {
 
 // StartTrace starts the parent trace of a ContextHolder
 func (ch *ContextHolder) StartTrace(name string) opentracing.Span {
+	ch.started = true
 	parent, ctx := opentracing.StartSpanFromContext(context.Background(), name)
 	ctx = context.WithValue(ctx, parentSpanKey, parent)
 	ch.context = ctx
@@ -45,10 +50,17 @@ func (ch *ContextHolder) StartTrace(name string) opentracing.Span {
 
 // StopTrace stops the parent trace of a ContextHolder
 func (ch *ContextHolder) StopTrace() {
+	ch.started = false
 	val := ch.context.Value(parentSpanKey)
 	if val != nil {
 		val.(opentracing.Span).Finish()
 	}
+}
+
+// Started returns whether or not the traceable has
+// begun its parent trace or not
+func (ch *ContextHolder) Started() bool {
+	return ch.started
 }
 
 // NewSpan returns a new span as a child of whatever span is
@@ -75,6 +87,7 @@ func (ch *ContextHolder) SetContext(ctx context.Context) {
 	}
 	parent := opentracing.SpanFromContext(ctx)
 	if parent != nil {
+		ch.started = true
 		ctx = context.WithValue(ctx, parentSpanKey, parent)
 	}
 	ch.context = ctx

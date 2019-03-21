@@ -116,14 +116,17 @@ func (b *bridge) handleIncomingWireDelivery(context actor.Context, wd *WireDeliv
 		panic(fmt.Sprintf("error unmarshaling message: %v", err))
 	}
 
-	traceable, ok := msg.(tracing.Traceable)
 	var sp opentracing.Span
-	if ok && wd.SerializedContext != nil {
-		sp, err = traceable.RehydrateSerialized(wd.SerializedContext, "bridge-incoming")
-		if err == nil {
-			defer sp.Finish()
-		} else {
-			middleware.Log.Debugw("error rehydrating", "err", err)
+
+	if tracing.Enabled {
+		traceable, ok := msg.(tracing.Traceable)
+		if ok && wd.Tracing != nil {
+			sp, err = traceable.RehydrateSerialized(wd.Tracing, "bridge-incoming")
+			if err == nil {
+				defer sp.Finish()
+			} else {
+				middleware.Log.Debugw("error rehydrating", "err", err)
+			}
 		}
 	}
 
@@ -151,19 +154,21 @@ func (b *bridge) handleIncomingWireDelivery(context actor.Context, wd *WireDeliv
 }
 
 func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDelivery) {
-	wdMsg, err := wd.GetMessage()
-	if err != nil {
-		panic(fmt.Errorf("error unmarshaling message: %v", err))
-	}
-	traceable, ok := wdMsg.(tracing.Traceable)
 	var sp opentracing.Span
-	if ok && wd.SerializedContext != nil {
-		sp, err = traceable.RehydrateSerialized(wd.SerializedContext, "bridge-outgoing")
+
+	if tracing.Enabled && wd.Started() {
+		serialized, err := wd.SerializedContext()
 		if err == nil {
-			defer sp.Finish()
+			wd.Tracing = serialized
 		} else {
-			middleware.Log.Debugw("error rehydrating", "err", err)
+			b.Log.Errorw("error serializing", "err", err)
 		}
+		// this is intentionally after the serialized
+		// it will complete before the next in the sequence
+		// starts and shouldn't be the span that's still
+		// open when going across the wire
+		sp = wd.NewSpan("bridge-outgoing")
+		defer sp.Finish()
 	}
 
 	if b.writer == nil {
@@ -197,7 +202,7 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDeliv
 	if wd.Sender != nil && wd.Sender.Address == actor.ProcessRegistry.Address {
 		wd.Sender.Address = b.localAddress
 	}
-	err = wd.EncodeMsg(b.writer)
+	err := wd.EncodeMsg(b.writer)
 	if err != nil {
 		if sp != nil {
 			sp.SetTag("error", true)
@@ -209,6 +214,8 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDeliv
 	}
 	err = b.writer.Flush()
 	if err != nil {
+		sp.SetTag("error", true)
+		sp.SetTag("error-flushing", err)
 		b.clearStream(b.streamID)
 		context.Forward(context.Self())
 		return

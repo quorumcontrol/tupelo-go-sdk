@@ -103,18 +103,18 @@ func (z *WireDelivery) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-		case "SerializedContext":
+		case "Tracing":
 			var zb0003 uint32
 			zb0003, err = dc.ReadMapHeader()
 			if err != nil {
-				err = msgp.WrapError(err, "SerializedContext")
+				err = msgp.WrapError(err, "Tracing")
 				return
 			}
-			if z.SerializedContext == nil {
-				z.SerializedContext = make(map[string]string, zb0003)
-			} else if len(z.SerializedContext) > 0 {
-				for key := range z.SerializedContext {
-					delete(z.SerializedContext, key)
+			if z.Tracing == nil {
+				z.Tracing = make(map[string]string, zb0003)
+			} else if len(z.Tracing) > 0 {
+				for key := range z.Tracing {
+					delete(z.Tracing, key)
 				}
 			}
 			for zb0003 > 0 {
@@ -123,15 +123,15 @@ func (z *WireDelivery) DecodeMsg(dc *msgp.Reader) (err error) {
 				var za0004 string
 				za0003, err = dc.ReadString()
 				if err != nil {
-					err = msgp.WrapError(err, "SerializedContext")
+					err = msgp.WrapError(err, "Tracing")
 					return
 				}
 				za0004, err = dc.ReadString()
 				if err != nil {
-					err = msgp.WrapError(err, "SerializedContext", za0003)
+					err = msgp.WrapError(err, "Tracing", za0003)
 					return
 				}
-				z.SerializedContext[za0003] = za0004
+				z.Tracing[za0003] = za0004
 			}
 		default:
 			err = dc.Skip()
@@ -223,25 +223,25 @@ func (z *WireDelivery) EncodeMsg(en *msgp.Writer) (err error) {
 			return
 		}
 	}
-	// write "SerializedContext"
-	err = en.Append(0xb1, 0x53, 0x65, 0x72, 0x69, 0x61, 0x6c, 0x69, 0x7a, 0x65, 0x64, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x78, 0x74)
+	// write "Tracing"
+	err = en.Append(0xa7, 0x54, 0x72, 0x61, 0x63, 0x69, 0x6e, 0x67)
 	if err != nil {
 		return
 	}
-	err = en.WriteMapHeader(uint32(len(z.SerializedContext)))
+	err = en.WriteMapHeader(uint32(len(z.Tracing)))
 	if err != nil {
-		err = msgp.WrapError(err, "SerializedContext")
+		err = msgp.WrapError(err, "Tracing")
 		return
 	}
-	for za0003, za0004 := range z.SerializedContext {
+	for za0003, za0004 := range z.Tracing {
 		err = en.WriteString(za0003)
 		if err != nil {
-			err = msgp.WrapError(err, "SerializedContext")
+			err = msgp.WrapError(err, "Tracing")
 			return
 		}
 		err = en.WriteString(za0004)
 		if err != nil {
-			err = msgp.WrapError(err, "SerializedContext", za0003)
+			err = msgp.WrapError(err, "Tracing", za0003)
 			return
 		}
 	}
@@ -287,10 +287,10 @@ func (z *WireDelivery) MarshalMsg(b []byte) (o []byte, err error) {
 			return
 		}
 	}
-	// string "SerializedContext"
-	o = append(o, 0xb1, 0x53, 0x65, 0x72, 0x69, 0x61, 0x6c, 0x69, 0x7a, 0x65, 0x64, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x78, 0x74)
-	o = msgp.AppendMapHeader(o, uint32(len(z.SerializedContext)))
-	for za0003, za0004 := range z.SerializedContext {
+	// string "Tracing"
+	o = append(o, 0xa7, 0x54, 0x72, 0x61, 0x63, 0x69, 0x6e, 0x67)
+	o = msgp.AppendMapHeader(o, uint32(len(z.Tracing)))
+	for za0003, za0004 := range z.Tracing {
 		o = msgp.AppendString(o, za0003)
 		o = msgp.AppendString(o, za0004)
 	}
@@ -391,18 +391,18 @@ func (z *WireDelivery) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-		case "SerializedContext":
+		case "Tracing":
 			var zb0003 uint32
 			zb0003, bts, err = msgp.ReadMapHeaderBytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "SerializedContext")
+				err = msgp.WrapError(err, "Tracing")
 				return
 			}
-			if z.SerializedContext == nil {
-				z.SerializedContext = make(map[string]string, zb0003)
-			} else if len(z.SerializedContext) > 0 {
-				for key := range z.SerializedContext {
-					delete(z.SerializedContext, key)
+			if z.Tracing == nil {
+				z.Tracing = make(map[string]string, zb0003)
+			} else if len(z.Tracing) > 0 {
+				for key := range z.Tracing {
+					delete(z.Tracing, key)
 				}
 			}
 			for zb0003 > 0 {
@@ -411,15 +411,15 @@ func (z *WireDelivery) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				zb0003--
 				za0003, bts, err = msgp.ReadStringBytes(bts)
 				if err != nil {
-					err = msgp.WrapError(err, "SerializedContext")
+					err = msgp.WrapError(err, "Tracing")
 					return
 				}
 				za0004, bts, err = msgp.ReadStringBytes(bts)
 				if err != nil {
-					err = msgp.WrapError(err, "SerializedContext", za0003)
+					err = msgp.WrapError(err, "Tracing", za0003)
 					return
 				}
-				z.SerializedContext[za0003] = za0004
+				z.Tracing[za0003] = za0004
 			}
 		default:
 			bts, err = msgp.Skip(bts)
@@ -454,9 +454,9 @@ func (z *WireDelivery) Msgsize() (s int) {
 	} else {
 		s += z.Sender.Msgsize()
 	}
-	s += 18 + msgp.MapHeaderSize
-	if z.SerializedContext != nil {
-		for za0003, za0004 := range z.SerializedContext {
+	s += 8 + msgp.MapHeaderSize
+	if z.Tracing != nil {
+		for za0003, za0004 := range z.Tracing {
 			_ = za0004
 			s += msgp.StringPrefixSize + len(za0003) + msgp.StringPrefixSize + len(za0004)
 		}

@@ -6,16 +6,19 @@ import (
 	"fmt"
 
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
+	"github.com/quorumcontrol/tupelo-go-client/tracing"
 )
 
 type WireDelivery struct {
-	Header            map[string]string
-	Message           []byte
-	Type              int8
-	Target            *messages.ActorPID
-	Sender            *messages.ActorPID
-	Outgoing          bool `msg:"-"`
-	SerializedContext map[string]string
+	tracing.ContextHolder `msg:"-"`
+
+	Header   map[string]string
+	Message  []byte
+	Type     int8
+	Target   *messages.ActorPID
+	Sender   *messages.ActorPID
+	Outgoing bool `msg:"-"`
+	Tracing  map[string]string
 }
 
 // GetMessage deserializes a WireMessage.

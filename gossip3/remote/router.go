@@ -67,22 +67,11 @@ func (r *router) Receive(context actor.Context) {
 		}
 		context.Forward(handler)
 	case *WireDelivery:
-		wdMsg, err := msg.GetMessage()
-		if err != nil {
-			panic(fmt.Errorf("error unmarshaling message: %v", err))
-		}
 		var sp opentracing.Span
 
-		if tracing.Enabled {
-			traceable, ok := wdMsg.(tracing.Traceable)
-			if ok && msg.SerializedContext != nil {
-				sp, err = traceable.RehydrateSerialized(msg.SerializedContext, "router")
-				if err == nil {
-					defer sp.Finish()
-				} else {
-					middleware.Log.Debugw("error rehydrating", "err", err)
-				}
-			}
+		if tracing.Enabled && msg.Outgoing && msg.Started() {
+			sp = msg.NewSpan("router-outgoing")
+			defer sp.Finish()
 		}
 
 		target := types.RoutableAddress(msg.Target.Address)
