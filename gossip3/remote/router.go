@@ -71,15 +71,17 @@ func (r *router) Receive(context actor.Context) {
 		if err != nil {
 			panic(fmt.Errorf("error unmarshaling message: %v", err))
 		}
-		traceable, ok := wdMsg.(tracing.Traceable)
 		var sp opentracing.Span
-		if ok && msg.SerializedContext != nil {
-			sp, err = traceable.RehydrateSerialized(msg.SerializedContext, "router")
-			if err == nil {
-				defer sp.Finish()
-			} else {
-				fmt.Printf("error rehydrating traceable: %v\n", err)
-				middleware.Log.Debugw("error rehydrating", "err", err)
+
+		if tracing.Enabled {
+			traceable, ok := wdMsg.(tracing.Traceable)
+			if ok && msg.SerializedContext != nil {
+				sp, err = traceable.RehydrateSerialized(msg.SerializedContext, "router")
+				if err == nil {
+					defer sp.Finish()
+				} else {
+					middleware.Log.Debugw("error rehydrating", "err", err)
+				}
 			}
 		}
 
@@ -88,7 +90,7 @@ func (r *router) Receive(context actor.Context) {
 			sp.SetTag("target", target.To())
 		}
 		handler, ok := r.bridges[target.To()]
-		if sp != nil {
+		if sp != nil && ok {
 			sp.SetTag("existing-bridge", handler.String())
 		}
 		if !ok {
