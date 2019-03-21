@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/quorumcontrol/tupelo-go-client/tracing"
 )
@@ -19,7 +20,13 @@ func init() {
 	RegisterMessage(&Signature{})
 	RegisterMessage(&Transaction{})
 	RegisterMessage(&GetTip{})
+	RegisterMessage(&ActorPID{})
 	RegisterMessage(&TipSubscription{})
+}
+
+type DestinationSettable interface {
+	SetDestination(*ActorPID)
+	GetDestination() *ActorPID
 }
 
 // Error represents an error message.
@@ -151,4 +158,27 @@ func (t *Transaction) ConflictSetID() string {
 
 func ConflictSetID(objectID []byte, height uint64) string {
 	return string(crypto.Keccak256(append(objectID, uint64ToBytes(height)...)))
+}
+
+type ActorPID struct {
+	Address string
+	Id      string
+}
+
+func (ActorPID) TypeCode() int8 {
+	return -10
+}
+
+func ToActorPid(a *actor.PID) *ActorPID {
+	if a == nil {
+		return nil
+	}
+	return &ActorPID{
+		Address: a.Address,
+		Id:      a.Id,
+	}
+}
+
+func FromActorPid(a *ActorPID) *actor.PID {
+	return actor.NewPID(a.Address, a.Id)
 }

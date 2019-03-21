@@ -12,6 +12,7 @@ import (
 	pnet "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-net"
 	peer "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-peer"
 	"github.com/opentracing/opentracing-go"
+	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/middleware"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/types"
 	"github.com/quorumcontrol/tupelo-go-client/p2p"
@@ -129,15 +130,15 @@ func (b *bridge) handleIncomingWireDelivery(context actor.Context, wd *WireDeliv
 
 	// b.Log.Debugw("received", "target", wd.Target, "sender", wd.Sender, "msgHash", crypto.Keccak256(wd.Message))
 	var sender *actor.PID
-	target := FromActorPid(wd.Target)
+	target := messages.FromActorPid(wd.Target)
 	if wd.Sender != nil {
-		sender = FromActorPid(wd.Sender)
+		sender = messages.FromActorPid(wd.Sender)
 		sender.Address = types.RoutableAddress(sender.Address).Swap().String()
 	}
 	// switch the target to the local actor system
 	target.Address = actor.ProcessRegistry.Address
 
-	dest, ok := msg.(DestinationSettable)
+	dest, ok := msg.(messages.DestinationSettable)
 	if ok {
 		orig := dest.GetDestination()
 		orig.Address = b.localAddress
