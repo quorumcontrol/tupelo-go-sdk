@@ -7,6 +7,134 @@ import (
 )
 
 // DecodeMsg implements msgp.Decodable
+func (z *ActorPID) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "Address":
+			z.Address, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Address")
+				return
+			}
+		case "Id":
+			z.Id, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Id")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z ActorPID) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 2
+	// write "Address"
+	err = en.Append(0x82, 0xa7, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.Address)
+	if err != nil {
+		err = msgp.WrapError(err, "Address")
+		return
+	}
+	// write "Id"
+	err = en.Append(0xa2, 0x49, 0x64)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.Id)
+	if err != nil {
+		err = msgp.WrapError(err, "Id")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z ActorPID) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 2
+	// string "Address"
+	o = append(o, 0x82, 0xa7, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73)
+	o = msgp.AppendString(o, z.Address)
+	// string "Id"
+	o = append(o, 0xa2, 0x49, 0x64)
+	o = msgp.AppendString(o, z.Id)
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *ActorPID) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "Address":
+			z.Address, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Address")
+				return
+			}
+		case "Id":
+			z.Id, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Id")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z ActorPID) Msgsize() (s int) {
+	s = 1 + 8 + msgp.StringPrefixSize + len(z.Address) + 3 + msgp.StringPrefixSize + len(z.Id)
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *CurrentState) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
