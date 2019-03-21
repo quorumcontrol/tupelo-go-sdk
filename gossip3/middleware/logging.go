@@ -1,6 +1,10 @@
 package middleware
 
 import (
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"go.uber.org/zap"
 )
@@ -57,5 +61,19 @@ func buildLogger() *zap.SugaredLogger {
 	if err != nil {
 		panic(err)
 	}
-	return logger.Sugar()
+
+	sugar := logger.Sugar()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigChan
+		// Ensure that log output gets written - it seems flushing to stderr produces an error message
+		// related to ioctl, possibly not compatible with that target
+		if err := sugar.Sync(); err != nil {
+		}
+		os.Exit(0)
+	}()
+
+	return sugar
 }
