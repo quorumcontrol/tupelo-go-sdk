@@ -128,7 +128,6 @@ func (b *bridge) handleIncomingWireDelivery(context actor.Context, wd *WireDeliv
 		if ok && wd.Tracing != nil {
 			sp, err = traceable.RehydrateSerialized(wd.Tracing, "bridge-incoming")
 			if err == nil {
-				sp.SetTag("runthrough-"+time.Now().String(), true)
 				defer sp.Finish()
 			} else {
 				middleware.Log.Debugw("error rehydrating", "err", err)
