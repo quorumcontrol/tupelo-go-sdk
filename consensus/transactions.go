@@ -194,6 +194,10 @@ func MintTokenTransaction(tree *dag.Dag, transaction *chaintree.Transaction) (ne
 		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error setting: %v", err)}
 	}
 
+	if payload.Amount == 0 {
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: "error, can not mint an amount <= 0"}
+	}
+
 	tokenName := payload.Name
 	path, err := DecodePath(TreePathForTokens)
 	if err != nil {
