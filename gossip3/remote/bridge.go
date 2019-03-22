@@ -156,8 +156,8 @@ func (b *bridge) handleIncomingWireDelivery(context actor.Context, wd *WireDeliv
 func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDelivery) {
 	var sp opentracing.Span
 
-	if tracing.Enabled && wd.Started() {
-		serialized, err := wd.SerializedContext()
+	if traceable, ok := wd.originalMessage.(tracing.Traceable); tracing.Enabled && ok && traceable.Started() {
+		serialized, err := traceable.SerializedContext()
 		if err == nil {
 			wd.Tracing = serialized
 		} else {
@@ -167,14 +167,14 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDeliv
 		// it will complete before the next in the sequence
 		// starts and shouldn't be the span that's still
 		// open when going across the wire
-		sp = wd.NewSpan("bridge-outgoing")
-		defer sp.Finish()
+		sp = traceable.NewSpan("bridge-outgoing")
+	} else {
+		sp = opentracing.StartSpan("outgoing-untraceable")
 	}
+	defer sp.Finish()
 
 	if b.stream == nil {
-		if sp != nil {
-			sp.SetTag("existing-stream", false)
-		}
+		sp.SetTag("existing-stream", false)
 		err := b.handleCreateNewStream(context)
 		if err != nil {
 			b.Log.Warnw("error opening stream", "err", err)
@@ -187,45 +187,30 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDeliv
 				b.Log.Errorw("maximum backoff reached - possibly dropped messages", "count", b.backoffCount)
 				return
 			}
-			if sp != nil {
-				sp.SetTag("error", true)
-				sp.SetTag("error-opening-stream", err)
-				wd.NewSpan("resending").Finish()
-			}
+			sp.SetTag("error", true)
+			sp.SetTag("error-opening-stream", err)
+
 			context.Forward(context.Self())
 			return
 		}
-		if sp != nil {
-			sp.SetTag("new-stream", true)
-		}
+		sp.SetTag("new-stream", true)
 	}
 	// b.Log.Debugw("writing", "target", wd.Target, "sender", wd.Sender, "msgHash", crypto.Keccak256(wd.Message))
 	if wd.Sender != nil && wd.Sender.Address == actor.ProcessRegistry.Address {
 		wd.Sender.Address = b.localAddress
 	}
 
-	var encSpan opentracing.Span
-	if sp != nil {
-		encSpan = opentracing.StartSpan("bridge-encodeMsg", opentracing.ChildOf(sp.Context()))
-	}
-
+	encSpan := opentracing.StartSpan("bridge-encodeMsg", opentracing.ChildOf(sp.Context()))
+	defer encSpan.Finish()
 	err := msgp.Encode(b.stream, wd)
 	if err != nil {
-		if sp != nil {
-			sp.SetTag("error", true)
-			sp.SetTag("error-encoding-message", err)
-			wd.NewSpan("resending").Finish()
-		}
+		sp.SetTag("error", true)
+		sp.SetTag("error-encoding-message", err)
+
 		b.clearStream(b.streamID)
 		context.Forward(context.Self())
-		if encSpan != nil {
-			encSpan.Finish()
-		}
-		return
-	}
 
-	if encSpan != nil {
-		encSpan.Finish()
+		return
 	}
 
 	b.backoffCount = 0
@@ -317,7 +302,7 @@ func (b *bridge) setupNewStream(ctx gocontext.Context, cancelFunc gocontext.Canc
 			select {
 			case <-done:
 				b.Log.Debugw("resetting stream due to done")
-				err := stream.Close()
+				err := stream.Reset()
 				if err != nil {
 					b.Log.Errorw("error closing stream", "err", err)
 				}

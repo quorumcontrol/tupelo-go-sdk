@@ -6,11 +6,10 @@ import (
 	"fmt"
 
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
-	"github.com/quorumcontrol/tupelo-go-client/tracing"
 )
 
 type WireDelivery struct {
-	tracing.ContextHolder `msg:"-"`
+	originalMessage messages.WireMessage
 
 	Header   map[string]string
 	Message  []byte

@@ -69,8 +69,8 @@ func (r *router) Receive(context actor.Context) {
 	case *WireDelivery:
 		var sp opentracing.Span
 
-		if tracing.Enabled && msg.Outgoing && msg.Started() {
-			sp = msg.NewSpan("router-outgoing")
+		if traceable, ok := msg.originalMessage.(tracing.Traceable); ok && tracing.Enabled && msg.Outgoing && traceable.Started() {
+			sp = traceable.NewSpan("router-outgoing")
 			defer sp.Finish()
 		}
 

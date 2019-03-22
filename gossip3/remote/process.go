@@ -41,10 +41,11 @@ func sendMessage(gateway, pid *actor.PID, header actor.ReadonlyMessageHeader, me
 	}
 
 	wd := &WireDelivery{
-		Message: marshaled,
-		Type:    message.TypeCode(),
-		Target:  messages.ToActorPid(pid),
-		Sender:  messages.ToActorPid(sender),
+		originalMessage: message,
+		Message:         marshaled,
+		Type:            message.TypeCode(),
+		Target:          messages.ToActorPid(pid),
+		Sender:          messages.ToActorPid(sender),
 	}
 	if header != nil {
 		wd.Header = header.ToMap()
@@ -55,7 +56,6 @@ func sendMessage(gateway, pid *actor.PID, header actor.ReadonlyMessageHeader, me
 		traceable, ok := message.(tracing.Traceable)
 		if ok && traceable.Started() {
 			traceable.NewSpan("process-sendMessage").Finish()
-			wd.SetContext(traceable.GetContext())
 		}
 	}
 
