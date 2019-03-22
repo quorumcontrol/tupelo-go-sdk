@@ -4,6 +4,7 @@ import (
 	gocontext "context"
 	"fmt"
 	"math/rand"
+	"reflect"
 	"time"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
@@ -95,7 +96,12 @@ func (b *bridge) NormalState(context actor.Context) {
 }
 
 func (b *bridge) TerminatedState(context actor.Context) {
-	b.Log.Errorw("received message in terminated state", "msg", context.Message())
+	switch msg := context.Message().(type) {
+	case *actor.Stopping, *actor.Stopped:
+		// do nothing
+	default:
+		b.Log.Errorw("received message in terminated state", "type", reflect.TypeOf(msg).String(), "msg", msg)
+	}
 }
 
 func (b *bridge) handleIncomingStream(context actor.Context, stream pnet.Stream) {
