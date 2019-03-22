@@ -8,6 +8,7 @@ import (
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/quorumcontrol/tupelo-go-client/tracing"
 )
 
 func init() {
@@ -40,7 +41,8 @@ func (Error) TypeCode() int8 {
 }
 
 type Ping struct {
-	Msg string
+	tracing.ContextHolder `msg:"-"`
+	Msg                   string
 }
 
 func (Ping) TypeCode() int8 {

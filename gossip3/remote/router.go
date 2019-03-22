@@ -8,9 +8,11 @@ import (
 	"github.com/AsynkronIT/protoactor-go/plugin"
 	pnet "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-net"
 	peer "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-peer"
+	"github.com/opentracing/opentracing-go"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/middleware"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/types"
 	"github.com/quorumcontrol/tupelo-go-client/p2p"
+	"github.com/quorumcontrol/tupelo-go-client/tracing"
 )
 
 const p2pProtocol = "remoteactors/v1.0"
@@ -34,11 +36,6 @@ func newRouterProps(host p2p.Node) *actor.Props {
 	)
 }
 
-// type internalCreateBridge struct {
-// 	from string
-// 	to   *ecdsa.PublicKey
-// }
-
 func (r *router) Receive(context actor.Context) {
 	// defer func() {
 	// 	if re := recover(); re != nil {
@@ -51,11 +48,16 @@ func (r *router) Receive(context actor.Context) {
 		to := split[len(split)-1]
 		if _, ok := r.bridges[to]; ok {
 			delete(r.bridges, to)
+			return
 		}
+		r.Log.Errorw("unknown actor died", "who", msg.Who)
 	case *actor.Started:
-		//TODO: what happens when the bridge dies?
+		// don't keep a reference to the context around,
+		// instead create a closure which has just the PID
+		// of the router and uses the root context to send the streams
+		routerActor := context.Self()
 		r.host.SetStreamHandler(p2pProtocol, func(s pnet.Stream) {
-			context.Send(context.Self(), s)
+			actor.EmptyRootContext.Send(routerActor, s)
 		})
 	case pnet.Stream:
 		remoteGateway := msg.Conn().RemotePeer().Pretty()
@@ -64,11 +66,27 @@ func (r *router) Receive(context actor.Context) {
 			handler = r.createBridge(context, remoteGateway)
 		}
 		context.Forward(handler)
-	case *wireDelivery:
+	case *WireDelivery:
+		var sp opentracing.Span
+
+		if traceable, ok := msg.originalMessage.(tracing.Traceable); ok && tracing.Enabled && msg.Outgoing && traceable.Started() {
+			sp = traceable.NewSpan("router-outgoing")
+			defer sp.Finish()
+		}
+
 		target := types.RoutableAddress(msg.Target.Address)
+		if sp != nil {
+			sp.SetTag("target", target.To())
+		}
 		handler, ok := r.bridges[target.To()]
+		if sp != nil && ok {
+			sp.SetTag("existing-bridge", handler.String())
+		}
 		if !ok {
 			handler = r.createBridge(context, target.To())
+			if sp != nil {
+				sp.SetTag("new-bridge", handler.String())
+			}
 		}
 		context.Forward(handler)
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/types"
 	"github.com/quorumcontrol/tupelo-go-client/p2p"
 	"github.com/quorumcontrol/tupelo-go-client/testnotarygroup"
+	"github.com/quorumcontrol/tupelo-go-client/tracing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -105,6 +106,19 @@ func TestRemoteMessageSending(t *testing.T) {
 		remotePing := actor.NewPID(types.NewRoutableAddress(host1.Identity(), host3.Identity()).String(), host3Ping.GetId())
 
 		resp, err := rootContext.RequestFuture(remotePing, &messages.Ping{Msg: "hi"}, 100*time.Millisecond).Result()
+
+		assert.Nil(t, err)
+		assert.Equal(t, resp.(*messages.Pong).Msg, "hi")
+	})
+
+	t.Run("sending a traceable when tracing is on", func(t *testing.T) {
+		tracing.StartJaeger("test-only")
+		defer tracing.StopJaeger()
+		remotePing := actor.NewPID(types.NewRoutableAddress(host1.Identity(), host3.Identity()).String(), host3Ping.GetId())
+		msg := &messages.Ping{Msg: "hi"}
+		msg.StartTrace("test-only-ping")
+		defer msg.StopTrace()
+		resp, err := rootContext.RequestFuture(remotePing, msg, 100*time.Millisecond).Result()
 
 		assert.Nil(t, err)
 		assert.Equal(t, resp.(*messages.Pong).Msg, "hi")
