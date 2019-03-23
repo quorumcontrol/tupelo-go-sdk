@@ -7,6 +7,7 @@ import (
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
+	"github.com/quorumcontrol/tupelo-go-client/tracing"
 )
 
 type process struct {
@@ -38,16 +39,25 @@ func sendMessage(gateway, pid *actor.PID, header actor.ReadonlyMessageHeader, me
 	if err != nil {
 		panic(fmt.Errorf("could not marshal message: %v", err))
 	}
-	wd := &wireDelivery{
-		Message: marshaled,
-		Type:    message.TypeCode(),
-		Target:  messages.ToActorPid(pid),
-		Sender:  messages.ToActorPid(sender),
+
+	wd := &WireDelivery{
+		originalMessage: message,
+		Message:         marshaled,
+		Type:            message.TypeCode(),
+		Target:          messages.ToActorPid(pid),
+		Sender:          messages.ToActorPid(sender),
 	}
 	if header != nil {
 		wd.Header = header.ToMap()
 	}
 	wd.Outgoing = true
+
+	if tracing.Enabled {
+		traceable, ok := message.(tracing.Traceable)
+		if ok && traceable.Started() {
+			traceable.NewSpan("process-sendMessage").Finish()
+		}
+	}
 
 	gateway.Tell(wd)
 }

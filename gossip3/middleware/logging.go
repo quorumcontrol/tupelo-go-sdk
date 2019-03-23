@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	//"reflect"
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"go.uber.org/zap"
 )
@@ -27,19 +28,23 @@ func (state *LogAwareHolder) SetLog(log *zap.SugaredLogger) {
 
 type LogPlugin struct{}
 
-func (p *LogPlugin) OnStart(ctx actor.Context) {
+func (p *LogPlugin) OnStart(ctx actor.ReceiverContext) {
 	if p, ok := ctx.Actor().(LogAware); ok {
 		p.SetLog(Log.Named(ctx.Self().GetId()))
 	}
 }
-func (p *LogPlugin) OnOtherMessage(ctx actor.Context, usrMsg interface{}) {}
+func (p *LogPlugin) OnOtherMessage(ctx actor.ReceiverContext, env *actor.MessageEnvelope) {}
 
 // Logger is message middleware which logs messages before continuing to the next middleware
-func LoggingMiddleware(next actor.ActorFunc) actor.ActorFunc {
-	fn := func(c actor.Context) {
-		// message := c.Message()
-		// Log.Debugw("message", "id", c.Self(), "type", reflect.TypeOf(message), "sender", c.Sender().GetId()) //, "msg", message)
-		next(c)
+func LoggingMiddleware(next actor.ReceiverFunc) actor.ReceiverFunc {
+	fn := func(c actor.ReceiverContext, env *actor.MessageEnvelope) {
+		//message := env.Message
+		//sender := "nil"
+		//if env.Sender != nil {
+		//	sender = env.Sender.Id
+		//}
+		//Log.Debugw("message", "id", c.Self(), "type", reflect.TypeOf(message), "sender", sender) //, "msg", message)
+		next(c, env)
 	}
 
 	return fn

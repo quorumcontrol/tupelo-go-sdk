@@ -4,7 +4,6 @@ import (
 	"crypto/ecdsa"
 	"testing"
 
-	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
@@ -81,10 +80,4 @@ func DagToByteNodes(t testing.TB, dagTree *dag.Dag) [][]byte {
 		nodes[i] = node.RawData()
 	}
 	return nodes
-}
-
-var nullActorFunc = func(_ actor.Context) {}
-
-func NewNullActorProps() *actor.Props {
-	return actor.FromFunc(nullActorFunc)
 }

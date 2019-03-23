@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func LibP2PNodeGenerator(ctx context.Context, t *testing.T) Node {
+func libP2PNodeGenerator(ctx context.Context, t *testing.T) Node {
 	key, err := crypto.GenerateKey()
 	require.Nil(t, err)
 
@@ -23,7 +23,7 @@ func LibP2PNodeGenerator(ctx context.Context, t *testing.T) Node {
 }
 
 func TestHost(t *testing.T) {
-	NodeTests(t, LibP2PNodeGenerator)
+	NodeTests(t, libP2PNodeGenerator)
 }
 
 func TestUnmarshal31ByteKey(t *testing.T) {

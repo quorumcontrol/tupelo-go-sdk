@@ -10,7 +10,7 @@ import (
 )
 
 func TestMarshalUnmarshalWireDelivery(t *testing.T) {
-	v := wireDelivery{}
+	v := WireDelivery{}
 	bts, err := v.MarshalMsg(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -33,7 +33,7 @@ func TestMarshalUnmarshalWireDelivery(t *testing.T) {
 }
 
 func BenchmarkMarshalMsgWireDelivery(b *testing.B) {
-	v := wireDelivery{}
+	v := WireDelivery{}
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -42,7 +42,7 @@ func BenchmarkMarshalMsgWireDelivery(b *testing.B) {
 }
 
 func BenchmarkAppendMsgWireDelivery(b *testing.B) {
-	v := wireDelivery{}
+	v := WireDelivery{}
 	bts := make([]byte, 0, v.Msgsize())
 	bts, _ = v.MarshalMsg(bts[0:0])
 	b.SetBytes(int64(len(bts)))
@@ -54,7 +54,7 @@ func BenchmarkAppendMsgWireDelivery(b *testing.B) {
 }
 
 func BenchmarkUnmarshalWireDelivery(b *testing.B) {
-	v := wireDelivery{}
+	v := WireDelivery{}
 	bts, _ := v.MarshalMsg(nil)
 	b.ReportAllocs()
 	b.SetBytes(int64(len(bts)))
@@ -68,7 +68,7 @@ func BenchmarkUnmarshalWireDelivery(b *testing.B) {
 }
 
 func TestEncodeDecodeWireDelivery(t *testing.T) {
-	v := wireDelivery{}
+	v := WireDelivery{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 
@@ -77,7 +77,7 @@ func TestEncodeDecodeWireDelivery(t *testing.T) {
 		t.Logf("WARNING: Msgsize() for %v is inaccurate", v)
 	}
 
-	vn := wireDelivery{}
+	vn := WireDelivery{}
 	err := msgp.Decode(&buf, &vn)
 	if err != nil {
 		t.Error(err)
@@ -92,7 +92,7 @@ func TestEncodeDecodeWireDelivery(t *testing.T) {
 }
 
 func BenchmarkEncodeWireDelivery(b *testing.B) {
-	v := wireDelivery{}
+	v := WireDelivery{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))
@@ -106,7 +106,7 @@ func BenchmarkEncodeWireDelivery(b *testing.B) {
 }
 
 func BenchmarkDecodeWireDelivery(b *testing.B) {
-	v := wireDelivery{}
+	v := WireDelivery{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))

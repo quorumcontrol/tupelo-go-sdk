@@ -206,9 +206,11 @@ func (h *LibP2PHost) SendAndReceive(publicKey *ecdsa.PublicKey, protocol protoco
 	if err != nil {
 		return nil, fmt.Errorf("error creating new stream")
 	}
-	defer stream.Close()
 
 	n, err := stream.Write(payload)
+	// Close for writing so that the remote knows there's nothing more to read
+	// The remote can still write back to us though
+	stream.Close()
 	if err != nil {
 		return nil, fmt.Errorf("Error writing message: %v", err)
 	}

@@ -38,6 +38,10 @@
   name = "github.com/tinylib/msgp"
   version = "v1.1.0"
 
+[[constraint]]
+  name = "github.com/AsynkronIT/protoactor-go"
+  revision = "aa1aa20c2fa05af73a9245a379b82bac4da812b1"
+
 [[override]]
   name = "github.com/ipfs/go-ipfs-http-client"
   source = "github.com/quorumcontrol/ipsn-go-ipfs-http-client"
