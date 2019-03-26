@@ -154,12 +154,11 @@ func TestRemoteMessageSending(t *testing.T) {
 
 	t.Run("when both sides simultaneously start writing", func(t *testing.T) {
 		middleware.SetLogLevel("debug")
-		time.Sleep(1 * time.Second)
 		remotePing1 := actor.NewPID(types.NewRoutableAddress(host1.Identity(), host3.Identity()).String(), host3Ping.GetId())
 		remotePing2 := actor.NewPID(types.NewRoutableAddress(host3.Identity(), host1.Identity()).String(), host1Ping.GetId())
 
-		fut1 := rootContext.RequestFuture(remotePing1, &messages.Ping{Msg: "hi"}, 1000*time.Millisecond)
-		fut2 := rootContext.RequestFuture(remotePing2, &messages.Ping{Msg: "hi"}, 1000*time.Millisecond)
+		fut1 := rootContext.RequestFuture(remotePing1, &messages.Ping{Msg: "hi"}, 200*time.Millisecond)
+		fut2 := rootContext.RequestFuture(remotePing2, &messages.Ping{Msg: "hi"}, 200*time.Millisecond)
 		// time.Sleep(20 * time.Millisecond)
 		// middleware.Log.Debugf("---------future 3--------------")
 		// fut3 := rootContext.RequestFuture(remotePing1, &messages.Ping{Msg: "hi"}, 1000*time.Millisecond)

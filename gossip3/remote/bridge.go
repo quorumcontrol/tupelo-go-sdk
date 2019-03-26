@@ -43,13 +43,13 @@ func (bs *bridgeStream) Stop() error {
 	return nil
 }
 
-func (bs *bridgeStream) NewOutgoingStream(remoteAddress peer.ID) (*bridgeStream, error) {
+func (bs *bridgeStream) SetupOutgoing(remoteAddress peer.ID) error {
 	stream, err := bs.host.NewStreamWithPeerID(bs.ctx, remoteAddress, p2pProtocol)
 	if err != nil {
-		return nil, fmt.Errorf("error creating new stream: %v", err)
+		return fmt.Errorf("error creating new stream: %v", err)
 	}
 	bs.stream = stream
-	return bs, nil
+	return nil
 }
 
 func (bs *bridgeStream) HandleIncoming(s pnet.Stream) {
@@ -116,6 +116,7 @@ func newBridgeStream(ctx gocontext.Context, b *bridge, act *actor.PID) *bridgeSt
 		LogAwareHolder: middleware.LogAwareHolder{
 			Log: b.Log.Named("bridge-stream"),
 		},
+		host:   b.host,
 		act:    act,
 		ctx:    ctx,
 		cancel: cancel,
@@ -282,7 +283,8 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDeliv
 	if b.outgoingStream == nil {
 		sp.SetTag("existing-stream", false)
 		b.Log.Debugw("creating new stream from write operation")
-		err := b.handleCreateNewStream(context)
+		bs := newBridgeStream(gocontext.Background(), b, context.Self())
+		err := bs.SetupOutgoing(b.remoteAddress)
 		if err != nil {
 			b.Log.Warnw("error opening stream", "err", err)
 			// back off dialing if we have trouble with the stream
@@ -301,6 +303,7 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDeliv
 			return
 		}
 		sp.SetTag("new-stream", true)
+		b.outgoingStream = bs
 	}
 	// b.Log.Debugw("writing", "target", wd.Target, "sender", wd.Sender, "msgHash", crypto.Keccak256(wd.Message))
 	if wd.Sender != nil && wd.Sender.Address == actor.ProcessRegistry.Address {
@@ -325,7 +328,8 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDeliv
 }
 
 func (b *bridge) handleStreamDied(context actor.Context, msg *internalStreamDied) {
-	// todo
+	msg.stream.Stop()
+	b.incomingStream = nil
 }
 
 func (b *bridge) clearStreams() {
@@ -338,25 +342,4 @@ func (b *bridge) clearStreams() {
 		b.incomingStream = nil
 	}
 
-}
-
-func (b *bridge) handleCreateNewStream(context actor.Context) error {
-	b.Log.Debugw("handleCreateNewstream")
-	if b.stream != nil {
-		b.Log.Infow("not creating new stream, already exists")
-		return nil
-	}
-	b.Log.Debugw("create new stream")
-
-	ctx, cancel := gocontext.WithCancel(gocontext.Background())
-
-	stream, err := b.host.NewStreamWithPeerID(ctx, b.remoteAddress, p2pProtocol)
-	if err != nil {
-		b.clearStream(b.streamID)
-		cancel()
-		return err
-	}
-
-	b.setupNewStream(ctx, cancel, context, stream)
-	return nil
 }
