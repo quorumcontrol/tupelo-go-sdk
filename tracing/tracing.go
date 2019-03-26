@@ -4,7 +4,10 @@ import (
 	"io"
 	"log"
 
+	"go.elastic.co/apm"
+
 	"github.com/opentracing/opentracing-go"
+	"github.com/quorumcontrol/tupelo/resources"
 	"github.com/uber/jaeger-client-go"
 	jaegercfg "github.com/uber/jaeger-client-go/config"
 	jaegerlog "github.com/uber/jaeger-client-go/log"
@@ -15,10 +18,25 @@ import (
 var Enabled bool
 
 var jaegerCloser io.Closer
+var elasticTracer *apm.Tracer
 
-func StartElastic() {
+func StartElastic(serviceName string) {
 	Enabled = true
-	opentracing.SetGlobalTracer(apmot.New())
+	version, err := resources.Version()
+	if err != nil {
+		panic("unknown version")
+	}
+	tracer, err := apm.NewTracer(serviceName, version)
+	if err != nil {
+		panic(err)
+	}
+	elasticTracer = tracer
+	opentracing.SetGlobalTracer(apmot.New(apmot.WithTracer(tracer)))
+}
+
+func StopElastic() {
+	Enabled = false
+	elasticTracer.Close()
 }
 
 func StopJaeger() {
