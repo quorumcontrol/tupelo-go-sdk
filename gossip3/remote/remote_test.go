@@ -151,7 +151,12 @@ func TestRemoteMessageSending(t *testing.T) {
 		assert.Nil(t, resp)
 	})
 
+	// This test detected a previous race condition where two parties are trying to write to each
+	// other at the same time. Previously, this caused a race condition where both sides would fail
+	// to contact each other. We switched over to the separate incoming/outgoing streams in order
+	// to address that race.
 	t.Run("when both sides simultaneously start writing", func(t *testing.T) {
+
 		remotePing1 := actor.NewPID(types.NewRoutableAddress(host1.Identity(), host3.Identity()).String(), host3Ping.GetId())
 		remotePing2 := actor.NewPID(types.NewRoutableAddress(host3.Identity(), host1.Identity()).String(), host1Ping.GetId())
 
