@@ -237,14 +237,12 @@ func (b *bridge) handleIncomingWireDelivery(context actor.Context, wd *WireDeliv
 		}
 	}
 
-	// b.Log.Debugw("received", "target", wd.Target, "sender", wd.Sender, "msgHash", crypto.Keccak256(wd.Message))
 	var sender *actor.PID
 	target := messages.FromActorPid(wd.Target)
 	if wd.Sender != nil {
 		sender = messages.FromActorPid(wd.Sender)
 		sender.Address = types.RoutableAddress(sender.Address).Swap().String()
 	}
-	// switch the target to the local actor system
 	target.Address = actor.ProcessRegistry.Address
 
 	dest, ok := msg.(messages.DestinationSettable)
