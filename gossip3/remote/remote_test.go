@@ -8,6 +8,7 @@ import (
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
+	"github.com/quorumcontrol/tupelo-go-client/gossip3/middleware"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/types"
 	"github.com/quorumcontrol/tupelo-go-client/p2p"
 	"github.com/quorumcontrol/tupelo-go-client/testnotarygroup"
@@ -149,6 +150,25 @@ func TestRemoteMessageSending(t *testing.T) {
 		resp, err = rootContext.RequestFuture(remote4Ping, &messages.Ping{Msg: "hi"}, 100*time.Millisecond).Result()
 		assert.NotNil(t, err)
 		assert.Nil(t, resp)
+	})
+
+	t.Run("when both sides simultaneously start writing", func(t *testing.T) {
+		middleware.SetLogLevel("debug")
+		time.Sleep(1 * time.Second)
+		remotePing1 := actor.NewPID(types.NewRoutableAddress(host1.Identity(), host3.Identity()).String(), host3Ping.GetId())
+		remotePing2 := actor.NewPID(types.NewRoutableAddress(host3.Identity(), host1.Identity()).String(), host1Ping.GetId())
+
+		fut1 := rootContext.RequestFuture(remotePing1, &messages.Ping{Msg: "hi"}, 1000*time.Millisecond)
+		fut2 := rootContext.RequestFuture(remotePing2, &messages.Ping{Msg: "hi"}, 1000*time.Millisecond)
+
+		resp1, err := fut1.Result()
+		middleware.Log.Debugf("------------ tests over ------------------")
+		require.Nil(t, err)
+		assert.Equal(t, resp1.(*messages.Pong).Msg, "hi")
+
+		resp2, err := fut2.Result()
+		require.Nil(t, err)
+		assert.Equal(t, resp2.(*messages.Pong).Msg, "hi")
 	})
 
 }

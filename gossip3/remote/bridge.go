@@ -110,8 +110,10 @@ func (b *bridge) handleIncomingStream(context actor.Context, stream pnet.Stream)
 	if remote != b.remoteAddress {
 		b.Log.Errorw("ignoring stream from other peer", "peer", remote)
 	}
+	b.Log.Debugw("incomingStream clearStream")
 	b.clearStream(b.streamID)
 	ctx, cancel := gocontext.WithCancel(gocontext.Background())
+	b.Log.Debugw("setupNewStreamFromIncoming")
 	b.setupNewStream(ctx, cancel, context, stream)
 }
 
@@ -180,6 +182,7 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDeliv
 
 	if b.stream == nil {
 		sp.SetTag("existing-stream", false)
+		b.Log.Debugw("creating new stream from write operation")
 		err := b.handleCreateNewStream(context)
 		if err != nil {
 			b.Log.Warnw("error opening stream", "err", err)
@@ -231,17 +234,27 @@ func (b *bridge) clearStream(id uint64) {
 		b.Log.Errorw("ids did not match", "expecting", id, "actual", b.streamID)
 		return
 	}
-	if b.stream != nil {
-		b.stream.Reset()
-	}
+
 	if b.streamCancel != nil {
+		b.Log.Debugw("calling stream cancel")
 		b.streamCancel()
+	} else {
+		if b.stream != nil {
+			b.Log.Debugw("closing existing stream")
+			if err := b.stream.Close(); err != nil {
+				err := b.stream.Reset()
+				if err != nil {
+					b.Log.Errorw("error closing stream", "err", err)
+				}
+			}
+		}
 	}
 	b.stream = nil
 	b.streamCtx = nil
 }
 
 func (b *bridge) handleCreateNewStream(context actor.Context) error {
+	b.Log.Debugw("handleCreateNewstream")
 	if b.stream != nil {
 		b.Log.Infow("not creating new stream, already exists")
 		return nil
@@ -307,10 +320,13 @@ func (b *bridge) setupNewStream(ctx gocontext.Context, cancelFunc gocontext.Canc
 			select {
 			case <-done:
 				b.Log.Debugw("resetting stream due to done")
-				err := stream.Reset()
-				if err != nil {
-					b.Log.Errorw("error closing stream", "err", err)
+				if err := stream.Close(); err != nil {
+					err := stream.Reset()
+					if err != nil {
+						b.Log.Errorw("error closing stream", "err", err)
+					}
 				}
+
 				return
 			case wd := <-msgChan:
 				actor.EmptyRootContext.Send(self, &wd)
