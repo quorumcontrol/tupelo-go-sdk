@@ -380,6 +380,102 @@ func TestSetOwnership(t *testing.T) {
 	assert.Equal(t, value, resp)
 }
 
+func TestSendToken(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	assert.Nil(t, err)
+
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	treeDID := AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
+	emptyTree := NewEmptyTree(treeDID, store)
+
+	maximumAmount := uint64(50)
+	height := uint64(0)
+	blockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: nil,
+			Height: height,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type: "ESTABLISH_TOKEN",
+					Payload: map[string]interface{}{
+						"name": "testtoken",
+					},
+				},
+				{
+					Type: "MINT_TOKEN",
+					Payload: map[string]interface{}{
+						"name":   "testtoken",
+						"amount": maximumAmount,
+					},
+				},
+			},
+		},
+	}
+
+	testTree, err := chaintree.NewChainTree(emptyTree, nil, DefaultTransactors)
+	assert.Nil(t, err)
+
+	_, err = testTree.ProcessBlock(blockWithHeaders)
+	assert.Nil(t, err)
+	height++
+
+	targetKey, err := crypto.GenerateKey()
+	targetTreeDID := AddrToDid(crypto.PubkeyToAddress(targetKey.PublicKey).String())
+
+	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: &testTree.Dag.Tip,
+			Height: height,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type: "SEND_TOKEN",
+					Payload: map[string]interface{}{
+						"id":          "1234",
+						"name":        "testtoken",
+						"amount":      30,
+						"destination": targetTreeDID,
+					},
+				},
+			},
+		},
+	}
+
+	_, err = testTree.ProcessBlock(sendBlockWithHeaders)
+	assert.Nil(t, err)
+	height++
+
+	sends, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", "testtoken", "sends", "0"})
+	assert.Nil(t, err)
+	assert.NotNil(t, sends)
+
+	sendsMap := sends.(map[string]interface{})
+	assert.Equal(t, sendsMap["id"], "1234")
+	assert.Equal(t, sendsMap["amount"], uint64(30))
+	lastSendAmount := sendsMap["amount"].(uint64)
+	assert.Equal(t, sendsMap["destination"], targetTreeDID)
+
+	overSpendBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: &testTree.Dag.Tip,
+			Height: height,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type: "SEND_TOKEN",
+					Payload: map[string]interface{}{
+						"id":          "1234",
+						"name":        "testtoken",
+						"amount":      (maximumAmount - lastSendAmount) + 1,
+						"destination": targetTreeDID,
+					},
+				},
+			},
+		},
+	}
+
+	_, err = testTree.ProcessBlock(overSpendBlockWithHeaders)
+	assert.NotNil(t, err)
+}
+
 func TestDecodePath(t *testing.T) {
 	dp1, err := DecodePath("/some/data")
 	assert.Nil(t, err)
