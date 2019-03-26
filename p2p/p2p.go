@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"time"
 
 	ds "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-datastore"
@@ -87,6 +88,7 @@ func newLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port int, 
 	// Generate a key pair for this host. We will use it at least
 	// to obtain a valid host ID.
 	reporter := metrics.NewBandwidthCounter()
+
 	opts := []libp2p.Option{
 		libp2p.ListenAddrStrings(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port)),
 		libp2p.Identity(priv),
@@ -95,6 +97,20 @@ func newLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port int, 
 		libp2p.DefaultSecurity,
 		libp2p.NATPortMap(),
 		libp2p.BandwidthReporter(reporter),
+	}
+
+	if hostIP, ok := os.LookupEnv("TUPELO_PUBLIC_IP"); ok {
+		extMaddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/%d", hostIP, port))
+
+		if err != nil {
+			return nil, fmt.Errorf("Error creating multiaddress: %v", err)
+		}
+
+		addressFactory := func(addrs []ma.Multiaddr) []ma.Multiaddr {
+			return append(addrs, extMaddr)
+		}
+
+		opts = append(opts, libp2p.AddrsFactory(addressFactory))
 	}
 
 	if useRelay {
