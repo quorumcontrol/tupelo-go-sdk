@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	config "github.com/ipfs/go-ipfs-config"
 	goprocess "github.com/jbenet/goprocess"
 	procctx "github.com/jbenet/goprocess/context"
 	periodicproc "github.com/jbenet/goprocess/periodic"
@@ -19,7 +18,6 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	lgbl "github.com/libp2p/go-libp2p-loggables"
 	inet "github.com/libp2p/go-libp2p-net"
-	peer "github.com/libp2p/go-libp2p-peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	ma "github.com/multiformats/go-multiaddr"
