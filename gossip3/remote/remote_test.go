@@ -160,6 +160,22 @@ func TestRemoteMessageSending(t *testing.T) {
 
 		fut1 := rootContext.RequestFuture(remotePing1, &messages.Ping{Msg: "hi"}, 1000*time.Millisecond)
 		fut2 := rootContext.RequestFuture(remotePing2, &messages.Ping{Msg: "hi"}, 1000*time.Millisecond)
+		// time.Sleep(20 * time.Millisecond)
+		// middleware.Log.Debugf("---------future 3--------------")
+		// fut3 := rootContext.RequestFuture(remotePing1, &messages.Ping{Msg: "hi"}, 1000*time.Millisecond)
+
+		// resp1, err := fut1.Result()
+		// middleware.Log.Debugf("------------ tests over ------------------")
+		// assert.NotNil(t, err)
+		// assert.Nil(t, resp1)
+
+		// _, err = fut2.Result()
+		// require.NotNil(t, err)
+		// // assert.Equal(t, resp2.(*messages.Pong).Msg, "hi")
+
+		// resp3, err := fut3.Result()
+		// require.Nil(t, err)
+		// assert.Equal(t, resp3.(*messages.Pong).Msg, "hi")
 
 		resp1, err := fut1.Result()
 		middleware.Log.Debugf("------------ tests over ------------------")
