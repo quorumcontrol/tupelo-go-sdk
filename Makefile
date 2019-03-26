@@ -28,7 +28,7 @@ build: $(gosources) $(generated) go.mod go.sum
 lint: $(FIRSTGOPATH)/bin/golangci-lint
 	$(FIRSTGOPATH)/bin/golangci-lint run
 
-test: vendor $(gosources)
+test: $(gosources) $(generated) go.mod go.sum
 	go test ./...
 
 integration-test: docker-image

@@ -164,7 +164,7 @@ func EstablishTokenTransaction(tree *dag.Dag, transaction *chaintree.Transaction
 		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error, token at path %v already exists", tokenPath)}
 	}
 
-	_, err = tree.SetAsLink(tokenPath, &Token})
+	_, err = tree.SetAsLink(tokenPath, &Token{})
 	if err != nil {
 		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error setting: %v", err)}
 	}
