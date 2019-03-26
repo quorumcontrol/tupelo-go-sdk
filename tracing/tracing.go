@@ -7,7 +7,6 @@ import (
 	"go.elastic.co/apm"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/quorumcontrol/tupelo/resources"
 	"github.com/uber/jaeger-client-go"
 	jaegercfg "github.com/uber/jaeger-client-go/config"
 	jaegerlog "github.com/uber/jaeger-client-go/log"
@@ -20,12 +19,8 @@ var Enabled bool
 var jaegerCloser io.Closer
 var elasticTracer *apm.Tracer
 
-func StartElastic(serviceName string) {
+func StartElastic(serviceName string, version string) {
 	Enabled = true
-	version, err := resources.Version()
-	if err != nil {
-		panic("unknown version")
-	}
 	tracer, err := apm.NewTracer(serviceName, version)
 	if err != nil {
 		panic(err)
@@ -44,7 +39,7 @@ func StopJaeger() {
 	jaegerCloser.Close()
 }
 
-func StartJaeger(serviceName string) {
+func StartJaeger(serviceName string, version string) {
 	Enabled = true
 
 	// Sample configuration for testing. Use constant sampling to sample every trace
@@ -70,12 +65,11 @@ func StartJaeger(serviceName string) {
 		serviceName,
 		jaegercfg.Logger(jLogger),
 		jaegercfg.Metrics(jMetricsFactory),
+		jaegercfg.Tag("version", version),
 	)
 	if err != nil {
 		log.Printf("Could not initialize jaeger tracer: %s", err.Error())
 		return
 	}
 	jaegerCloser = closer
-
-	// continue main()
 }
