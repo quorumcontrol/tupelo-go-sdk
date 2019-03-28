@@ -1,7 +1,7 @@
 FROM golang:1.11.5
 
-WORKDIR /go/src/github.com/quorumcontrol/tupelo-go-client
+WORKDIR /app
 
 COPY . .
 
-RUN go build ./...
+RUN go build -mod=vendor ./...

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	net "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-net"
+	net "github.com/libp2p/go-libp2p-net"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
