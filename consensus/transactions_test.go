@@ -61,6 +61,108 @@ func TestEstablishTokenTransactionWithMaximum(t *testing.T) {
 	assert.Nil(t, receives)
 }
 
+func TestMintToken(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	assert.Nil(t, err)
+
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	treeDID := AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
+	emptyTree := NewEmptyTree(treeDID, store)
+
+	blockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: nil,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type: "ESTABLISH_TOKEN",
+					Payload: map[string]interface{}{
+						"name": "testtoken",
+						"monetaryPolicy": map[string]interface{}{
+							"maximum": 42,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	testTree, err := chaintree.NewChainTree(emptyTree, nil, DefaultTransactors)
+	assert.Nil(t, err)
+
+	_, err = testTree.ProcessBlock(blockWithHeaders)
+	assert.Nil(t, err)
+
+	mintBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: &testTree.Dag.Tip,
+			Height:      1,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type: "MINT_TOKEN",
+					Payload: map[string]interface{}{
+						"name":   "testtoken",
+						"amount": 40,
+					},
+				},
+			},
+		},
+	}
+	_, err = testTree.ProcessBlock(mintBlockWithHeaders)
+	assert.Nil(t, err)
+
+	mints, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", "testtoken", "mints"})
+	assert.Nil(t, err)
+	assert.Len(t, mints.([]interface{}), 1)
+
+	// a 2nd mint succeeds when it's within the bounds of the maximum
+
+	mintBlockWithHeaders2 := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: &testTree.Dag.Tip,
+			Height:      2,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type: "MINT_TOKEN",
+					Payload: map[string]interface{}{
+						"name":   "testtoken",
+						"amount": 1,
+					},
+				},
+			},
+		},
+	}
+	_, err = testTree.ProcessBlock(mintBlockWithHeaders2)
+	assert.Nil(t, err)
+
+	mints, _, err = testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", "testtoken", "mints"})
+	assert.Nil(t, err)
+	assert.Len(t, mints.([]interface{}), 2)
+
+	// a third mint fails if it exceeds the max
+
+	mintBlockWithHeaders3 := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: &testTree.Dag.Tip,
+			Height:      2,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type: "MINT_TOKEN",
+					Payload: map[string]interface{}{
+						"name":   "testtoken",
+						"amount": 100,
+					},
+				},
+			},
+		},
+	}
+	_, err = testTree.ProcessBlock(mintBlockWithHeaders3)
+	assert.NotNil(t, err)
+
+	mints, _, err = testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", "testtoken", "mints"})
+	assert.Nil(t, err)
+	assert.Len(t, mints.([]interface{}), 2)
+}
+
 func TestEstablishTokenTransactionWithoutMonetaryPolicy(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	assert.Nil(t, err)
