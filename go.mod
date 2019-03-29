@@ -37,7 +37,7 @@ require (
 	github.com/prometheus/client_model v0.0.0-20190129233127-fd36f4220a90 // indirect
 	github.com/prometheus/common v0.2.0 // indirect
 	github.com/prometheus/procfs v0.0.0-20190319124303-40f3c57fb198 // indirect
-	github.com/quorumcontrol/chaintree v0.0.0-20190329090421-d5446d5a3a0d
+	github.com/quorumcontrol/chaintree v0.0.0-20190329104254-a21b0b73e0ee
 	github.com/quorumcontrol/storage v1.1.1
 	github.com/santhosh-tekuri/jsonschema v1.2.4 // indirect
 	github.com/stretchr/testify v1.3.0
