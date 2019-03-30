@@ -11,19 +11,18 @@ import (
 	"sync"
 	"time"
 
-	config "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-ipfs-config"
-	goprocess "github.com/ipsn/go-ipfs/gxlibs/github.com/jbenet/goprocess"
-	procctx "github.com/ipsn/go-ipfs/gxlibs/github.com/jbenet/goprocess/context"
-	periodicproc "github.com/ipsn/go-ipfs/gxlibs/github.com/jbenet/goprocess/periodic"
-	host "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-host"
-	dht "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-kad-dht"
-	lgbl "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-loggables"
-	inet "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-net"
-	peer "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-peer"
-	pstore "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-peerstore"
-	rhost "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p/p2p/host/routed"
-	ma "github.com/ipsn/go-ipfs/gxlibs/github.com/multiformats/go-multiaddr"
-	math2 "github.com/ipsn/go-ipfs/thirdparty/math2"
+	config "github.com/ipfs/go-ipfs-config"
+	goprocess "github.com/jbenet/goprocess"
+	procctx "github.com/jbenet/goprocess/context"
+	periodicproc "github.com/jbenet/goprocess/periodic"
+	host "github.com/libp2p/go-libp2p-host"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+	lgbl "github.com/libp2p/go-libp2p-loggables"
+	inet "github.com/libp2p/go-libp2p-net"
+	peer "github.com/libp2p/go-libp2p-peer"
+	pstore "github.com/libp2p/go-libp2p-peerstore"
+	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
+	ma "github.com/multiformats/go-multiaddr"
 )
 
 var (
@@ -258,7 +257,10 @@ func toPeerInfos(bpeers []config.BootstrapPeer) []pstore.PeerInfo {
 }
 
 func randomSubsetOfPeers(in []pstore.PeerInfo, max int) []pstore.PeerInfo {
-	n := math2.IntMin(max, len(in))
+	n := len(in)
+	if n > max {
+		n = max
+	}
 	var out []pstore.PeerInfo
 	for _, val := range rand.Perm(len(in)) {
 		out = append(out, in[val])

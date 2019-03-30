@@ -6,22 +6,23 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"time"
 
-	ds "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-datastore"
-	dsync "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-datastore/sync"
-	logging "github.com/ipsn/go-ipfs/gxlibs/github.com/ipfs/go-log"
-	"github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p"
-	circuit "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-circuit"
-	libp2pcrypto "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-crypto"
-	dht "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-kad-dht"
-	metrics "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-metrics"
-	net "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-net"
-	peer "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-peer"
-	protocol "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-protocol"
-	swarm "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-swarm"
-	rhost "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p/p2p/host/routed"
-	ma "github.com/ipsn/go-ipfs/gxlibs/github.com/multiformats/go-multiaddr"
+	ds "github.com/ipfs/go-datastore"
+	dsync "github.com/ipfs/go-datastore/sync"
+	logging "github.com/ipfs/go-log"
+	"github.com/libp2p/go-libp2p"
+	circuit "github.com/libp2p/go-libp2p-circuit"
+	libp2pcrypto "github.com/libp2p/go-libp2p-crypto"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+	metrics "github.com/libp2p/go-libp2p-metrics"
+	net "github.com/libp2p/go-libp2p-net"
+	peer "github.com/libp2p/go-libp2p-peer"
+	protocol "github.com/libp2p/go-libp2p-protocol"
+	swarm "github.com/libp2p/go-libp2p-swarm"
+	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
+	ma "github.com/multiformats/go-multiaddr"
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
@@ -87,6 +88,7 @@ func newLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port int, 
 	// Generate a key pair for this host. We will use it at least
 	// to obtain a valid host ID.
 	reporter := metrics.NewBandwidthCounter()
+
 	opts := []libp2p.Option{
 		libp2p.ListenAddrStrings(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port)),
 		libp2p.Identity(priv),
@@ -95,6 +97,20 @@ func newLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port int, 
 		libp2p.DefaultSecurity,
 		libp2p.NATPortMap(),
 		libp2p.BandwidthReporter(reporter),
+	}
+
+	if hostIP, ok := os.LookupEnv("TUPELO_PUBLIC_IP"); ok {
+		extMaddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/%d", hostIP, port))
+
+		if err != nil {
+			return nil, fmt.Errorf("Error creating multiaddress: %v", err)
+		}
+
+		addressFactory := func(addrs []ma.Multiaddr) []ma.Multiaddr {
+			return append(addrs, extMaddr)
+		}
+
+		opts = append(opts, libp2p.AddrsFactory(addressFactory))
 	}
 
 	if useRelay {

@@ -15,28 +15,29 @@ all: build
 $(generated): gossip3/messages/external.go
 	cd gossip3/messages && go generate
 
-vendor: Gopkg.toml Gopkg.lock
-	dep ensure
+$(FIRSTGOPATH)/bin/modvendor:
+	go get -u github.com/goware/modvendor
 
-build: vendor $(gosources) $(generated)
+vendor: go.mod go.sum $(FIRSTGOPATH)/bin/modvendor
+	go mod vendor
+	modvendor -copy="**/*.c **/*.h"
+
+build: $(gosources) $(generated) go.mod go.sum
 	go build ./...
 
-test: vendor $(gosources)
+test: $(gosources) $(generated) go.mod go.sum
 	go test ./...
 
 integration-test: docker-image
 	docker run -e TUPELO_BOOTSTRAP_NODES=/ip4/172.16.238.10/tcp/34001/ipfs/\
 16Uiu2HAm3TGSEKEjagcCojSJeaT5rypaeJMKejijvYSnAjviWwV5 --net tupelo_default \
-quorumcontrol/tupelo-go-client go test -tags=integration -timeout=2m ./...
+quorumcontrol/tupelo-go-client go test -mod=vendor -tags=integration -timeout=2m ./...
 
-docker-image: vendor Dockerfile .dockerignore
+docker-image: vendor $(gosources) $(generated) Dockerfile .dockerignore
 	docker build -t quorumcontrol/tupelo-go-client:$(TAG) .
 
-$(FIRSTGOPATH)/bin/modvendor:
-	go get -u github.com/goware/modvendor
-
 clean:
-	go clean
+	go clean ./...
 	rm -rf vendor
 
-.PHONY: all vendor build test integration-test docker-image clean
+.PHONY: all build test integration-test docker-image clean

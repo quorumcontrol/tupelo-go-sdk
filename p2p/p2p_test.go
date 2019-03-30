@@ -2,6 +2,8 @@ package p2p
 
 import (
 	"context"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -24,6 +26,26 @@ func libP2PNodeGenerator(ctx context.Context, t *testing.T) Node {
 
 func TestHost(t *testing.T) {
 	NodeTests(t, libP2PNodeGenerator)
+}
+
+func TestP2pBroadcastIp(t *testing.T) {
+	startEnv, startEnvOk := os.LookupEnv("TUPELO_PUBLIC_IP")
+	defer func() {
+		if startEnvOk {
+			os.Setenv("TUPELO_PUBLIC_IP", startEnv)
+		} else {
+			os.Unsetenv("TUPELO_PUBLIC_IP")
+		}
+	}()
+	os.Setenv("TUPELO_PUBLIC_IP", "1.1.1.1")
+	testHost := libP2PNodeGenerator(context.Background(), t)
+	found := false
+	for _, addr := range testHost.Addresses() {
+		if strings.HasPrefix(addr.String(), "/ip4/1.1.1.1/") {
+			found = true
+		}
+	}
+	require.True(t, found)
 }
 
 func TestUnmarshal31ByteKey(t *testing.T) {

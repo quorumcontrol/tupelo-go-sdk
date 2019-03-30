@@ -9,8 +9,8 @@ import (
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/AsynkronIT/protoactor-go/plugin"
-	pnet "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-net"
-	peer "github.com/ipsn/go-ipfs/gxlibs/github.com/libp2p/go-libp2p-peer"
+	pnet "github.com/libp2p/go-libp2p-net"
+	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/opentracing/opentracing-go"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/middleware"
@@ -23,8 +23,104 @@ import (
 const maxBridgeBackoffs = 10
 
 type internalStreamDied struct {
-	id  uint64
-	err error
+	stream *bridgeStream
+}
+
+type bridgeStream struct {
+	middleware.LogAwareHolder
+
+	host   p2p.Node
+	stream pnet.Stream
+	act    *actor.PID
+	ctx    gocontext.Context
+	cancel gocontext.CancelFunc
+}
+
+func (bs *bridgeStream) Stop() error {
+	if bs.cancel != nil {
+		bs.cancel()
+	}
+	return nil
+}
+
+func (bs *bridgeStream) SetupOutgoing(remoteAddress peer.ID) error {
+	stream, err := bs.host.NewStreamWithPeerID(bs.ctx, remoteAddress, p2pProtocol)
+	if err != nil {
+		return fmt.Errorf("error creating new stream: %v", err)
+	}
+	bs.stream = stream
+	return nil
+}
+
+func (bs *bridgeStream) HandleIncoming(s pnet.Stream) {
+	msgChan := make(chan WireDelivery)
+	bs.stream = s
+
+	// there is a separate go routine handling message reading/delivery
+	// because the DecodeMsg blocks until a message is received
+	// or the stream fails (causing an error)
+	// previously this was all done in a single for/select loop
+	// however the code actually blocks in the `default:` section
+	// and so would ignore the <-done until an error came in
+	// now this go routine handling message delivery will do the same thing,
+	// but will allow the loop below to actually hit the <-done and close the stream
+	// which will trigger this go routine to get an error in the DecodeMsg
+	// and allow everything to unblock.
+	go func() {
+		done := bs.ctx.Done()
+		reader := msgp.NewReader(bs.stream)
+
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				var wd WireDelivery
+				err := wd.DecodeMsg(reader)
+				if err != nil {
+					actor.EmptyRootContext.Send(bs.act, internalStreamDied{stream: bs})
+					return
+				}
+				msgChan <- wd
+			}
+		}
+	}()
+
+	go func() {
+		done := bs.ctx.Done()
+		for {
+			select {
+			case <-done:
+				bs.Log.Debugw("resetting stream due to done")
+				if err := bs.stream.Close(); err != nil {
+					err := bs.stream.Reset()
+					if err != nil {
+						bs.Log.Errorw("error closing stream", "err", err)
+					}
+				}
+
+				return
+			case wd := <-msgChan:
+				actor.EmptyRootContext.Send(bs.act, &wd)
+			}
+		}
+	}()
+}
+
+func newBridgeStream(ctx gocontext.Context, b *bridge, act *actor.PID) *bridgeStream {
+	if ctx == nil {
+		ctx = gocontext.Background()
+	}
+	ctx, cancel := gocontext.WithCancel(ctx)
+	return &bridgeStream{
+		LogAwareHolder: middleware.LogAwareHolder{
+			Log: b.Log.Named("bridge-stream"),
+		},
+		host:   b.host,
+		act:    act,
+		ctx:    ctx,
+		cancel: cancel,
+	}
 }
 
 type bridge struct {
@@ -34,10 +130,9 @@ type bridge struct {
 
 	remoteAddress peer.ID
 
-	streamID     uint64
-	stream       pnet.Stream
-	streamCtx    gocontext.Context
-	streamCancel gocontext.CancelFunc
+	incomingStream *bridgeStream
+	outgoingStream *bridgeStream
+
 	backoffCount int
 
 	behavior actor.Behavior
@@ -76,10 +171,10 @@ func (b *bridge) NormalState(context actor.Context) {
 	case *actor.ReceiveTimeout:
 		b.Log.Infow("terminating stream due to lack of activity")
 		b.behavior.Become(b.TerminatedState)
-		b.clearStream(b.streamID)
+		b.clearStreams()
 		context.Self().Poison()
 	case *actor.Stopped:
-		b.clearStream(b.streamID)
+		b.clearStreams()
 	case pnet.Stream:
 		context.SetReceiveTimeout(bridgeReceiveTimeout)
 		b.handleIncomingStream(context, msg)
@@ -97,8 +192,10 @@ func (b *bridge) NormalState(context actor.Context) {
 
 func (b *bridge) TerminatedState(context actor.Context) {
 	switch msg := context.Message().(type) {
-	case *actor.Stopping, *actor.Stopped:
+	case *actor.Stopping:
 		// do nothing
+	case *actor.Stopped:
+		b.clearStreams()
 	default:
 		b.Log.Errorw("received message in terminated state", "type", reflect.TypeOf(msg).String(), "msg", msg)
 	}
@@ -110,9 +207,14 @@ func (b *bridge) handleIncomingStream(context actor.Context, stream pnet.Stream)
 	if remote != b.remoteAddress {
 		b.Log.Errorw("ignoring stream from other peer", "peer", remote)
 	}
-	b.clearStream(b.streamID)
-	ctx, cancel := gocontext.WithCancel(gocontext.Background())
-	b.setupNewStream(ctx, cancel, context, stream)
+	if b.incomingStream != nil {
+		err := b.incomingStream.Stop()
+		if err != nil {
+			b.Log.Errorw("error stopping incoming stream", "err", err)
+		}
+	}
+	b.incomingStream = newBridgeStream(nil, b, context.Self())
+	b.incomingStream.HandleIncoming(stream)
 }
 
 func (b *bridge) handleIncomingWireDelivery(context actor.Context, wd *WireDelivery) {
@@ -135,14 +237,12 @@ func (b *bridge) handleIncomingWireDelivery(context actor.Context, wd *WireDeliv
 		}
 	}
 
-	// b.Log.Debugw("received", "target", wd.Target, "sender", wd.Sender, "msgHash", crypto.Keccak256(wd.Message))
 	var sender *actor.PID
 	target := messages.FromActorPid(wd.Target)
 	if wd.Sender != nil {
 		sender = messages.FromActorPid(wd.Sender)
 		sender.Address = types.RoutableAddress(sender.Address).Swap().String()
 	}
-	// switch the target to the local actor system
 	target.Address = actor.ProcessRegistry.Address
 
 	dest, ok := msg.(messages.DestinationSettable)
@@ -178,9 +278,11 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDeliv
 	}
 	defer sp.Finish()
 
-	if b.stream == nil {
+	if b.outgoingStream == nil {
 		sp.SetTag("existing-stream", false)
-		err := b.handleCreateNewStream(context)
+		b.Log.Debugw("creating new stream from write operation")
+		bs := newBridgeStream(gocontext.Background(), b, context.Self())
+		err := bs.SetupOutgoing(b.remoteAddress)
 		if err != nil {
 			b.Log.Warnw("error opening stream", "err", err)
 			// back off dialing if we have trouble with the stream
@@ -199,6 +301,7 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDeliv
 			return
 		}
 		sp.SetTag("new-stream", true)
+		b.outgoingStream = bs
 	}
 	// b.Log.Debugw("writing", "target", wd.Target, "sender", wd.Sender, "msgHash", crypto.Keccak256(wd.Message))
 	if wd.Sender != nil && wd.Sender.Address == actor.ProcessRegistry.Address {
@@ -207,12 +310,13 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDeliv
 
 	encSpan := opentracing.StartSpan("bridge-encodeMsg", opentracing.ChildOf(sp.Context()))
 	defer encSpan.Finish()
-	err := msgp.Encode(b.stream, wd)
+	err := msgp.Encode(b.outgoingStream.stream, wd)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.SetTag("error-encoding-message", err)
 
-		b.clearStream(b.streamID)
+		b.outgoingStream.Stop()
+		b.outgoingStream = nil
 		context.Forward(context.Self())
 
 		return
@@ -222,99 +326,18 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDeliv
 }
 
 func (b *bridge) handleStreamDied(context actor.Context, msg *internalStreamDied) {
-	b.Log.Infow("stream died", "err", msg.err)
-	b.clearStream(msg.id)
+	msg.stream.Stop()
+	b.incomingStream = nil
 }
 
-func (b *bridge) clearStream(id uint64) {
-	if b.streamID != id {
-		b.Log.Errorw("ids did not match", "expecting", id, "actual", b.streamID)
-		return
+func (b *bridge) clearStreams() {
+	if b.outgoingStream != nil {
+		b.outgoingStream.Stop()
+		b.outgoingStream = nil
 	}
-	if b.stream != nil {
-		b.stream.Reset()
-	}
-	if b.streamCancel != nil {
-		b.streamCancel()
-	}
-	b.stream = nil
-	b.streamCtx = nil
-}
-
-func (b *bridge) handleCreateNewStream(context actor.Context) error {
-	if b.stream != nil {
-		b.Log.Infow("not creating new stream, already exists")
-		return nil
-	}
-	b.Log.Debugw("create new stream")
-
-	ctx, cancel := gocontext.WithCancel(gocontext.Background())
-
-	stream, err := b.host.NewStreamWithPeerID(ctx, b.remoteAddress, p2pProtocol)
-	if err != nil {
-		b.clearStream(b.streamID)
-		cancel()
-		return err
+	if b.incomingStream != nil {
+		b.incomingStream.Stop()
+		b.incomingStream = nil
 	}
 
-	b.setupNewStream(ctx, cancel, context, stream)
-	return nil
-}
-
-func (b *bridge) setupNewStream(ctx gocontext.Context, cancelFunc gocontext.CancelFunc, context actor.Context, stream pnet.Stream) {
-	b.stream = stream
-	b.streamCtx = ctx
-	b.streamCancel = cancelFunc
-	b.streamID++
-	// b.writer = msgp.NewWriter(stream)
-	msgChan := make(chan WireDelivery)
-
-	self := context.Self()
-
-	// there is a separate go routine handling message reading/delivery
-	// because the DecodeMsg blocks until a message is received
-	// or the stream fails (causing an error)
-	// previously this was all done in a single for/select loop
-	// however the code actually blocks in the `default:` section
-	// and so would ignore the <-done until an error came in
-	// now this go routine handling message delivery will do the same thing,
-	// but will allow the loop below to actually hit the <-done and close the stream
-	// which will trigger this go routine to get an error in the DecodeMsg
-	// and allow everything to unblock.
-	go func() {
-		done := ctx.Done()
-		reader := msgp.NewReader(stream)
-
-		for {
-			select {
-			case <-done:
-				return
-			default:
-				var wd WireDelivery
-				err := wd.DecodeMsg(reader)
-				if err != nil {
-					actor.EmptyRootContext.Send(self, internalStreamDied{id: b.streamID, err: err})
-					return
-				}
-				msgChan <- wd
-			}
-		}
-	}()
-
-	go func() {
-		done := ctx.Done()
-		for {
-			select {
-			case <-done:
-				b.Log.Debugw("resetting stream due to done")
-				err := stream.Reset()
-				if err != nil {
-					b.Log.Errorw("error closing stream", "err", err)
-				}
-				return
-			case wd := <-msgChan:
-				actor.EmptyRootContext.Send(self, &wd)
-			}
-		}
-	}()
 }
