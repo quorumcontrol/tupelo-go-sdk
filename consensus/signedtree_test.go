@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/nodestore"
+	"github.com/quorumcontrol/messages/transactions"
 	"github.com/quorumcontrol/storage"
 	"github.com/stretchr/testify/require"
 )
@@ -23,7 +24,7 @@ func TestSignedChainTree_IsGenesis(t *testing.T) {
 	unsignedBlock := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip: nil,
-			Transactions: []*chaintree.Transaction{
+			Transactions: []*transactions.Transaction{
 				{
 					Type: TransactionTypeSetData,
 					Payload: &SetDataPayload{

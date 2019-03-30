@@ -57,7 +57,7 @@ func DecodePath(path string) ([]string, error) {
 }
 
 // SetDataTransaction just sets a path in tree/data to arbitrary data.
-func SetDataTransaction(tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
+func SetDataTransaction(tree *dag.Dag, transaction *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
 	payload := &transactions.SetDataPayload{}
 	err := typecaster.ToType(transaction.Payload, payload)
 	if err != nil {
@@ -86,7 +86,7 @@ func SetDataTransaction(tree *dag.Dag, transaction *chaintree.Transaction) (newT
 }
 
 // SetOwnershipTransaction changes the ownership of a tree by adding a public key array to /_tupelo/authentications
-func SetOwnershipTransaction(tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
+func SetOwnershipTransaction(tree *dag.Dag, transaction *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
 	payload := &transactions.SetOwnershipPayload{}
 	err := typecaster.ToType(transaction.Payload, payload)
 	if err != nil {
@@ -113,7 +113,7 @@ type Token struct {
 	Receives       *cid.Cid
 }
 
-func EstablishTokenTransaction(tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
+func EstablishTokenTransaction(tree *dag.Dag, transaction *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
 	payload := &transactions.EstablishTokenPayload{}
 	err := typecaster.ToType(transaction.Payload, payload)
 
@@ -152,7 +152,7 @@ type TokenMint struct {
 	Amount uint64
 }
 
-func MintTokenTransaction(tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
+func MintTokenTransaction(tree *dag.Dag, transaction *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
 	payload := &transactions.MintTokenPayload{}
 	err := typecaster.ToType(transaction.Payload, payload)
 
@@ -252,7 +252,7 @@ type StakePayload struct {
 
 // THIS IS A pre-ALPHA TRANSACTION AND NO RULES ARE ENFORCED! Anyone can stake and join a group with no consequences.
 // additionally, it only allows staking a single group at the moment
-func StakeTransaction(tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
+func StakeTransaction(tree *dag.Dag, transaction *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
 	payload := &StakePayload{}
 	err := typecaster.ToType(transaction.Payload, payload)
 	if err != nil {

@@ -2,13 +2,16 @@ package testhelpers
 
 import (
 	"crypto/ecdsa"
+	"fmt"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
+	"github.com/quorumcontrol/messages/transactions"
 	"github.com/quorumcontrol/storage"
 	"github.com/quorumcontrol/tupelo-go-client/consensus"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
@@ -30,18 +33,24 @@ func NewValidTransactionWithPathAndValue(t testing.TB, treeKey *ecdsa.PrivateKey
 	sw := safewrap.SafeWrap{}
 
 	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(treeKey.PublicKey).String())
+	payload := transactions.SetDataPayload{
+		Path:  path,
+		Value: []byte(value),
+	}
+
+	marshalledPayload, err := ptypes.MarshalAny(&payload)
+	if err != nil {
+		panic(fmt.Sprintf("Error marshalling payload: %v", err))
+	}
 
 	unsignedBlock := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip: nil,
 			Height:      0,
-			Transactions: []*chaintree.Transaction{
+			Transactions: []*transactions.Transaction{
 				{
-					Type: "SET_DATA",
-					Payload: map[string]string{
-						"path":  path,
-						"value": value,
-					},
+					Type:    transactions.TransactionType_SetData,
+					Payload: marshalledPayload,
 				},
 			},
 		},

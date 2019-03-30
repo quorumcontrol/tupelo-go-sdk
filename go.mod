@@ -10,6 +10,7 @@ require (
 	github.com/dedis/kyber v0.0.0-20190121102031-5cc64601919b
 	github.com/elastic/go-sysinfo v0.0.0-20190107121835-59ef8c0eae46 // indirect
 	github.com/ethereum/go-ethereum v1.8.23
+	github.com/golang/protobuf v1.3.1
 	github.com/huin/goupnp v1.0.0 // indirect
 	github.com/ipfs/go-cid v0.0.1
 	github.com/ipfs/go-datastore v0.0.2
@@ -50,4 +51,5 @@ require (
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1
+	google.golang.org/genproto v0.0.0-20180831171423-11092d34479b // indirect
 )

@@ -5,9 +5,10 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/nodestore"
+	"github.com/quorumcontrol/messages/transactions"
 	"github.com/quorumcontrol/storage"
 )
 
@@ -19,12 +20,12 @@ const (
 	TransactionTypeStake          = "STAKE"
 )
 
-var DefaultTransactors = map[string]chaintree.TransactorFunc{
-	TransactionTypeEstablishToken: EstablishTokenTransaction,
-	TransactionTypeMintToken:      MintTokenTransaction,
-	TransactionTypeSetData:        SetDataTransaction,
-	TransactionTypeSetOwnership:   SetOwnershipTransaction,
-	TransactionTypeStake:          StakeTransaction,
+var DefaultTransactors = map[transactions.TransactionType]chaintree.TransactorFunc{
+	transactions.TransactionType_EstablishToken: EstablishTokenTransaction,
+	transactions.TransactionType_MintToken:      MintTokenTransaction,
+	transactions.TransactionType_SetData:        SetDataTransaction,
+	transactions.TransactionType_SetOwnership:   SetOwnershipTransaction,
+	transactions.TransactionType_Stake:          StakeTransaction,
 }
 
 type SignedChainTree struct {

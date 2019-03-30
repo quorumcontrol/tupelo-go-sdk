@@ -8,6 +8,7 @@ import (
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/nodestore"
+	"github.com/quorumcontrol/messages/transactions"
 	"github.com/quorumcontrol/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -24,7 +25,7 @@ func TestEstablishTokenTransactionWithMaximum(t *testing.T) {
 	blockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip: nil,
-			Transactions: []*chaintree.Transaction{
+			Transactions: []*transactions.Transaction{
 				{
 					Type: "ESTABLISH_TOKEN",
 					Payload: map[string]interface{}{
@@ -72,7 +73,7 @@ func TestMintToken(t *testing.T) {
 	blockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip: nil,
-			Transactions: []*chaintree.Transaction{
+			Transactions: []*transactions.Transaction{
 				{
 					Type: "ESTABLISH_TOKEN",
 					Payload: map[string]interface{}{
@@ -96,7 +97,7 @@ func TestMintToken(t *testing.T) {
 		Block: chaintree.Block{
 			PreviousTip: &testTree.Dag.Tip,
 			Height:      1,
-			Transactions: []*chaintree.Transaction{
+			Transactions: []*transactions.Transaction{
 				{
 					Type: "MINT_TOKEN",
 					Payload: map[string]interface{}{
@@ -120,7 +121,7 @@ func TestMintToken(t *testing.T) {
 		Block: chaintree.Block{
 			PreviousTip: &testTree.Dag.Tip,
 			Height:      2,
-			Transactions: []*chaintree.Transaction{
+			Transactions: []*transactions.Transaction{
 				{
 					Type: "MINT_TOKEN",
 					Payload: map[string]interface{}{
@@ -144,7 +145,7 @@ func TestMintToken(t *testing.T) {
 		Block: chaintree.Block{
 			PreviousTip: &testTree.Dag.Tip,
 			Height:      2,
-			Transactions: []*chaintree.Transaction{
+			Transactions: []*transactions.Transaction{
 				{
 					Type: "MINT_TOKEN",
 					Payload: map[string]interface{}{
@@ -174,7 +175,7 @@ func TestEstablishTokenTransactionWithoutMonetaryPolicy(t *testing.T) {
 	blockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip: nil,
-			Transactions: []*chaintree.Transaction{
+			Transactions: []*transactions.Transaction{
 				{
 					Type: "ESTABLISH_TOKEN",
 					Payload: map[string]interface{}{
@@ -220,7 +221,7 @@ func TestSetData(t *testing.T) {
 	unsignedBlock := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip: nil,
-			Transactions: []*chaintree.Transaction{
+			Transactions: []*transactions.Transaction{
 				{
 					Type: "SET_DATA",
 					Payload: map[string]string{
@@ -278,7 +279,7 @@ func TestSetData(t *testing.T) {
 	unsignedBlock = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip: nil,
-			Transactions: []*chaintree.Transaction{
+			Transactions: []*transactions.Transaction{
 				{
 					Type: "SET_DATA",
 					Payload: map[string]string{
@@ -323,7 +324,7 @@ func TestSetOwnership(t *testing.T) {
 	unsignedBlock := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip: nil,
-			Transactions: []*chaintree.Transaction{
+			Transactions: []*transactions.Transaction{
 				{
 					Type: "SET_DATA",
 					Payload: map[string]string{
@@ -352,7 +353,7 @@ func TestSetOwnership(t *testing.T) {
 	unsignedBlock = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip: nil,
-			Transactions: []*chaintree.Transaction{
+			Transactions: []*transactions.Transaction{
 				{
 					Type: "SET_OWNERSHIP",
 					Payload: &SetOwnershipPayload{

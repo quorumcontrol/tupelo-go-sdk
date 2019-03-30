@@ -5,6 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/quorumcontrol/chaintree/chaintree"
+	"github.com/quorumcontrol/messages/transactions"
 	"github.com/quorumcontrol/tupelo-go-client/bls"
 	"github.com/stretchr/testify/assert"
 )
@@ -16,7 +17,7 @@ func TestIsBlockSignedBy(t *testing.T) {
 	blockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip: nil,
-			Transactions: []*chaintree.Transaction{
+			Transactions: []*transactions.Transaction{
 				{
 					Type: "SET_DATA",
 					Payload: map[string]string{
