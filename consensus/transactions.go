@@ -150,109 +150,31 @@ type EstablishTokenPayload struct {
 	MonetaryPolicy TokenMonetaryPolicy
 }
 
-var transactionTypes = map[string][]string{
-	"credit": {TokenMintLabel, TokenReceiveLabel},
-	"debit":  {TokenSendLabel},
-}
-
-func PathForToken(tokenName string) ([]string, chaintree.CodedError) {
-	rootTokenPath, err := DecodePath(TreePathForTokens)
-	if err != nil {
-		return nil, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error, unable to decode tree path for tokens: %v", err)}
-	}
-	return append(rootTokenPath, tokenName), nil
-}
-
-func TokenTransactionCidsForType(tree *dag.Dag, tokenPath []string, transactionType string) ([]cid.Cid, chaintree.CodedError) {
-	uncastCids, _, err := tree.Resolve(append(tokenPath, transactionType))
-	if err != nil {
-		return nil, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error fetching %s at %v: %v", transactionType, tokenPath, err)}
-	}
-
-	var cids []cid.Cid
-
-	if uncastCids == nil {
-		cids = make([]cid.Cid, 0)
-	} else {
-		cids = make([]cid.Cid, len(uncastCids.([]interface{})))
-		for k, c := range uncastCids.([]interface{}) {
-			cids[k] = c.(cid.Cid)
-		}
-	}
-
-	return cids, nil
-}
-
-func tokenTransactionCids(tree *dag.Dag, tokenPath []string) (map[string][]cid.Cid, chaintree.CodedError) {
-	allCids := make(map[string][]cid.Cid)
-
-	for _, txTypes := range transactionTypes {
-		for _, transactionType := range txTypes {
-			cids, err := TokenTransactionCidsForType(tree, tokenPath, transactionType)
-			if err != nil {
-				return nil, err
-			}
-			allCids[transactionType] = cids
-		}
-	}
-
-	return allCids, nil
-}
-
 func EstablishTokenTransaction(tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
 	payload := &EstablishTokenPayload{}
 	err := typecaster.ToType(transaction.Payload, payload)
-
 	if err != nil {
-		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error setting: %v", err)}
+		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error typecasting payload: %v", err)}
 	}
 
-	tokenPath, err := PathForToken(payload.Name)
+	tokenName := payload.Name
+
+	ledger := NewTreeLedger(tree, tokenName)
+
+	tokenExists, err := ledger.TokenExists()
 	if err != nil {
-		return nil, false, err.(chaintree.CodedError)
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error checking for existence of token \"%s\"", tokenName)}
+	}
+	if tokenExists {
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error, token \"%s\" already exists", tokenName)}
 	}
 
-	existingToken, _, err := tree.Resolve(tokenPath)
+	newTree, err = ledger.CreateToken(payload.MonetaryPolicy)
 	if err != nil {
-		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error attempting to resolve %v: %v", tokenPath, err)}
-	}
-	if existingToken != nil {
-		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error, token at path %v already exists", tokenPath)}
-	}
-
-	newTree, err = tree.SetAsLink(tokenPath, &Token{})
-	if err != nil {
-		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error setting: %v", err)}
-	}
-
-	newTree, err = newTree.SetAsLink(append(tokenPath, "monetaryPolicy"), payload.MonetaryPolicy)
-	if err != nil {
-		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error setting: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: err.Error()}
 	}
 
 	return newTree, true, nil
-}
-
-func sumTokenTransactions(tree *dag.Dag, cids []cid.Cid) (uint64, chaintree.CodedError) {
-	var balance uint64
-
-	for _, c := range cids {
-		node, err := tree.Get(c)
-
-		if err != nil {
-			return 0, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error fetching node %v: %v", c, err)}
-		}
-
-		amount, _, err := node.Resolve([]string{"amount"})
-
-		if err != nil {
-			return 0, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error fetching amount from %v: %v", node, err)}
-		}
-
-		balance = balance + amount.(uint64)
-	}
-
-	return balance, nil
 }
 
 type MintTokenPayload struct {
@@ -267,62 +189,16 @@ type TokenMint struct {
 func MintTokenTransaction(tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
 	payload := &MintTokenPayload{}
 	err := typecaster.ToType(transaction.Payload, payload)
-
 	if err != nil {
-		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error setting: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error typecasting payload: %v", err)}
 	}
 
-	if payload.Amount <= 0 {
-		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: "error, can not mint an amount < 0"}
-	}
+	tokenName := payload.Name
+	ledger := NewTreeLedger(tree, tokenName)
 
-	tokenPath, err := PathForToken(payload.Name)
+	newTree, err = ledger.MintToken(payload.Amount)
 	if err != nil {
-		return nil, false, err.(chaintree.CodedError)
-	}
-
-	uncastMonetaryPolicy, _, err := tree.Resolve(append(tokenPath, "monetaryPolicy"))
-	if err != nil {
-		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error fetch token at path %v: %v", tokenPath, err)}
-	}
-	if uncastMonetaryPolicy == nil {
-		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error, token at path %v does not exist, must MINT_TOKEN first", tokenPath)}
-	}
-
-	monetaryPolicy := &TokenMonetaryPolicy{}
-	err = typecaster.ToType(uncastMonetaryPolicy, monetaryPolicy)
-
-	if err != nil {
-		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error setting: %v", err)}
-	}
-
-	mintCids, err := TokenTransactionCidsForType(tree, tokenPath, TokenMintLabel)
-	if err != nil {
-		return nil, false, err.(chaintree.CodedError)
-	}
-
-	if monetaryPolicy.Maximum > 0 {
-		currentMintedTotal, err := sumTokenTransactions(tree, mintCids)
-		if err != nil {
-			return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error summing token mints: %v", err)}
-		}
-		if (currentMintedTotal + payload.Amount) > monetaryPolicy.Maximum {
-			return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("new mint would violate monetaryPolicy of maximum: %v", monetaryPolicy.Maximum)}
-		}
-	}
-
-	newMint, err := tree.CreateNode(&TokenMint{
-		Amount: payload.Amount,
-	})
-	if err != nil {
-		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("could not create new node: %v", err)}
-	}
-
-	mintCids = append(mintCids, newMint.Cid())
-
-	newTree, err = tree.SetAsLink(append(tokenPath, TokenMintLabel), mintCids)
-	if err != nil {
-		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error setting: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error minting token: %v", err)}
 	}
 
 	return newTree, true, nil
@@ -341,73 +217,20 @@ type TokenSend struct {
 	Destination string
 }
 
-func calculateTokenBalance(tree *dag.Dag, transactionCids map[string][]cid.Cid) (uint64, chaintree.CodedError) {
-	var balance uint64
-
-	for _, t := range transactionTypes["credit"] {
-		sum, err := sumTokenTransactions(tree, transactionCids[t])
-		if err != nil {
-			return 0, err
-		}
-		balance += sum
-	}
-
-	for _, t := range transactionTypes["debit"] {
-		sum, err := sumTokenTransactions(tree, transactionCids[t])
-		if err != nil {
-			return 0, err
-		}
-		balance -= sum
-	}
-
-	return balance, nil
-}
-
 func SendTokenTransaction(tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
 	payload := &SendTokenPayload{}
 	err := typecaster.ToType(transaction.Payload, payload)
-
-	// TODO: verify recipient is chaintree address?
-
 	if err != nil {
-		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error setting: %v", err)}
+		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error typecasting payload: %v", err)}
 	}
 
-	if payload.Amount <= 0 {
-		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: "error, must send an amount greater than 0"}
-	}
+	tokenName := payload.Name
 
-	tokenPath, err := PathForToken(payload.Name)
+	ledger := NewTreeLedger(tree, tokenName)
+
+	newTree, err = ledger.SendToken(payload.Id, payload.Destination, payload.Amount)
 	if err != nil {
-		return nil, false, err.(chaintree.CodedError)
-	}
-
-	tokenTxCids, err := tokenTransactionCids(tree, tokenPath)
-
-	availableBalance, err := calculateTokenBalance(tree, tokenTxCids)
-	if err != nil {
-		return nil, false, err.(chaintree.CodedError)
-	}
-
-	if availableBalance < payload.Amount {
-		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("can not send token, balance of %d is too low to send %d", availableBalance, payload.Amount)}
-	}
-
-	newSend, err := tree.CreateNode(&TokenSend{
-		Id:          payload.Id,
-		Amount:      payload.Amount,
-		Destination: payload.Destination,
-	})
-	if err != nil {
-		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("could not create new node: %v", err)}
-	}
-
-	sentCids := tokenTxCids[TokenSendLabel]
-	sentCids = append(sentCids, newSend.Cid())
-
-	newTree, err = tree.SetAsLink(append(tokenPath, TokenSendLabel), sentCids)
-	if err != nil {
-		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error setting: %v", err)}
+		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error sending token: %v", err)}
 	}
 
 	return newTree, true, nil
