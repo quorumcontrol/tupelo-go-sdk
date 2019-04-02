@@ -214,10 +214,6 @@ func SignBlock(blockWithHeaders *chaintree.BlockWithHeaders, key *ecdsa.PrivateK
 
 	blockWithHeaders.Headers = marshaledHeaders
 
-	if err != nil {
-		return nil, fmt.Errorf("error getting jsonish")
-	}
-
 	return blockWithHeaders, nil
 }
 

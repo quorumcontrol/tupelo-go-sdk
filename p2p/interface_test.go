@@ -58,7 +58,8 @@ func SendTest(t *testing.T, generator nodeGenerator) {
 		msgs <- data
 	})
 
-	nodeA.Send(nodeB.PublicKey(), "test/protocol", []byte("hi"))
+	err = nodeA.Send(nodeB.PublicKey(), "test/protocol", []byte("hi"))
+	require.Nil(t, err)
 
 	received := <-msgs
 	assert.Len(t, received, 2)

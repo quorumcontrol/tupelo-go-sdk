@@ -54,15 +54,18 @@ func TestRemoteMessageSending(t *testing.T) {
 
 	host1, err := p2p.NewLibP2PHost(ctx, ts.EcdsaKeys[0], 0)
 	require.Nil(t, err)
-	host1.Bootstrap(testnotarygroup.BootstrapAddresses(bootstrap))
+	_, err = host1.Bootstrap(testnotarygroup.BootstrapAddresses(bootstrap))
+	require.Nil(t, err)
 
 	host2, err := p2p.NewLibP2PHost(ctx, ts.EcdsaKeys[1], 0)
 	require.Nil(t, err)
-	host2.Bootstrap(testnotarygroup.BootstrapAddresses(bootstrap))
+	_, err = host2.Bootstrap(testnotarygroup.BootstrapAddresses(bootstrap))
+	require.Nil(t, err)
 
 	host3, err := p2p.NewLibP2PHost(ctx, ts.EcdsaKeys[2], 0)
 	require.Nil(t, err)
-	host3.Bootstrap(testnotarygroup.BootstrapAddresses(bootstrap))
+	_, err = host3.Bootstrap(testnotarygroup.BootstrapAddresses(bootstrap))
+	require.Nil(t, err)
 
 	err = host1.WaitForBootstrap(1, 1*time.Second)
 	require.Nil(t, err)
@@ -130,7 +133,8 @@ func TestRemoteMessageSending(t *testing.T) {
 
 		host4, err := p2p.NewLibP2PHost(newCtx, ts.EcdsaKeys[3], 0)
 		require.Nil(t, err)
-		host4.Bootstrap(testnotarygroup.BootstrapAddresses(bootstrap))
+		_, err = host4.Bootstrap(testnotarygroup.BootstrapAddresses(bootstrap))
+		require.Nil(t, err)
 		err = host4.WaitForBootstrap(1, 1*time.Second)
 		require.Nil(t, err)
 		host4Ping, err := rootContext.SpawnNamed(actor.PropsFromFunc(pingFunc), "ping-host4")

@@ -213,7 +213,7 @@ func (b *bridge) handleIncomingStream(context actor.Context, stream pnet.Stream)
 			b.Log.Errorw("error stopping incoming stream", "err", err)
 		}
 	}
-	b.incomingStream = newBridgeStream(nil, b, context.Self())
+	b.incomingStream = newBridgeStream(gocontext.TODO(), b, context.Self())
 	b.incomingStream.HandleIncoming(stream)
 }
 
@@ -315,7 +315,9 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDeliv
 		sp.SetTag("error", true)
 		sp.SetTag("error-encoding-message", err)
 
-		b.outgoingStream.Stop()
+		if err = b.outgoingStream.Stop(); err != nil {
+			b.Log.Warnw("failed to stop outgoing stream", "err", err)
+		}
 		b.outgoingStream = nil
 		context.Forward(context.Self())
 
@@ -326,17 +328,23 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDeliv
 }
 
 func (b *bridge) handleStreamDied(context actor.Context, msg *internalStreamDied) {
-	msg.stream.Stop()
+	if err := msg.stream.Stop(); err != nil {
+		b.Log.Warnw("failed to stop stream", "err", err)
+	}
 	b.incomingStream = nil
 }
 
 func (b *bridge) clearStreams() {
 	if b.outgoingStream != nil {
-		b.outgoingStream.Stop()
+		if err := b.outgoingStream.Stop(); err != nil {
+			b.Log.Warnw("failed to stop outgoing stream", "err", err)
+		}
 		b.outgoingStream = nil
 	}
 	if b.incomingStream != nil {
-		b.incomingStream.Stop()
+		if err := b.incomingStream.Stop(); err != nil {
+			b.Log.Warnw("failed to stop incoming stream", "err", err)
+		}
 		b.incomingStream = nil
 	}
 
