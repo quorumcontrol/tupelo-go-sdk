@@ -170,6 +170,10 @@ func (l TreeLedger) CreateToken(monetaryPolicy TokenMonetaryPolicy) (*dag.Dag, e
 	return newTree, nil
 }
 
+type TokenMint struct {
+	Amount uint64
+}
+
 func (l TreeLedger) MintToken(amount uint64) (*dag.Dag, error) {
 	if amount == 0 {
 		return nil, fmt.Errorf("error, must mint amount greater than 0")
@@ -225,6 +229,12 @@ func (l TreeLedger) MintToken(amount uint64) (*dag.Dag, error) {
 	}
 
 	return newTree, nil
+}
+
+type TokenSend struct {
+	Id          string
+	Amount      uint64
+	Destination string
 }
 
 func (l TreeLedger) SendToken(txId, destination string, amount uint64) (*dag.Dag, error) {

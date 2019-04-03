@@ -182,10 +182,6 @@ type MintTokenPayload struct {
 	Amount uint64
 }
 
-type TokenMint struct {
-	Amount uint64
-}
-
 func MintTokenTransaction(tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
 	payload := &MintTokenPayload{}
 	err := typecaster.ToType(transaction.Payload, payload)
@@ -207,12 +203,6 @@ func MintTokenTransaction(tree *dag.Dag, transaction *chaintree.Transaction) (ne
 type SendTokenPayload struct {
 	Id          string
 	Name        string
-	Amount      uint64
-	Destination string
-}
-
-type TokenSend struct {
-	Id          string
 	Amount      uint64
 	Destination string
 }
