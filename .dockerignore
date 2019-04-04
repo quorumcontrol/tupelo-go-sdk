@@ -3,3 +3,4 @@ Dockerfile
 .git/
 .tupelo-integration.yml
 Makefile
+.circleci/
