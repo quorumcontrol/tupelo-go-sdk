@@ -2,11 +2,9 @@ package testhelpers
 
 import (
 	"crypto/ecdsa"
-	"fmt"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/nodestore"
@@ -33,14 +31,9 @@ func NewValidTransactionWithPathAndValue(t testing.TB, treeKey *ecdsa.PrivateKey
 	sw := safewrap.SafeWrap{}
 
 	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(treeKey.PublicKey).String())
-	payload := transactions.SetDataPayload{
+	payload := &transactions.SetDataPayload{
 		Path:  path,
 		Value: []byte(value),
-	}
-
-	marshalledPayload, err := ptypes.MarshalAny(&payload)
-	if err != nil {
-		panic(fmt.Sprintf("Error marshalling payload: %v", err))
 	}
 
 	unsignedBlock := &chaintree.BlockWithHeaders{
@@ -50,7 +43,7 @@ func NewValidTransactionWithPathAndValue(t testing.TB, treeKey *ecdsa.PrivateKey
 			Transactions: []*transactions.Transaction{
 				{
 					Type:    transactions.TransactionType_SetData,
-					Payload: marshalledPayload,
+					Payload: &transactions.Transaction_SetDataPayload{SetDataPayload: payload},
 				},
 			},
 		},
@@ -65,7 +58,8 @@ func NewValidTransactionWithPathAndValue(t testing.TB, treeKey *ecdsa.PrivateKey
 	blockWithHeaders, err := consensus.SignBlock(unsignedBlock, treeKey)
 	require.Nil(t, err)
 
-	testTree.ProcessBlock(blockWithHeaders)
+	_, err = testTree.ProcessBlock(blockWithHeaders)
+	require.Nil(t, err)
 	nodes := DagToByteNodes(t, emptyTree)
 
 	bits := sw.WrapObject(blockWithHeaders).RawData()

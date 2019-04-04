@@ -238,7 +238,8 @@ func TestSetData(t *testing.T) {
 	blockWithHeaders, err := SignBlock(unsignedBlock, treeKey)
 	require.Nil(t, err)
 
-	testTree.ProcessBlock(blockWithHeaders)
+	_, err = testTree.ProcessBlock(blockWithHeaders)
+	require.Nil(t, err)
 
 	// nodes, err := testTree.Dag.Nodes()
 	// require.Nil(t, err)
@@ -266,6 +267,7 @@ func TestSetData(t *testing.T) {
 
 	// assert the thing being linked to is a map with actual set data
 	dataTree, err := testTree.Dag.Get(dataCid.(cid.Cid))
+	assert.Nil(t, err)
 	dataMap := make(map[string]interface{})
 	err = cbornode.DecodeInto(dataTree.RawData(), &dataMap)
 	assert.Nil(t, err)
@@ -278,7 +280,8 @@ func TestSetData(t *testing.T) {
 
 	unsignedBlock = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: nil,
+			Height:      1,
+			PreviousTip: &testTree.Dag.Tip,
 			Transactions: []*transactions.Transaction{
 				{
 					Type: "SET_DATA",
@@ -294,7 +297,8 @@ func TestSetData(t *testing.T) {
 	blockWithHeaders, err = SignBlock(unsignedBlock, treeKey)
 	require.Nil(t, err)
 
-	testTree.ProcessBlock(blockWithHeaders)
+	_, err = testTree.ProcessBlock(blockWithHeaders)
+	require.Nil(t, err)
 
 	dp, err := DecodePath("/tree/data/" + path)
 	require.Nil(t, err)
@@ -341,7 +345,8 @@ func TestSetOwnership(t *testing.T) {
 	blockWithHeaders, err := SignBlock(unsignedBlock, treeKey)
 	require.Nil(t, err)
 
-	testTree.ProcessBlock(blockWithHeaders)
+	_, err = testTree.ProcessBlock(blockWithHeaders)
+	require.Nil(t, err)
 
 	dp, err := DecodePath("/tree/data/" + path)
 	require.Nil(t, err)
@@ -352,7 +357,8 @@ func TestSetOwnership(t *testing.T) {
 
 	unsignedBlock = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: nil,
+			PreviousTip: &testTree.Dag.Tip,
+			Height:      1,
 			Transactions: []*transactions.Transaction{
 				{
 					Type: "SET_OWNERSHIP",
@@ -366,7 +372,8 @@ func TestSetOwnership(t *testing.T) {
 	blockWithHeaders, err = SignBlock(unsignedBlock, treeKey)
 	require.Nil(t, err)
 
-	testTree.ProcessBlock(blockWithHeaders)
+	_, err = testTree.ProcessBlock(blockWithHeaders)
+	require.Nil(t, err)
 
 	resp, remain, err = testTree.Dag.Resolve(dp)
 	require.Nil(t, err)

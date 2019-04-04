@@ -262,7 +262,7 @@ func toConsensusSig(sig *messages.Signature, ng *types.NotaryGroup) (*consensus.
 		return nil, fmt.Errorf("error getting bit array: %v", err)
 	}
 
-	signersSlice := make([]bool, len(ng.AllSigners()), len(ng.AllSigners()))
+	signersSlice := make([]bool, len(ng.AllSigners()))
 	for i := range ng.AllSigners() {
 		isSet, err := signersBitArray.GetBit(uint64(i))
 		if err != nil {

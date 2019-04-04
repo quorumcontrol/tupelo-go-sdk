@@ -17,5 +17,6 @@ func TestActorAddress(t *testing.T) {
 	peer1, err := p2p.PeerFromEcdsaKey(ts.PubKeys[0].ToEcdsaPub())
 	require.Nil(t, err)
 	peer2, err := p2p.PeerFromEcdsaKey(ts.PubKeys[1].ToEcdsaPub())
+	require.Nil(t, err)
 	assert.Equal(t, peer2.Pretty()+"-"+peer1.Pretty(), signer1.ActorAddress(signer2.DstKey))
 }

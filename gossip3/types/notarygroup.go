@@ -43,7 +43,7 @@ func (ng *NotaryGroup) AddSigner(signer *Signer) {
 }
 
 func (ng *NotaryGroup) AllSigners() []*Signer {
-	signers := make([]*Signer, len(ng.sortedIds), len(ng.sortedIds))
+	signers := make([]*Signer, len(ng.sortedIds))
 	for i, id := range ng.sortedIds {
 		signers[i] = ng.Signers[id]
 	}
