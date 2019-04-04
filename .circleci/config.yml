@@ -5,4 +5,7 @@ jobs:
       - image: circleci/golang:1.12.1
     steps:
       - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "06:4a:76:ba:0c:08:2f:ee:d6:2c:0f:7f:fa:f0:28:45"
       - run: ./scripts/test-within-docker.sh
