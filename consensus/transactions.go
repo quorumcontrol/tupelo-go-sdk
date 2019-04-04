@@ -134,13 +134,6 @@ func SetOwnershipTransaction(tree *dag.Dag, transaction *chaintree.Transaction) 
 	return newTree, true, nil
 }
 
-type Token struct {
-	MonetaryPolicy *cid.Cid
-	Mints          *cid.Cid
-	Sends          *cid.Cid
-	Receives       *cid.Cid
-}
-
 type TokenMonetaryPolicy struct {
 	Maximum uint64
 }
@@ -228,9 +221,9 @@ func SendTokenTransaction(tree *dag.Dag, transaction *chaintree.Transaction) (ne
 
 type ReceiveTokenPayload struct {
 	SendTokenTransactionId string
-	Tip cid.Cid
-	Signature Signature
-	Leaves map[string]cid.Cid
+	Tip                    cid.Cid
+	Signature              Signature
+	Leaves                 map[string]cid.Cid
 }
 
 func ReceiveTokenTransaction(tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedError chaintree.CodedError) {

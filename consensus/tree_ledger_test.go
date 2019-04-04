@@ -191,50 +191,18 @@ func TestTreeLedger_sumTokenTransactions(t *testing.T) {
 	assert.Equal(t, uint64(50), sum)
 }
 
-func TestTreeLedger_calculateTokenBalance(t *testing.T) {
-	testTreeNodes := map[string]interface{}{
-		"_tupelo": map[string]interface{}{
-			"tokens": map[string]interface{}{
-				"test-token": map[string]interface{}{
-					TokenMintLabel: []map[string]interface{}{
-						{"amount": 1},
-						{"amount": 2},
-						{"amount": 3},
-					},
-					TokenSendLabel: []map[string]interface{}{
-						{"amount": 4},
-						{"amount": 2},
-					},
-					TokenReceiveLabel: []map[string]interface{}{
-						{"amount": 10},
-					},
-				},
-			},
-		},
-	}
-	testTree := NewTestTree(t, testTreeNodes)
-
-	ledger := NewTreeLedger(testTree, "test-token")
-
-	transactionCids, err := ledger.tokenTransactionCids()
-	require.Nil(t, err)
-	balance, err := ledger.calculateTokenBalance(transactionCids)
-	require.Nil(t, err)
-
-	assert.Equal(t, uint64(10), balance)
-}
-
 func TestTreeLedger_Balance(t *testing.T) {
 	testTreeNodes := map[string]interface{}{
 		"_tupelo": map[string]interface{}{
 			"tokens": map[string]interface{}{
 				"test-token": map[string]interface{}{
-					TokenMintLabel: []map[string]interface{}{
+					TokenBalanceLabel: uint64(32),
+					TokenMintLabel:    []map[string]interface{}{
 						{"amount": 1},
 						{"amount": 2},
 						{"amount": 3},
 					},
-					TokenSendLabel: []map[string]interface{}{
+					TokenSendLabel:    []map[string]interface{}{
 						{"amount": 4},
 						{"amount": 20},
 					},
@@ -343,17 +311,18 @@ func TestTreeLedger_MintToken(t *testing.T) {
 		"_tupelo": map[string]interface{}{
 			"tokens": map[string]interface{}{
 				"test-token": map[string]interface{}{
-					"monetaryPolicy": TokenMonetaryPolicy{Maximum: uint64(100)},
-					TokenMintLabel: []map[string]interface{}{
+					MonetaryPolicyLabel: TokenMonetaryPolicy{Maximum: uint64(100)},
+					TokenBalanceLabel:   uint64(10),
+					TokenMintLabel:      []map[string]interface{}{
 						{"amount": 1},
 						{"amount": 2},
 						{"amount": 3},
 					},
-					TokenSendLabel: []map[string]interface{}{
+					TokenSendLabel:      []map[string]interface{}{
 						{"amount": 4},
 						{"amount": 2},
 					},
-					TokenReceiveLabel: []map[string]interface{}{
+					TokenReceiveLabel:   []map[string]interface{}{
 						{"amount": 10},
 					},
 				},
@@ -380,12 +349,13 @@ func TestTreeLedger_SendToken(t *testing.T) {
 		"_tupelo": map[string]interface{}{
 			"tokens": map[string]interface{}{
 				"test-token": map[string]interface{}{
-					TokenMintLabel: []map[string]interface{}{
+					TokenBalanceLabel: uint64(10),
+					TokenMintLabel:    []map[string]interface{}{
 						{"amount": 1},
 						{"amount": 2},
 						{"amount": 3},
 					},
-					TokenSendLabel: []map[string]interface{}{
+					TokenSendLabel:    []map[string]interface{}{
 						{"amount": 4},
 						{"amount": 2},
 					},

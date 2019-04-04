@@ -8,6 +8,11 @@ import (
 	"github.com/quorumcontrol/chaintree/typecaster"
 )
 
+const (
+	MonetaryPolicyLabel = "monetaryPolicy"
+	TokenBalanceLabel = "balance"
+)
+
 var transactionTypes = map[string][]string{
 	"credit": {TokenMintLabel, TokenReceiveLabel},
 	"debit":  {TokenSendLabel},
@@ -26,7 +31,15 @@ type TreeLedger struct {
 	tree *dag.Dag
 }
 
-var _ TokenLedger = TreeLedger{}
+var _ TokenLedger = &TreeLedger{}
+
+type Token struct {
+	MonetaryPolicy *cid.Cid
+	Mints          *cid.Cid
+	Sends          *cid.Cid
+	Receives       *cid.Cid
+	Balance        uint64
+}
 
 func NewTreeLedger(tree *dag.Dag, tokenName string) *TreeLedger {
 	return &TreeLedger{
@@ -35,7 +48,7 @@ func NewTreeLedger(tree *dag.Dag, tokenName string) *TreeLedger {
 	}
 }
 
-func (l TreeLedger) tokenPath() ([]string, error) {
+func (l *TreeLedger) tokenPath() ([]string, error) {
 	rootTokenPath, err := DecodePath(TreePathForTokens)
 	if err != nil {
 		return nil, fmt.Errorf("error, unable to decode tree path for tokens: %v", err)
@@ -43,7 +56,7 @@ func (l TreeLedger) tokenPath() ([]string, error) {
 	return append(rootTokenPath, l.tokenName), nil
 }
 
-func (l TreeLedger) tokenTransactionCidsForType(txType string) ([]cid.Cid, error) {
+func (l *TreeLedger) tokenTransactionCidsForType(txType string) ([]cid.Cid, error) {
 	tokenPath, err := l.tokenPath()
 	if err != nil {
 		return nil, err
@@ -68,7 +81,7 @@ func (l TreeLedger) tokenTransactionCidsForType(txType string) ([]cid.Cid, error
 	return cids, nil
 }
 
-func (l TreeLedger) tokenTransactionCids() (map[string][]cid.Cid, error) {
+func (l *TreeLedger) tokenTransactionCids() (map[string][]cid.Cid, error) {
 	allCids := make(map[string][]cid.Cid)
 
 	for _, txTypes := range transactionTypes {
@@ -84,7 +97,7 @@ func (l TreeLedger) tokenTransactionCids() (map[string][]cid.Cid, error) {
 	return allCids, nil
 }
 
-func (l TreeLedger) sumTokenTransactions(cids []cid.Cid) (uint64, error) {
+func (l *TreeLedger) sumTokenTransactions(cids []cid.Cid) (uint64, error) {
 	var sum uint64
 
 	for _, c := range cids {
@@ -106,38 +119,35 @@ func (l TreeLedger) sumTokenTransactions(cids []cid.Cid) (uint64, error) {
 	return sum, nil
 }
 
-func (l TreeLedger) calculateTokenBalance(transactionCids map[string][]cid.Cid) (uint64, error) {
-	var balance uint64
-
-	for _, t := range transactionTypes["credit"] {
-		sum, err := l.sumTokenTransactions(transactionCids[t])
-		if err != nil {
-			return 0, err
-		}
-		balance += sum
+func (l *TreeLedger) Balance() (uint64, error) {
+	tokenPath, err := l.tokenPath()
+	if err != nil {
+		return 0, err
 	}
 
-	for _, t := range transactionTypes["debit"] {
-		sum, err := l.sumTokenTransactions(transactionCids[t])
-		if err != nil {
-			return 0, err
-		}
-		balance -= sum
+	balancePath := append(tokenPath, TokenBalanceLabel)
+	balanceObj, remaining, err := l.tree.Resolve(balancePath)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(remaining) > 0 {
+		return 0, nil
+	}
+
+	balance, ok := balanceObj.(uint64)
+	if !ok {
+		return 0, fmt.Errorf("error resolving token balance; node type (%T) is not a uint64", balanceObj)
+	}
+
+	if len(remaining) > 0 {
+		return 0, fmt.Errorf("error resolving token balance: path elements remaining: %v", remaining)
 	}
 
 	return balance, nil
 }
 
-func (l TreeLedger) Balance() (uint64, error) {
-	cids, err := l.tokenTransactionCids()
-	if err != nil {
-		return 0, err
-	}
-
-	return l.calculateTokenBalance(cids)
-}
-
-func (l TreeLedger) TokenExists() (bool, error) {
+func (l *TreeLedger) TokenExists() (bool, error) {
 	tokenPath, err := l.tokenPath()
 	if err != nil {
 		return false, fmt.Errorf("error getting token path: %v", err)
@@ -151,7 +161,7 @@ func (l TreeLedger) TokenExists() (bool, error) {
 	return existingToken != nil, nil
 }
 
-func (l TreeLedger) CreateToken(monetaryPolicy TokenMonetaryPolicy) (*dag.Dag, error) {
+func (l *TreeLedger) CreateToken(monetaryPolicy TokenMonetaryPolicy) (*dag.Dag, error) {
 	tokenPath, err := l.tokenPath()
 	if err != nil {
 		return nil, fmt.Errorf("error getting token path: %v", err)
@@ -162,9 +172,14 @@ func (l TreeLedger) CreateToken(monetaryPolicy TokenMonetaryPolicy) (*dag.Dag, e
 		return nil, fmt.Errorf("error creating new token: %v", err)
 	}
 
-	newTree, err = newTree.SetAsLink(append(tokenPath, "monetaryPolicy"), monetaryPolicy)
+	newTree, err = newTree.SetAsLink(append(tokenPath, MonetaryPolicyLabel), monetaryPolicy)
 	if err != nil {
 		return nil, fmt.Errorf("error setting monetary policy: %v", err)
+	}
+
+	newTree, err = newTree.Set(append(tokenPath, TokenBalanceLabel), uint64(0))
+	if err != nil {
+		return nil, fmt.Errorf("error setting balance: %v", err)
 	}
 
 	return newTree, nil
@@ -174,7 +189,7 @@ type TokenMint struct {
 	Amount uint64
 }
 
-func (l TreeLedger) MintToken(amount uint64) (*dag.Dag, error) {
+func (l *TreeLedger) MintToken(amount uint64) (*dag.Dag, error) {
 	if amount == 0 {
 		return nil, fmt.Errorf("error, must mint amount greater than 0")
 	}
@@ -184,7 +199,7 @@ func (l TreeLedger) MintToken(amount uint64) (*dag.Dag, error) {
 		return nil, fmt.Errorf("error getting token path: %v", err)
 	}
 
-	monetaryPolicyPath := append(tokenPath, "monetaryPolicy")
+	monetaryPolicyPath := append(tokenPath, MonetaryPolicyLabel)
 	uncastMonetaryPolicy, _, err := l.tree.Resolve(monetaryPolicyPath)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching monetary policy at path %v: %v", monetaryPolicyPath, err)
@@ -228,6 +243,17 @@ func (l TreeLedger) MintToken(amount uint64) (*dag.Dag, error) {
 		return nil, fmt.Errorf("error setting: %v", err)
 	}
 
+	currBalance, err := l.Balance()
+	if err != nil {
+		return nil, fmt.Errorf("error getting current balance: %v", err)
+	}
+
+	newBalance := currBalance + amount
+	newTree, err = newTree.Set(append(tokenPath, TokenBalanceLabel), newBalance)
+	if err != nil {
+		return nil, fmt.Errorf("error updating balance: %v", err)
+	}
+
 	return newTree, nil
 }
 
@@ -237,7 +263,7 @@ type TokenSend struct {
 	Destination string
 }
 
-func (l TreeLedger) SendToken(txId, destination string, amount uint64) (*dag.Dag, error) {
+func (l *TreeLedger) SendToken(txId, destination string, amount uint64) (*dag.Dag, error) {
 	// TODO: verify destination is chaintree address?
 
 	if amount == 0 {
@@ -275,6 +301,12 @@ func (l TreeLedger) SendToken(txId, destination string, amount uint64) (*dag.Dag
 	newTree, err := l.tree.SetAsLink(append(tokenPath, TokenSendLabel), sentCids)
 	if err != nil {
 		return nil, fmt.Errorf("error setting: %v", err)
+	}
+
+	newBalance := availableBalance - amount
+	newTree, err = newTree.Set(append(tokenPath, TokenBalanceLabel), newBalance)
+	if err != nil {
+		return nil, fmt.Errorf("error updating balance: %v", err)
 	}
 
 	return newTree, nil
