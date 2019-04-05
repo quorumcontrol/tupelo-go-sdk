@@ -9,10 +9,10 @@ import (
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
-	"github.com/quorumcontrol/messages/transactions"
 	"github.com/quorumcontrol/storage"
 	"github.com/quorumcontrol/tupelo-go-client/consensus"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
+	"github.com/quorumcontrol/tupelo-go-client/testfakes"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,24 +30,10 @@ func NewValidTransactionWithKey(t testing.TB, treeKey *ecdsa.PrivateKey) message
 func NewValidTransactionWithPathAndValue(t testing.TB, treeKey *ecdsa.PrivateKey, path, value string) messages.Transaction {
 	sw := safewrap.SafeWrap{}
 
-	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(treeKey.PublicKey).String())
-	payload := &transactions.SetDataPayload{
-		Path:  path,
-		Value: []byte(value),
-	}
+	txn := testfakes.SetDataTransaction(path, value)
+	unsignedBlock := testfakes.NewValidUnsignedTransactionBlock(txn)
 
-	unsignedBlock := &chaintree.BlockWithHeaders{
-		Block: chaintree.Block{
-			PreviousTip: nil,
-			Height:      0,
-			Transactions: []*transactions.Transaction{
-				{
-					Type:    transactions.TransactionType_SetData,
-					Payload: &transactions.Transaction_SetDataPayload{SetDataPayload: payload},
-				},
-			},
-		},
-	}
+	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(treeKey.PublicKey).String())
 
 	nodeStore := nodestore.NewStorageBasedStore(storage.NewMemStorage())
 	emptyTree := consensus.NewEmptyTree(treeDID, nodeStore)

@@ -4,10 +4,9 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/nodestore"
-	"github.com/quorumcontrol/messages/transactions"
 	"github.com/quorumcontrol/storage"
+	"github.com/quorumcontrol/tupelo-go-client/testfakes"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,20 +20,8 @@ func TestSignedChainTree_IsGenesis(t *testing.T) {
 
 	require.True(t, newTree.IsGenesis())
 
-	unsignedBlock := &chaintree.BlockWithHeaders{
-		Block: chaintree.Block{
-			PreviousTip: nil,
-			Transactions: []*transactions.Transaction{
-				{
-					Type: TransactionTypeSetData,
-					Payload: &SetDataPayload{
-						Path:  "test",
-						Value: "value",
-					},
-				},
-			},
-		},
-	}
+	txn := testfakes.SetDataTransaction("test", "value")
+	unsignedBlock := testfakes.NewValidUnsignedTransactionBlock(txn)
 
 	blockWithHeaders, err := SignBlock(unsignedBlock, key)
 	require.Nil(t, err)
