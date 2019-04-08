@@ -13,12 +13,11 @@ require (
 	github.com/huin/goupnp v1.0.0 // indirect
 	github.com/ipfs/go-cid v0.0.1
 	github.com/ipfs/go-datastore v0.0.2
-	github.com/ipfs/go-ipfs-config v0.0.1
 	github.com/ipfs/go-ipld-cbor v1.5.1-0.20190302174746-59d816225550
 	github.com/ipfs/go-log v0.0.1
 	github.com/jackpal/gateway v1.0.5 // indirect
 	github.com/jbenet/goprocess v0.0.0-20160826012719-b497e2f366b8
-	github.com/libp2p/go-libp2p v0.0.2
+	github.com/libp2p/go-libp2p v0.0.5
 	github.com/libp2p/go-libp2p-circuit v0.0.1
 	github.com/libp2p/go-libp2p-crypto v0.0.1
 	github.com/libp2p/go-libp2p-host v0.0.1
