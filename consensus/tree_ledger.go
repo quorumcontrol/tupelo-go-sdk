@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ipfs/go-cid"
+	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/typecaster"
 )
@@ -48,6 +49,11 @@ func NewTreeLedger(tree *dag.Dag, tokenName string) *TreeLedger {
 	}
 }
 
+func TokenPath(tokenName string) ([]string, error) {
+	l := NewTreeLedger(nil, tokenName)
+	return l.tokenPath()
+}
+
 func (l *TreeLedger) tokenPath() ([]string, error) {
 	rootTokenPath, err := DecodePath(TreePathForTokens)
 	if err != nil {
@@ -56,15 +62,15 @@ func (l *TreeLedger) tokenPath() ([]string, error) {
 	return append(rootTokenPath, l.tokenName), nil
 }
 
-func (l *TreeLedger) tokenTransactionCidsForType(txType string) ([]cid.Cid, error) {
-	tokenPath, err := l.tokenPath()
-	if err != nil {
-		return nil, err
-	}
+func TokenTransactionCidsForType(tree *dag.Dag, tokenName string, txType string) ([]cid.Cid, error) {
+	path := []string{chaintree.TreeLabel, "_tupelo", "tokens", tokenName, txType}
+	return transactionCidsForPath(tree, path)
+}
 
-	uncastCids, _, err := l.tree.Resolve(append(tokenPath, txType))
+func transactionCidsForPath(tree *dag.Dag, path []string) ([]cid.Cid, error) {
+	uncastCids, _, err := tree.Resolve(path)
 	if err != nil {
-		return nil, fmt.Errorf("error fetching %s at %v: %v", txType, tokenPath, err)
+		return nil, fmt.Errorf("error resolving path %v: %v", path, err)
 	}
 
 	var cids []cid.Cid
@@ -76,6 +82,22 @@ func (l *TreeLedger) tokenTransactionCidsForType(txType string) ([]cid.Cid, erro
 		for k, c := range uncastCids.([]interface{}) {
 			cids[k] = c.(cid.Cid)
 		}
+	}
+
+	return cids, nil
+}
+
+func (l *TreeLedger) tokenTransactionCidsForType(txType string) ([]cid.Cid, error) {
+	tokenPath, err := l.tokenPath()
+	if err != nil {
+		return nil, err
+	}
+
+	tokenPath = append(tokenPath, txType)
+
+	cids, err := transactionCidsForPath(l.tree, tokenPath)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching %s at %v: %v", txType, tokenPath, err)
 	}
 
 	return cids, nil
