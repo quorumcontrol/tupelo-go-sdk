@@ -58,11 +58,13 @@ func DecodePath(path string) ([]string, error) {
 
 // SetDataTransaction just sets a path in tree/data to arbitrary data.
 func SetDataTransaction(tree *dag.Dag, transaction *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
-	payload := &transactions.SetDataPayload{}
-	err := typecaster.ToType(transaction.Payload, payload)
+	payloadWrapper := &transactions.Transaction_SetDataPayload{}
+	err := typecaster.ToType(transaction.Payload, payloadWrapper)
 	if err != nil {
 		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error casting payload: %v", err)}
 	}
+
+	payload := payloadWrapper.SetDataPayload
 
 	path, err := DecodePath(payload.Path)
 	if err != nil {
@@ -87,11 +89,13 @@ func SetDataTransaction(tree *dag.Dag, transaction *transactions.Transaction) (n
 
 // SetOwnershipTransaction changes the ownership of a tree by adding a public key array to /_tupelo/authentications
 func SetOwnershipTransaction(tree *dag.Dag, transaction *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
-	payload := &transactions.SetOwnershipPayload{}
-	err := typecaster.ToType(transaction.Payload, payload)
+	payloadWrapper := &transactions.Transaction_SetOwnershipPayload{}
+	err := typecaster.ToType(transaction.Payload, payloadWrapper)
 	if err != nil {
 		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error casting payload: %v", err)}
 	}
+
+	payload := payloadWrapper.SetOwnershipPayload
 
 	path, err := DecodePath(TreePathForAuthentications)
 	if err != nil {
@@ -114,12 +118,14 @@ type Token struct {
 }
 
 func EstablishTokenTransaction(tree *dag.Dag, transaction *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
-	payload := &transactions.EstablishTokenPayload{}
-	err := typecaster.ToType(transaction.Payload, payload)
+	payloadWrapper := &transactions.Transaction_EstablishTokenPayload{}
+	err := typecaster.ToType(transaction.Payload, payloadWrapper)
 
 	if err != nil {
 		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error setting: %v", err)}
 	}
+
+	payload := payloadWrapper.EstablishTokenPayload
 
 	tokenName := payload.Name
 	path, err := DecodePath(TreePathForTokens)
@@ -153,12 +159,14 @@ type TokenMint struct {
 }
 
 func MintTokenTransaction(tree *dag.Dag, transaction *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
-	payload := &transactions.MintTokenPayload{}
-	err := typecaster.ToType(transaction.Payload, payload)
+	payloadWrapper := &transactions.Transaction_MintTokenPayload{}
+	err := typecaster.ToType(transaction.Payload, payloadWrapper)
 
 	if err != nil {
 		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error setting: %v", err)}
 	}
+
+	payload := payloadWrapper.MintTokenPayload
 
 	if payload.Amount == 0 {
 		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: "error, can not mint an amount <= 0"}
