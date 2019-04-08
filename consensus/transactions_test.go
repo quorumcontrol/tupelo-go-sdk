@@ -66,7 +66,7 @@ func TestMintToken(t *testing.T) {
 	_, err = testTree.ProcessBlock(blockWithHeaders)
 	assert.Nil(t, err)
 
-	mintTxn := testfakes.EstablishTokenTransaction("testtoken", 40)
+	mintTxn := testfakes.MintTokenTransaction("testtoken", 40)
 	mintBlockWithHeaders := testfakes.NewValidUnsignedTransactionBlock(mintTxn)
 	_, err = testTree.ProcessBlock(mintBlockWithHeaders)
 	assert.Nil(t, err)
