@@ -63,7 +63,12 @@ func (l *TreeLedger) tokenPath() ([]string, error) {
 }
 
 func TokenTransactionCidsForType(tree *dag.Dag, tokenName string, txType string) ([]cid.Cid, error) {
-	path := []string{chaintree.TreeLabel, "_tupelo", "tokens", tokenName, txType}
+	treePathForTokens, err := DecodePath(TreePathForTokens)
+	if err != nil {
+		return nil, fmt.Errorf("error, unable to decode tree path for tokens: %v", err)
+	}
+	path := append([]string{chaintree.TreeLabel}, treePathForTokens...)
+	path = append(path, tokenName, txType)
 	return transactionCidsForPath(tree, path)
 }
 
