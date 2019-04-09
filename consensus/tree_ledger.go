@@ -315,9 +315,11 @@ func (l *TreeLedger) SendToken(txId, destination string, amount uint64) (*dag.Da
 		return nil, fmt.Errorf("could not create new node: %v", err)
 	}
 
-	tokenTxCids, err := l.tokenTransactionCids()
+	sentCids, err := l.tokenTransactionCidsForType(TokenSendLabel)
+	if err != nil {
+		return nil, fmt.Errorf("error getting existing token sends: %v", err)
+	}
 
-	sentCids := tokenTxCids[TokenSendLabel]
 	sentCids = append(sentCids, newSend.Cid())
 
 	newTree, err := l.tree.SetAsLink(append(tokenPath, TokenSendLabel), sentCids)
