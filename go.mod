@@ -5,7 +5,9 @@ go 1.12
 require (
 	github.com/AsynkronIT/protoactor-go v0.0.0-20190318154652-aa1aa20c2fa0
 	github.com/Workiva/go-datastructures v1.0.50
+	github.com/aristanetworks/goarista v0.0.0-20190325233358-a123909ec740 // indirect
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
+	github.com/cskr/pubsub v1.0.2
 	github.com/dedis/fixbuf v1.0.2 // indirect
 	github.com/dedis/kyber v0.0.0-20190121102031-5cc64601919b
 	github.com/elastic/go-sysinfo v0.0.0-20190107121835-59ef8c0eae46 // indirect
@@ -20,6 +22,7 @@ require (
 	github.com/libp2p/go-libp2p v0.0.5
 	github.com/libp2p/go-libp2p-circuit v0.0.1
 	github.com/libp2p/go-libp2p-crypto v0.0.1
+	github.com/libp2p/go-libp2p-discovery v0.0.1
 	github.com/libp2p/go-libp2p-host v0.0.1
 	github.com/libp2p/go-libp2p-kad-dht v0.0.5
 	github.com/libp2p/go-libp2p-loggables v0.0.1
@@ -28,6 +31,7 @@ require (
 	github.com/libp2p/go-libp2p-peer v0.0.1
 	github.com/libp2p/go-libp2p-peerstore v0.0.1
 	github.com/libp2p/go-libp2p-protocol v0.0.1
+	github.com/libp2p/go-libp2p-pubsub v0.0.1
 	github.com/libp2p/go-libp2p-swarm v0.0.1
 	github.com/multiformats/go-multiaddr v0.0.1
 	github.com/opentracing/opentracing-go v1.0.2
