@@ -143,7 +143,6 @@ func Bootstrap(h *rhost.RoutedHost, routing *dht.IpfsDHT, cfg BootstrapConfig) (
 }
 
 func bootstrapRound(ctx context.Context, h *rhost.RoutedHost, cfg BootstrapConfig) error {
-	log.Debugf("bootstrapround")
 	ctx, cancel := context.WithTimeout(ctx, cfg.ConnectionTimeout)
 	defer cancel()
 	id := h.ID()
