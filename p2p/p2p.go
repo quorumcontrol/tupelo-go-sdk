@@ -20,6 +20,7 @@ import (
 	net "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
 	protocol "github.com/libp2p/go-libp2p-protocol"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	swarm "github.com/libp2p/go-libp2p-swarm"
 	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	ma "github.com/multiformats/go-multiaddr"
@@ -39,6 +40,8 @@ type LibP2PHost struct {
 	publicKey       *ecdsa.PublicKey
 	Reporter        metrics.Reporter
 	bootstrapConfig *BootstrapConfig
+	pubsub          *pubsub.PubSub
+	parentCtx       context.Context
 }
 
 const expectedKeySize = 32
@@ -128,11 +131,18 @@ func newLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port int, 
 	// Make the routed host
 	routedHost := rhost.Wrap(basicHost, dht)
 
+	pub, err := pubsub.NewGossipSub(ctx, routedHost, pubsub.WithStrictSignatureVerification(true))
+	if err != nil {
+		return nil, fmt.Errorf("error creating new gossip sub: %v", err)
+	}
+
 	return &LibP2PHost{
 		host:      routedHost,
 		routing:   dht,
 		publicKey: &privateKey.PublicKey,
 		Reporter:  reporter,
+		pubsub:    pub,
+		parentCtx: ctx,
 	}, nil
 }
 
@@ -147,7 +157,31 @@ func (h *LibP2PHost) Identity() string {
 func (h *LibP2PHost) Bootstrap(peers []string) (io.Closer, error) {
 	bootstrapCfg := BootstrapConfigWithPeers(convertPeers(peers))
 	h.bootstrapConfig = &bootstrapCfg
-	return Bootstrap(h.host, h.routing, bootstrapCfg)
+	closer, err := Bootstrap(h.host, h.routing, bootstrapCfg)
+	if err != nil {
+		return nil, fmt.Errorf("error bootstrapping: %v", err)
+	}
+
+	err = h.WaitForBootstrap(1, 20*time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("error connecting to at least 1 bootstrap node: %v", err)
+	}
+
+	err = h.startDiscovery()
+	if err != nil {
+		return nil, fmt.Errorf("error starting discovery: %v", err)
+	}
+
+	go func() {
+		<-h.parentCtx.Done()
+		closer.Close()
+	}()
+	return closer, nil
+}
+
+func (h *LibP2PHost) startDiscovery() error {
+	discoverer := newTupeloDiscoverer(h)
+	return discoverer.doDiscovery(h.parentCtx)
 }
 
 func (h *LibP2PHost) WaitForBootstrap(peerCount int, timeout time.Duration) error {
@@ -163,6 +197,7 @@ func (h *LibP2PHost) WaitForBootstrap(peerCount int, timeout time.Duration) erro
 		select {
 		case <-ticker.C:
 			connected := h.host.Network().Peers()
+			log.Debugf("connected: %d", len(connected))
 			if len(connected) >= peerCount {
 				return nil
 			}
@@ -242,6 +277,14 @@ func (h *LibP2PHost) Addresses() []ma.Multiaddr {
 		addrs = append(addrs, addr.Encapsulate(hostAddr))
 	}
 	return addrs
+}
+
+func (h *LibP2PHost) Subscribe(topic string, opts ...pubsub.SubOpt) (*pubsub.Subscription, error) {
+	return h.pubsub.Subscribe(topic, opts...)
+}
+
+func (h *LibP2PHost) Publish(topic string, data []byte) error {
+	return h.pubsub.Publish(topic, data)
 }
 
 func PeerIDFromPublicKey(publicKey *ecdsa.PublicKey) (peer.ID, error) {

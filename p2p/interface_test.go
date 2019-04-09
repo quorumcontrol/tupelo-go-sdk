@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"strings"
 	"testing"
+	"time"
 
 	net "github.com/libp2p/go-libp2p-net"
 	"github.com/stretchr/testify/assert"
@@ -17,6 +18,8 @@ func NodeTests(t *testing.T, generator nodeGenerator) {
 	BootstrapTest(t, generator)
 	SendTest(t, generator)
 	SendAndReceiveTest(t, generator)
+	PubSubTest(t, generator)
+	PeerDiscovery(t, generator)
 }
 
 func bootstrapAddresses(bootstrapHost Node) []string {
@@ -88,4 +91,45 @@ func SendAndReceiveTest(t *testing.T, generator nodeGenerator) {
 	require.Nil(t, err)
 
 	assert.Equal(t, sendMsg, resp)
+}
+
+func PeerDiscovery(t *testing.T, generator nodeGenerator) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	bootstrapper := generator(ctx, t)
+	nodeCount := 5
+	nodes := make([]Node, nodeCount)
+	for i := 0; i < nodeCount; i++ {
+		n := generator(ctx, t)
+		nodes[i] = n
+		n.Bootstrap(bootstrapAddresses(bootstrapper))
+	}
+
+	err := nodes[0].WaitForBootstrap(nodeCount-1, 10*time.Second) // see that it connects to B
+	require.Nil(t, err)
+}
+
+func PubSubTest(t *testing.T, generator nodeGenerator) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	bootstrapper := generator(ctx, t)
+
+	nodeA := generator(ctx, t)
+	nodeB := generator(ctx, t)
+
+	_, err := nodeA.Bootstrap(bootstrapAddresses(bootstrapper))
+	assert.Nil(t, err)
+
+	_, err = nodeB.Bootstrap(bootstrapAddresses(bootstrapper))
+	assert.Nil(t, err)
+	err = nodeA.WaitForBootstrap(2, 10*time.Second)
+	require.Nil(t, err)
+
+	sub, err := nodeB.Subscribe("testSubscription")
+	require.Nil(t, err)
+
+	nodeA.Publish("testSubscription", []byte("hi"))
+	msg, err := sub.Next(ctx)
+	require.Nil(t, err)
+	assert.Equal(t, msg.Data, []byte("hi"))
 }
