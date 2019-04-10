@@ -420,6 +420,7 @@ func TestSendToken(t *testing.T) {
 	height++
 
 	targetKey, err := crypto.GenerateKey()
+	assert.Nil(t, err)
 	targetTreeDID := AddrToDid(crypto.PubkeyToAddress(targetKey.PublicKey).String())
 
 	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
