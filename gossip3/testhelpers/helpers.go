@@ -10,9 +10,10 @@ import (
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/storage"
+	"github.com/stretchr/testify/require"
+
 	"github.com/quorumcontrol/tupelo-go-client/consensus"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
-	"github.com/stretchr/testify/require"
 )
 
 func NewValidTransaction(t testing.TB) messages.Transaction {
