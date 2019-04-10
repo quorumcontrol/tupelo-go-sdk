@@ -93,7 +93,9 @@ func (td *tupeloDiscoverer) constantlyAdvertise(ctx context.Context) error {
 		case <-ctx.Done():
 			return
 		case <-after:
-			td.constantlyAdvertise(ctx)
+			if err := td.constantlyAdvertise(ctx); err != nil {
+				log.Errorf("error constantly advertising: %v", err)
+			}
 		}
 	}()
 	return nil

@@ -65,7 +65,7 @@ func SendTest(t *testing.T, generator nodeGenerator) {
 	require.Nil(t, err)
 
 	received := <-msgs
-	assert.Len(t, received, 2)
+	assert.Equal(t, []byte("hi"), received)
 }
 
 func SendAndReceiveTest(t *testing.T, generator nodeGenerator) {
@@ -75,7 +75,7 @@ func SendAndReceiveTest(t *testing.T, generator nodeGenerator) {
 	nodeB := generator(ctx, t)
 
 	_, err := nodeA.Bootstrap(bootstrapAddresses(nodeB))
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	nodeB.SetStreamHandler("test/protocol", func(s net.Stream) {
 		defer s.Close()
@@ -102,33 +102,38 @@ func PeerDiscovery(t *testing.T, generator nodeGenerator) {
 	for i := 0; i < nodeCount; i++ {
 		n := generator(ctx, t)
 		nodes[i] = n
-		n.Bootstrap(bootstrapAddresses(bootstrapper))
+		_, err := n.Bootstrap(bootstrapAddresses(bootstrapper))
+		require.Nil(t, err)
 	}
 
-	err := nodes[0].WaitForBootstrap(nodeCount-1, 10*time.Second) // see that it connects to B
+	err := nodes[0].WaitForBootstrap(nodeCount-1, 10*time.Second) // see that it connects to all the other nodes
 	require.Nil(t, err)
 }
 
 func PubSubTest(t *testing.T, generator nodeGenerator) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
 	bootstrapper := generator(ctx, t)
 
 	nodeA := generator(ctx, t)
 	nodeB := generator(ctx, t)
 
 	_, err := nodeA.Bootstrap(bootstrapAddresses(bootstrapper))
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	_, err = nodeB.Bootstrap(bootstrapAddresses(bootstrapper))
-	assert.Nil(t, err)
+	require.Nil(t, err)
+
 	err = nodeA.WaitForBootstrap(2, 10*time.Second)
 	require.Nil(t, err)
 
 	sub, err := nodeB.Subscribe("testSubscription")
 	require.Nil(t, err)
 
-	nodeA.Publish("testSubscription", []byte("hi"))
+	err = nodeA.Publish("testSubscription", []byte("hi"))
+	require.Nil(t, err)
+
 	msg, err := sub.Next(ctx)
 	require.Nil(t, err)
 	assert.Equal(t, msg.Data, []byte("hi"))
