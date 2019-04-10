@@ -1,3 +1,5 @@
+[![CircleCI](https://circleci.com/gh/quorumcontrol/tupelo-go-client.svg?style=svg)](https://circleci.com/gh/quorumcontrol/tupelo-go-client)
+
 # Tupelo Go Client
 This is the SDK for developing Go applications using [Tupelo](https://quorumcontrol.com).
 
