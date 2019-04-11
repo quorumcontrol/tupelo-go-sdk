@@ -5,12 +5,13 @@ import (
 
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
-	"github.com/quorumcontrol/chaintree/dag"
-	"github.com/quorumcontrol/chaintree/nodestore"
-	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/quorumcontrol/chaintree/dag"
+	"github.com/quorumcontrol/chaintree/nodestore"
+	"github.com/quorumcontrol/chaintree/safewrap"
 )
 
 func mustWrap(t testing.TB, obj interface{}) *cbornode.Node {
@@ -261,7 +262,7 @@ func TestTreeLedger_TokenExists(t *testing.T) {
 	assert.False(t, otherTokenExists)
 }
 
-func TestTreeLedger_CreateToken(t *testing.T) {
+func TestTreeLedger_createToken(t *testing.T) {
 	testTreeNodes := map[string]interface{}{
 		"_tupelo": map[string]interface{}{
 			"tokens": map[string]interface{}{
@@ -291,7 +292,53 @@ func TestTreeLedger_CreateToken(t *testing.T) {
 
 	assert.False(t, otherTokenExists)
 
-	newTree, err := ledger.CreateToken(TokenMonetaryPolicy{Maximum: uint64(42)})
+	newTree, err := ledger.createToken()
+	require.Nil(t, err)
+
+	ledger = NewTreeLedger(newTree, "other")
+
+	otherTokenExists, err = ledger.TokenExists()
+	require.Nil(t, err)
+
+	assert.True(t, otherTokenExists)
+
+	balance, err := ledger.Balance()
+	require.Nil(t, err)
+
+	assert.Zero(t, balance)
+}
+
+func TestTreeLedger_EstablishToken(t *testing.T) {
+	testTreeNodes := map[string]interface{}{
+		"_tupelo": map[string]interface{}{
+			"tokens": map[string]interface{}{
+				"test-token": map[string]interface{}{
+					TokenMintLabel: []map[string]interface{}{
+						{"amount": 1},
+						{"amount": 2},
+						{"amount": 3},
+					},
+					TokenSendLabel: []map[string]interface{}{
+						{"amount": 4},
+						{"amount": 2},
+					},
+					TokenReceiveLabel: []map[string]interface{}{
+						{"amount": 10},
+					},
+				},
+			},
+		},
+	}
+	testTree := NewTestTree(t, testTreeNodes)
+
+	ledger := NewTreeLedger(testTree, "other")
+
+	otherTokenExists, err := ledger.TokenExists()
+	require.Nil(t, err)
+
+	assert.False(t, otherTokenExists)
+
+	newTree, err := ledger.EstablishToken(TokenMonetaryPolicy{Maximum: uint64(42)})
 	require.Nil(t, err)
 
 	ledger = NewTreeLedger(newTree, "other")
@@ -379,4 +426,21 @@ func TestTreeLedger_SendToken(t *testing.T) {
 	require.Nil(t, err)
 
 	assert.Equal(t, uint64(5), balance)
+}
+
+func TestTreeLedger_ReceiveToken(t *testing.T) {
+	recipientTreeNodes := map[string]interface{}{
+		"_tupelo": map[string]interface{}{
+			"tokens": map[string]interface{}{},
+		},
+	}
+
+	recipientTree := NewTestTree(t, recipientTreeNodes)
+
+	recipientLedger := NewTreeLedger(recipientTree, "test-token")
+
+	recipientTree, err := recipientLedger.ReceiveToken("test-send-token-2", uint64(5))
+	require.Nil(t, err)
+
+	// TODO: Finish this
 }
