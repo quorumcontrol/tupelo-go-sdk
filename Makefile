@@ -28,8 +28,12 @@ build: $(gosources) $(generated) go.mod go.sum
 lint: $(FIRSTGOPATH)/bin/golangci-lint
 	$(FIRSTGOPATH)/bin/golangci-lint run
 
-test: $(gosources) $(generated) go.mod go.sum
-	go test ./...
+test: $(gosources) $(generated) go.mod go.sum $(FIRSTGOPATH)/bin/gotestsum
+	gotestsum
+
+ci-test: $(gosources) $(generated) go.mod go.sum $(FIRSTGOPATH)/bin/gotestsum
+	mkdir -p test_results/unit_tests
+	gotestsum --junitfile=test_results/unit_tests/results.xml
 
 integration-test: docker-image
 	docker run -e TUPELO_BOOTSTRAP_NODES=/ip4/172.16.238.10/tcp/34001/ipfs/\
@@ -42,8 +46,11 @@ docker-image: vendor $(gosources) $(generated) Dockerfile .dockerignore
 $(FIRSTGOPATH)/bin/golangci-lint:
 	./scripts/download-golangci-lint.sh
 
+$(FIRSTGOPATH)/bin/gotestsum:
+	go get gotest.tools/gotestsum
+
 clean:
 	go clean ./...
 	rm -rf vendor
 
-.PHONY: all build test integration-test docker-image clean
+.PHONY: all build test integration-test ci-test docker-image clean
