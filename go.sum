@@ -78,6 +78,8 @@ github.com/emirpasic/gods v1.12.0 h1:QAUIPSaCu4G+POclxeqb3F+WPpdKqFGlw36+yOzGlrg
 github.com/emirpasic/gods v1.12.0/go.mod h1:YfzfFFoVP/catgzJb4IKIqXjX78Ha8FMSDh3ymbK86o=
 github.com/ethereum/go-ethereum v1.8.23 h1:xVKYpRpe3cbkaWN8gsRgStsyTvz3s82PcQsbEofjhEQ=
 github.com/ethereum/go-ethereum v1.8.23/go.mod h1:PwpWDrCLZrV+tfrhqqF6kPknbISMHaJv9Ln3kPCZLwY=
+github.com/ethereum/go-ethereum v1.8.25 h1:j0/n1AsED2qmTOL95ZY50UmY2CexRrmCiOV0mSaPIGk=
+github.com/ethereum/go-ethereum v1.8.25/go.mod h1:PwpWDrCLZrV+tfrhqqF6kPknbISMHaJv9Ln3kPCZLwY=
 github.com/facebookgo/atomicfile v0.0.0-20151019160806-2de1f203e7d5 h1:BBso6MBKW8ncyZLv37o+KNyy0HrrHgfnOaGQC2qvN+A=
 github.com/facebookgo/atomicfile v0.0.0-20151019160806-2de1f203e7d5/go.mod h1:JpoxHjuQauoxiFMl1ie8Xc/7TfLuMZ5eOCONd1sUBHg=
 github.com/fatih/color v1.6.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
@@ -515,10 +517,12 @@ github.com/prometheus/procfs v0.0.0-20190319124303-40f3c57fb198 h1:gANBAZ/83d6fD
 github.com/prometheus/procfs v0.0.0-20190319124303-40f3c57fb198/go.mod h1:TjEm7ze935MbeOT/UhFTIMYKhuLP4wbCsTZCD3I8kEA=
 github.com/quorumcontrol/chaintree v0.0.0-20190329154239-0a2da8b38ce9 h1:qK6wGaBVqM9s6U7Qd75Ilnj+qXui3hwIitwI5oNHs+k=
 github.com/quorumcontrol/chaintree v0.0.0-20190329154239-0a2da8b38ce9/go.mod h1:zmfcsjUc9t5KFBCYbGbpFdAHuULQZUrIUh6jvRkRClw=
+github.com/quorumcontrol/chaintree v0.0.0-20190411154239-922edd1eb41ea5a299e5eb1d6d9ff38c4dee330a/go.mod h1:zmfcsjUc9t5KFBCYbGbpFdAHuULQZUrIUh6jvRkRClw=
 github.com/quorumcontrol/namedlocker v0.0.0-20180808140020-3f797c8b12b1 h1:FglNF7FTLpcl171qo5MFvbKjrLEsLtcKF72uQpefiPM=
 github.com/quorumcontrol/namedlocker v0.0.0-20180808140020-3f797c8b12b1/go.mod h1:7JSFW45PpKoXFaUpaJ8YtCNIwQWut0+Huo9ugBnKVe4=
 github.com/quorumcontrol/storage v1.1.1 h1:9ijuxMAKS0MwLL/thV4kwJe/AshFVF5Du1dTOhYW+eM=
 github.com/quorumcontrol/storage v1.1.1/go.mod h1:ARuX26Pi5Hnequ0LDAHmrXyhdjuhUS7Y1rjGkec6WM8=
+github.com/quorumcontrol/tupelo-go-client v0.1.1/go.mod h1:x4iB/XxGNCpnVQhUcGGGd5he5PveuX9jtok0n02eEzE=
 github.com/rs/cors v1.6.0 h1:G9tHG9lebljV9mfp9SNPDL36nCDxmo3zTlAf1YgvzmI=
 github.com/rs/cors v1.6.0/go.mod h1:gFx+x8UowdsKA9AchylcLynDq+nNFfI8FkUZdN/jGCU=
 github.com/ryanuber/columnize v0.0.0-20160712163229-9b3edd62028f/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
