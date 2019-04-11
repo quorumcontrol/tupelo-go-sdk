@@ -9,11 +9,10 @@ require (
 	github.com/dedis/fixbuf v1.0.2 // indirect
 	github.com/dedis/kyber v0.0.0-20190121102031-5cc64601919b
 	github.com/elastic/go-sysinfo v0.0.0-20190107121835-59ef8c0eae46 // indirect
-	github.com/ethereum/go-ethereum v1.8.23
+	github.com/ethereum/go-ethereum v1.8.25
 	github.com/huin/goupnp v1.0.0 // indirect
 	github.com/ipfs/go-cid v0.0.1
 	github.com/ipfs/go-datastore v0.0.2
-	github.com/ipfs/go-ipfs-config v0.0.1
 	github.com/ipfs/go-ipld-cbor v1.5.1-0.20190302174746-59d816225550
 	github.com/ipfs/go-log v0.0.1
 	github.com/jackpal/gateway v1.0.5 // indirect
@@ -37,7 +36,7 @@ require (
 	github.com/prometheus/client_model v0.0.0-20190129233127-fd36f4220a90 // indirect
 	github.com/prometheus/common v0.2.0 // indirect
 	github.com/prometheus/procfs v0.0.0-20190319124303-40f3c57fb198 // indirect
-	github.com/quorumcontrol/chaintree v0.0.0-20190329154239-0a2da8b38ce9
+	github.com/quorumcontrol/chaintree v0.0.0-20190411154239-922edd1eb41ea5a299e5eb1d6d9ff38c4dee330a
 	github.com/quorumcontrol/storage v1.1.1
 	github.com/santhosh-tekuri/jsonschema v1.2.4 // indirect
 	github.com/stretchr/testify v1.3.0
