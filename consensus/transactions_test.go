@@ -569,7 +569,6 @@ func TestReceiveToken(t *testing.T) {
 
 	_, err = senderChainTree.ProcessBlock(sendBlockWithHeaders)
 	assert.Nil(t, err)
-	senderHeight++
 
 	recipientHeight := uint64(0)
 
@@ -618,7 +617,6 @@ func TestReceiveToken(t *testing.T) {
 	valid, err := recipientChainTree.ChainTree.ProcessBlock(receiveBlockWithHeaders)
 	assert.Nil(t, err)
 	assert.True(t, valid)
-	recipientHeight++
 
 	senderTree, err := senderChainTree.Tree()
 	require.Nil(t, err)
@@ -726,7 +724,6 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 
 	_, err = senderChainTree.ProcessBlock(sendBlockWithHeaders)
 	assert.Nil(t, err)
-	senderHeight++
 
 	recipientHeight := uint64(0)
 
@@ -943,7 +940,6 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 
 	_, err = senderChainTree.ProcessBlock(sendBlockWithHeaders)
 	assert.Nil(t, err)
-	senderHeight++
 
 	signedBlock, err = SignBlock(sendBlockWithHeaders, key)
 	require.Nil(t, err)
@@ -1078,7 +1074,6 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 
 	_, err = senderChainTree.ProcessBlock(sendBlockWithHeaders)
 	assert.Nil(t, err)
-	senderHeight++
 
 	otherKey, err := crypto.GenerateKey()
 	require.Nil(t, err)
@@ -1222,7 +1217,6 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 
 	_, err = senderChainTree.ProcessBlock(sendBlockWithHeaders)
 	assert.Nil(t, err)
-	senderHeight++
 
 	signedBlock, err := SignBlock(sendBlockWithHeaders, key)
 	require.Nil(t, err)

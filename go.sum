@@ -517,6 +517,7 @@ github.com/prometheus/procfs v0.0.0-20190319124303-40f3c57fb198 h1:gANBAZ/83d6fD
 github.com/prometheus/procfs v0.0.0-20190319124303-40f3c57fb198/go.mod h1:TjEm7ze935MbeOT/UhFTIMYKhuLP4wbCsTZCD3I8kEA=
 github.com/quorumcontrol/chaintree v0.0.0-20190329154239-0a2da8b38ce9 h1:qK6wGaBVqM9s6U7Qd75Ilnj+qXui3hwIitwI5oNHs+k=
 github.com/quorumcontrol/chaintree v0.0.0-20190329154239-0a2da8b38ce9/go.mod h1:zmfcsjUc9t5KFBCYbGbpFdAHuULQZUrIUh6jvRkRClw=
+github.com/quorumcontrol/chaintree v0.0.0-20190411154239-922edd1eb41ea5a299e5eb1d6d9ff38c4dee330a h1:MQpKkyX8BvklRUyA+O4Sp58+phq4BG61BfgDUuAJw/c=
 github.com/quorumcontrol/chaintree v0.0.0-20190411154239-922edd1eb41ea5a299e5eb1d6d9ff38c4dee330a/go.mod h1:zmfcsjUc9t5KFBCYbGbpFdAHuULQZUrIUh6jvRkRClw=
 github.com/quorumcontrol/namedlocker v0.0.0-20180808140020-3f797c8b12b1 h1:FglNF7FTLpcl171qo5MFvbKjrLEsLtcKF72uQpefiPM=
 github.com/quorumcontrol/namedlocker v0.0.0-20180808140020-3f797c8b12b1/go.mod h1:7JSFW45PpKoXFaUpaJ8YtCNIwQWut0+Huo9ugBnKVe4=
