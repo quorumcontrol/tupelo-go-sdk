@@ -6,8 +6,6 @@ require (
 	github.com/AsynkronIT/protoactor-go v0.0.0-20190318154652-aa1aa20c2fa0
 	github.com/Workiva/go-datastructures v1.0.50
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
-	github.com/dedis/fixbuf v1.0.2 // indirect
-	github.com/dedis/kyber v0.0.0-20190121102031-5cc64601919b
 	github.com/elastic/go-sysinfo v0.0.0-20190107121835-59ef8c0eae46 // indirect
 	github.com/ethereum/go-ethereum v1.8.23
 	github.com/huin/goupnp v1.0.0 // indirect
@@ -46,6 +44,7 @@ require (
 	github.com/uber-go/atomic v1.3.2 // indirect
 	github.com/uber/jaeger-client-go v2.15.0+incompatible
 	github.com/uber/jaeger-lib v1.5.0
+	go.dedis.ch/kyber/v3 v3.0.2
 	go.elastic.co/apm/module/apmot v1.3.0
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
