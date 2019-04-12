@@ -2,14 +2,17 @@ package remote
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"reflect"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/middleware"
 	"github.com/quorumcontrol/tupelo-go-client/p2p"
-	"github.com/quorumcontrol/tupelo/testnotarygroup"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,21 +21,28 @@ func TestPubSub(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	ts := testnotarygroup.NewTestSet(t, 3)
+	keys := make([]*ecdsa.PrivateKey, 3)
+	for i := 0; i < len(keys); i++ {
+		ecdsaKey, err := crypto.GenerateKey()
+		if err != nil {
+			t.Fatalf("error generating key: %v", err)
+		}
+		keys[i] = ecdsaKey
+	}
 
-	bootstrapper, err := p2p.NewLibP2PHost(ctx, ts.EcdsaKeys[0], 0)
+	bootstrapper, err := p2p.NewLibP2PHost(ctx, keys[0], 0)
 	require.Nil(t, err)
 
-	nodeA, err := p2p.NewLibP2PHost(ctx, ts.EcdsaKeys[1], 0)
+	nodeA, err := p2p.NewLibP2PHost(ctx, keys[1], 0)
 	require.Nil(t, err)
 
-	nodeB, err := p2p.NewLibP2PHost(ctx, ts.EcdsaKeys[2], 0)
+	nodeB, err := p2p.NewLibP2PHost(ctx, keys[2], 0)
 	require.Nil(t, err)
 
-	_, err = nodeA.Bootstrap(testnotarygroup.BootstrapAddresses(bootstrapper))
+	_, err = nodeA.Bootstrap(bootstrapAddresses(bootstrapper))
 	require.Nil(t, err)
 
-	_, err = nodeB.Bootstrap(testnotarygroup.BootstrapAddresses(bootstrapper))
+	_, err = nodeB.Bootstrap(bootstrapAddresses(bootstrapper))
 	require.Nil(t, err)
 
 	err = nodeA.WaitForBootstrap(2, 1*time.Second)
@@ -40,8 +50,6 @@ func TestPubSub(t *testing.T) {
 
 	err = nodeB.WaitForBootstrap(2, 1*time.Second)
 	require.Nil(t, err)
-
-	subscriber := actor.NewFuture(5 * time.Second)
 
 	actorContext := actor.EmptyRootContext
 
@@ -53,7 +61,17 @@ func TestPubSub(t *testing.T) {
 
 	broadcaster := NewNetworkBroadcaster(nodeA)
 
-	receiver, err := actorContext.SpawnNamed(NewNetworkSubscriberProps(tx.TypeCode(), subscriber.PID(), nodeB), "pubsubtest-receiver")
+	subscriber := actor.NewFuture(5 * time.Second)
+	parent := func(actCtx actor.Context) {
+		switch msg := actCtx.Message().(type) {
+		case *actor.Started:
+			actCtx.Spawn(NewNetworkSubscriberProps(tx.TypeCode(), nodeB))
+		case *messages.Transaction:
+			actCtx.Send(subscriber.PID(), msg)
+		}
+	}
+
+	receiver, err := actorContext.SpawnNamed(actor.PropsFromFunc(parent), "pubsubtest-receiver")
 	require.Nil(t, err)
 	defer receiver.Poison()
 
@@ -63,4 +81,56 @@ func TestPubSub(t *testing.T) {
 	require.Nil(t, err)
 
 	assert.Equal(t, tx.ObjectID, resp.(*messages.Transaction).ObjectID)
+}
+
+func TestSimulatedBroadcaster(t *testing.T) {
+	actorContext := actor.EmptyRootContext
+
+	middleware.SetLogLevel("debug")
+
+	tx := &messages.Transaction{
+		ObjectID: []byte("totaltest"),
+	}
+
+	broadcaster := NewSimulatedBroadcaster()
+
+	subscriber := actor.NewFuture(3 * time.Second)
+	ready := actor.NewFuture(500 * time.Millisecond)
+	parent := func(actCtx actor.Context) {
+		switch msg := actCtx.Message().(type) {
+		case *actor.Started:
+			actCtx.Spawn(broadcaster.NewSubscriberProps(tx.TypeCode()))
+			time.Sleep(50 * time.Millisecond)
+			actCtx.Send(ready.PID(), true)
+		case *messages.Transaction:
+			actCtx.Send(subscriber.PID(), msg)
+		default:
+			middleware.Log.Debugw("parent received message type", "type", reflect.TypeOf(msg).String())
+		}
+	}
+
+	receiver, err := actorContext.SpawnNamed(actor.PropsFromFunc(parent), "pubsubtest-receiver")
+	require.Nil(t, err)
+	defer receiver.Poison()
+
+	_, err = ready.Result()
+	require.Nil(t, err)
+
+	broadcaster.Broadcast(tx)
+
+	resp, err := subscriber.Result()
+	require.Nil(t, err)
+
+	assert.Equal(t, tx.ObjectID, resp.(*messages.Transaction).ObjectID)
+}
+
+func bootstrapAddresses(bootstrapHost p2p.Node) []string {
+	addresses := bootstrapHost.Addresses()
+	for _, addr := range addresses {
+		addrStr := addr.String()
+		if strings.Contains(addrStr, "127.0.0.1") {
+			return []string{addrStr}
+		}
+	}
+	return nil
 }

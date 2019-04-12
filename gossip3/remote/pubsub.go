@@ -72,11 +72,12 @@ type broadcastSubscriber struct {
 	cancelFunc context.CancelFunc
 	host       p2p.Node
 	topicName  string
-	subscriber *actor.PID
 }
 
 // A NetworkSubscriber is a subscription to a pubsub style system for a specific message type
-func NewNetworkSubscriberProps(typeCode int8, subscriber *actor.PID, host p2p.Node) *actor.Props {
+// it is designed to be spawned inside another context so that it can use Parent in order to
+// deliver the messages
+func NewNetworkSubscriberProps(typeCode int8, host p2p.Node) *actor.Props {
 	ctx, cancel := context.WithCancel(context.Background())
 	return actor.PropsFromProducer(func() actor.Actor {
 		return &broadcastSubscriber{
@@ -84,7 +85,6 @@ func NewNetworkSubscriberProps(typeCode int8, subscriber *actor.PID, host p2p.No
 			cancelFunc: cancel,
 			subCtx:     ctx,
 			topicName:  topicNameFromTypeCode(typeCode),
-			subscriber: subscriber,
 		}
 	}).WithReceiverMiddleware(
 		middleware.LoggingMiddleware,
@@ -139,5 +139,5 @@ func (bs *broadcastSubscriber) handlePubSubMessage(actorContext actor.Context, p
 		bs.Log.Errorw("error getting message", "err", err)
 		return
 	}
-	actorContext.Send(bs.subscriber, msg)
+	actorContext.Send(actorContext.Parent(), msg)
 }
