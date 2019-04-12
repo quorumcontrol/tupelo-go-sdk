@@ -152,6 +152,14 @@ func (Transaction) TypeCode() int8 {
 	return -9
 }
 
+func (t *Transaction) ID() []byte {
+	bits, err := t.MarshalMsg(nil)
+	if err != nil {
+		panic(fmt.Errorf("error marshaling: %v", err))
+	}
+	return crypto.Keccak256(bits)
+}
+
 func (t *Transaction) ConflictSetID() string {
 	return ConflictSetID(t.ObjectID, t.Height)
 }
