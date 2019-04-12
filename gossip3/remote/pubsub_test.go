@@ -111,7 +111,7 @@ func TestSimulatedBroadcaster(t *testing.T) {
 		}
 	}
 
-	receiver, err := actorContext.SpawnNamed(actor.PropsFromFunc(parent), "pubsubtest-receiver")
+	receiver, err := actorContext.SpawnNamed(actor.PropsFromFunc(parent), "pubsubtest-simulator-receiver")
 	require.Nil(t, err)
 	defer receiver.Poison()
 
