@@ -131,7 +131,7 @@ func newLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port int, 
 	// Make the routed host
 	routedHost := rhost.Wrap(basicHost, dht)
 
-	pub, err := pubsub.NewRandomSub(ctx, routedHost, pubsub.WithStrictSignatureVerification(true))
+	pub, err := pubsub.NewGossipSub(ctx, routedHost, pubsub.WithStrictSignatureVerification(true))
 	if err != nil {
 		return nil, fmt.Errorf("error creating new gossip sub: %v", err)
 	}
