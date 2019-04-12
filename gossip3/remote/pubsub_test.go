@@ -53,8 +53,6 @@ func TestPubSub(t *testing.T) {
 
 	actorContext := actor.EmptyRootContext
 
-	middleware.SetLogLevel("debug")
-
 	tx := &messages.Transaction{
 		ObjectID: []byte("totaltest"),
 	}
@@ -75,7 +73,8 @@ func TestPubSub(t *testing.T) {
 	require.Nil(t, err)
 	defer receiver.Poison()
 
-	broadcaster.Broadcast(tx)
+	err = broadcaster.Broadcast(tx)
+	require.Nil(t, err)
 
 	resp, err := subscriber.Result()
 	require.Nil(t, err)
@@ -85,8 +84,6 @@ func TestPubSub(t *testing.T) {
 
 func TestSimulatedBroadcaster(t *testing.T) {
 	actorContext := actor.EmptyRootContext
-
-	middleware.SetLogLevel("debug")
 
 	tx := &messages.Transaction{
 		ObjectID: []byte("totaltest"),
@@ -116,7 +113,8 @@ func TestSimulatedBroadcaster(t *testing.T) {
 	_, err = ready.Result()
 	require.Nil(t, err)
 
-	broadcaster.Broadcast(tx)
+	err = broadcaster.Broadcast(tx)
+	require.Nil(t, err)
 
 	resp, err := subscriber.Result()
 	require.Nil(t, err)

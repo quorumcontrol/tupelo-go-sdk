@@ -17,9 +17,6 @@ import (
 
 const topicNamePrefix = "tupelo-broadcast"
 
-type subscriptionHolder map[int8]pidHolder
-type pidHolder map[string]*actor.PID
-
 // NetworkBroadcaster implements the broadcast interface necessary
 // for the client
 type NetworkBroadcaster struct {
