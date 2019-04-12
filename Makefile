@@ -12,7 +12,7 @@ gosources = $(shell find . -path "./vendor/*" -prune -o -type f -name "*.go" -pr
 
 all: build
 
-$(generated): gossip3/messages/external.go
+$(generated): gossip3/messages/external.go $(FIRSTGOPATH)/bin/msgp
 	cd gossip3/messages && go generate
 
 $(FIRSTGOPATH)/bin/modvendor:
@@ -48,6 +48,9 @@ $(FIRSTGOPATH)/bin/golangci-lint:
 
 $(FIRSTGOPATH)/bin/gotestsum:
 	go get gotest.tools/gotestsum
+
+$(FIRSTGOPATH)/bin/msgp:
+	go get github.com/tinylib/msgp
 
 clean:
 	go clean ./...
