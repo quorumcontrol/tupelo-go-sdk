@@ -9,7 +9,6 @@ import (
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/AsynkronIT/protoactor-go/plugin"
 	"github.com/Workiva/go-datastructures/bitarray"
-	"github.com/ethereum/go-ethereum/crypto"
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/chaintree"
@@ -21,11 +20,18 @@ import (
 	"go.uber.org/zap"
 )
 
+// Broadcaster is the interface a client needs to send
+// transactions to the network
+type Broadcaster interface {
+	Broadcast(msg messages.WireMessage) error
+}
+
 // Client represents a Tupelo client.
 type Client struct {
 	Group            *types.NotaryGroup
 	log              *zap.SugaredLogger
 	subscriberActors []*actor.PID
+	broadcaster      Broadcaster
 }
 
 type subscriberActor struct {
@@ -73,10 +79,11 @@ func (sa *subscriberActor) Receive(ctx actor.Context) {
 }
 
 // New instantiates a Client for a notary group.
-func New(group *types.NotaryGroup) *Client {
+func New(group *types.NotaryGroup, broadcaster Broadcaster) *Client {
 	return &Client{
-		Group: group,
-		log:   middleware.Log.Named("client"),
+		Group:       group,
+		log:         middleware.Log.Named("client"),
+		broadcaster: broadcaster,
 	}
 }
 
@@ -114,17 +121,8 @@ func (c *Client) Subscribe(signer *types.Signer, treeDid string, expectedTip cid
 }
 
 // SendTransaction sends a transaction to a signer.
-func (c *Client) SendTransaction(signer *types.Signer, trans *messages.Transaction) error {
-	value, err := trans.MarshalMsg(nil)
-	if err != nil {
-		return fmt.Errorf("error marshaling: %v", err)
-	}
-	key := crypto.Keccak256(value)
-	actor.EmptyRootContext.Send(signer.Actor, &messages.Store{
-		Key:   key,
-		Value: value,
-	})
-	return nil
+func (c *Client) SendTransaction(trans *messages.Transaction) error {
+	return c.broadcaster.Broadcast(trans)
 }
 
 // PlayTransactions plays transactions in chain tree.
@@ -199,7 +197,7 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 		return nil, fmt.Errorf("error subscribing: %v", err)
 	}
 
-	err = c.SendTransaction(target, &transaction)
+	err = c.SendTransaction(&transaction)
 	if err != nil {
 		panic(fmt.Errorf("error sending transaction %v", err))
 	}
