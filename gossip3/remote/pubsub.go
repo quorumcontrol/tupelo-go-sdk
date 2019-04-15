@@ -14,22 +14,28 @@ import (
 	"github.com/quorumcontrol/tupelo-go-client/tracing"
 )
 
-// NetworkBroadcaster implements the broadcast interface necessary
+type PubSub interface {
+	Publish(topic string, data []byte) error
+	// RegisterTopicValidator(topic string, val pubsub.Validator, opts ...pubsub.ValidatorOpt) error
+	NewSubscriberProps(topic string) *actor.Props
+}
+
+// NetworkPubSub implements the broadcast interface necessary
 // for the client
-type NetworkBroadcaster struct {
+type NetworkPubSub struct {
 	host p2p.Node
 }
 
-// NewNetworkBroadcaster returns a NetworkBroadcaster that can be used
+// NewNetworkPubSub returns a NetworkBroadcaster that can be used
 // to send messages.WireMessage across the p2p network using pubsub.
-func NewNetworkBroadcaster(host p2p.Node) *NetworkBroadcaster {
-	return &NetworkBroadcaster{
+func NewNetworkPubSub(host p2p.Node) *NetworkPubSub {
+	return &NetworkPubSub{
 		host: host,
 	}
 }
 
 // Broadcast sends the message over the wire to any receivers
-func (nb *NetworkBroadcaster) Broadcast(topic string, message messages.WireMessage) error {
+func (nps *NetworkPubSub) Broadcast(topic string, message messages.WireMessage) error {
 	msg, ok := message.(messages.WireMessage)
 	if !ok {
 		return fmt.Errorf("error, message of type %s is not a messages.WireMessage", reflect.TypeOf(msg).String())
@@ -51,7 +57,11 @@ func (nb *NetworkBroadcaster) Broadcast(topic string, message messages.WireMessa
 		return fmt.Errorf("error marshaling message: %v", err)
 	}
 
-	return nb.host.GetPubSub().Publish(topic, bits)
+	return nps.host.GetPubSub().Publish(topic, bits)
+}
+
+func (nps *NetworkPubSub) NewSubscriberProps(topic string) *actor.Props {
+	return newBroadcastSubscriberProps(topic, nps.host)
 }
 
 type broadcastSubscriber struct {
@@ -67,7 +77,7 @@ type broadcastSubscriber struct {
 // A NetworkSubscriber is a subscription to a pubsub style system for a specific message type
 // it is designed to be spawned inside another context so that it can use Parent in order to
 // deliver the messages
-func NewNetworkSubscriberProps(topic string, host p2p.Node) *actor.Props {
+func newBroadcastSubscriberProps(topic string, host p2p.Node) *actor.Props {
 	ctx, cancel := context.WithCancel(context.Background())
 	return actor.PropsFromProducer(func() actor.Actor {
 		return &broadcastSubscriber{

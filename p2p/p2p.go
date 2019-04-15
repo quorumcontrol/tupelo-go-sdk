@@ -154,7 +154,7 @@ func (h *LibP2PHost) Identity() string {
 	return h.host.ID().Pretty()
 }
 
-func (h *LibP2PHost) GetPubSub() PubSub {
+func (h *LibP2PHost) GetPubSub() *pubsub.PubSub {
 	return h.pubsub
 }
 

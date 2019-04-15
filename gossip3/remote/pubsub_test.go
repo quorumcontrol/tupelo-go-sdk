@@ -57,14 +57,15 @@ func TestPubSub(t *testing.T) {
 		ObjectID: []byte("totaltest"),
 	}
 
-	broadcaster := NewNetworkBroadcaster(nodeA)
+	newtworkPubsubA := NewNetworkPubSub(nodeA)
+	newtworkPubsubB := NewNetworkPubSub(nodeB)
 
 	subscriber := actor.NewFuture(5 * time.Second)
 	ready := actor.NewFuture(1 * time.Second)
 	parent := func(actCtx actor.Context) {
 		switch msg := actCtx.Message().(type) {
 		case *actor.Started:
-			actCtx.Spawn(NewNetworkSubscriberProps("testpubsub", nodeB))
+			actCtx.Spawn(newtworkPubsubB.NewSubscriberProps("testpubsub"))
 			actCtx.Send(ready.PID(), true)
 		case *messages.Transaction:
 			actCtx.Send(subscriber.PID(), msg)
@@ -78,7 +79,7 @@ func TestPubSub(t *testing.T) {
 	_, err = ready.Result()
 	require.Nil(t, err)
 
-	err = broadcaster.Broadcast("testpubsub", tx)
+	err = newtworkPubsubA.Broadcast("testpubsub", tx)
 	require.Nil(t, err)
 
 	resp, err := subscriber.Result()
@@ -94,14 +95,14 @@ func TestSimulatedBroadcaster(t *testing.T) {
 		ObjectID: []byte("totaltest"),
 	}
 
-	broadcaster := NewSimulatedBroadcaster()
+	simulatedPubSub := NewSimulatedPubSub()
 
 	subscriber := actor.NewFuture(3 * time.Second)
 	ready := actor.NewFuture(500 * time.Millisecond)
 	parent := func(actCtx actor.Context) {
 		switch msg := actCtx.Message().(type) {
 		case *actor.Started:
-			actCtx.Spawn(broadcaster.NewSubscriberProps("testsimulatortopic"))
+			actCtx.Spawn(simulatedPubSub.NewSubscriberProps("testsimulatortopic"))
 			time.Sleep(50 * time.Millisecond)
 			actCtx.Send(ready.PID(), true)
 		case *messages.Transaction:
@@ -118,7 +119,7 @@ func TestSimulatedBroadcaster(t *testing.T) {
 	_, err = ready.Result()
 	require.Nil(t, err)
 
-	err = broadcaster.Broadcast("testsimulatortopic", tx)
+	err = simulatedPubSub.Broadcast("testsimulatortopic", tx)
 	require.Nil(t, err)
 
 	resp, err := subscriber.Result()

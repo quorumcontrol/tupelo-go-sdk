@@ -9,14 +9,14 @@ import (
 	"github.com/quorumcontrol/tupelo-go-client/tracing"
 )
 
-func NewSimulatedBroadcaster() *SimulatedBroadcaster {
-	return &SimulatedBroadcaster{
+func NewSimulatedPubSub() *SimulatedPubSub {
+	return &SimulatedPubSub{
 		eventStream: &eventstream.EventStream{},
 	}
 }
 
 // SimulatedBroadcaster is a simulated in-memory pubsub that doesn't need a network connection
-type SimulatedBroadcaster struct {
+type SimulatedPubSub struct {
 	eventStream *eventstream.EventStream
 }
 
@@ -26,7 +26,7 @@ type simulatorMessage struct {
 }
 
 // Implements the broadcast necessary for the client side to send to the network
-func (sb *SimulatedBroadcaster) Broadcast(topic string, message messages.WireMessage) error {
+func (sb *SimulatedPubSub) Broadcast(topic string, message messages.WireMessage) error {
 	middleware.Log.Debugw("publishing")
 	sb.eventStream.Publish(&simulatorMessage{
 		topic: topic,
@@ -36,7 +36,7 @@ func (sb *SimulatedBroadcaster) Broadcast(topic string, message messages.WireMes
 }
 
 // returns subscriber props that can be used to listent to broadcast events
-func (sb *SimulatedBroadcaster) NewSubscriberProps(topic string) *actor.Props {
+func (sb *SimulatedPubSub) NewSubscriberProps(topic string) *actor.Props {
 	return newSimulatedSubscriberProps(topic, sb.eventStream)
 }
 
