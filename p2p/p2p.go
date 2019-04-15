@@ -154,6 +154,10 @@ func (h *LibP2PHost) Identity() string {
 	return h.host.ID().Pretty()
 }
 
+func (h *LibP2PHost) GetPubSub() PubSub {
+	return h.pubsub
+}
+
 func (h *LibP2PHost) Bootstrap(peers []string) (io.Closer, error) {
 	bootstrapCfg := BootstrapConfigWithPeers(convertPeers(peers))
 	h.bootstrapConfig = &bootstrapCfg

@@ -54,7 +54,7 @@ func (nb *NetworkBroadcaster) Broadcast(message messages.WireMessage) error {
 		return fmt.Errorf("error marshaling message: %v", err)
 	}
 
-	return nb.host.Publish(topicNameFromTypeCode(wd.Type), bits)
+	return nb.host.GetPubSub().Publish(topicNameFromTypeCode(wd.Type), bits)
 }
 
 func topicNameFromTypeCode(typeCode int8) string {
@@ -93,7 +93,7 @@ func (bs *broadcastSubscriber) Receive(actorContext actor.Context) {
 	switch msg := actorContext.Message().(type) {
 	case *actor.Started:
 		bs.Log.Debugw("subscribed")
-		sub, err := bs.host.Subscribe(bs.topicName)
+		sub, err := bs.host.GetPubSub().Subscribe(bs.topicName)
 		if err != nil {
 			panic(fmt.Sprintf("subscription failed, dying %v", err))
 		}
