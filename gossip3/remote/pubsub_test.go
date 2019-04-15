@@ -101,7 +101,7 @@ func TestSimulatedBroadcaster(t *testing.T) {
 	parent := func(actCtx actor.Context) {
 		switch msg := actCtx.Message().(type) {
 		case *actor.Started:
-			actCtx.Spawn(broadcaster.NewSubscriberProps(tx.TypeCode()))
+			actCtx.Spawn(broadcaster.NewSubscriberProps("testsimulatortopic"))
 			time.Sleep(50 * time.Millisecond)
 			actCtx.Send(ready.PID(), true)
 		case *messages.Transaction:
@@ -118,7 +118,7 @@ func TestSimulatedBroadcaster(t *testing.T) {
 	_, err = ready.Result()
 	require.Nil(t, err)
 
-	err = broadcaster.Broadcast(tx)
+	err = broadcaster.Broadcast("testsimulatortopic", tx)
 	require.Nil(t, err)
 
 	resp, err := subscriber.Result()

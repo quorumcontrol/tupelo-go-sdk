@@ -20,16 +20,24 @@ type SimulatedBroadcaster struct {
 	eventStream *eventstream.EventStream
 }
 
+type simulatorMessage struct {
+	topic string
+	msg   messages.WireMessage
+}
+
 // Implements the broadcast necessary for the client side to send to the network
-func (sb *SimulatedBroadcaster) Broadcast(message messages.WireMessage) error {
+func (sb *SimulatedBroadcaster) Broadcast(topic string, message messages.WireMessage) error {
 	middleware.Log.Debugw("publishing")
-	sb.eventStream.Publish(message)
+	sb.eventStream.Publish(&simulatorMessage{
+		topic: topic,
+		msg:   message,
+	})
 	return nil
 }
 
 // returns subscriber props that can be used to listent to broadcast events
-func (sb *SimulatedBroadcaster) NewSubscriberProps(typeCode int8) *actor.Props {
-	return newSimulatedSubscriberProps(typeCode, sb.eventStream)
+func (sb *SimulatedBroadcaster) NewSubscriberProps(topic string) *actor.Props {
+	return newSimulatedSubscriberProps(topic, sb.eventStream)
 }
 
 type simulatedSubscriber struct {
@@ -38,16 +46,16 @@ type simulatedSubscriber struct {
 
 	subscription *eventstream.Subscription
 	eventStream  *eventstream.EventStream
-	typeCode     int8
+	topic        string
 }
 
 // A NetworkSubscriber is a subscription to a pubsub style system for a specific message type
 // it is designed to be spawned inside another context so that it can use Parent in order to
 // deliver the messages
-func newSimulatedSubscriberProps(typeCode int8, eventStream *eventstream.EventStream) *actor.Props {
+func newSimulatedSubscriberProps(topic string, eventStream *eventstream.EventStream) *actor.Props {
 	return actor.PropsFromProducer(func() actor.Actor {
 		return &simulatedSubscriber{
-			typeCode:    typeCode,
+			topic:       topic,
 			eventStream: eventStream,
 		}
 	}).WithReceiverMiddleware(
@@ -62,10 +70,10 @@ func (bs *simulatedSubscriber) Receive(actorContext actor.Context) {
 		bs.Log.Debugw("subscribed")
 		parent := actorContext.Parent()
 		sub := bs.eventStream.Subscribe(func(evt interface{}) {
-			actor.EmptyRootContext.Send(parent, evt)
+			actor.EmptyRootContext.Send(parent, evt.(*simulatorMessage).msg)
 		})
 		sub.WithPredicate(func(evt interface{}) bool {
-			return evt.(messages.WireMessage).TypeCode() == bs.typeCode
+			return evt.(*simulatorMessage).topic == bs.topic
 		})
 		bs.subscription = sub
 	case *actor.Stopping:
