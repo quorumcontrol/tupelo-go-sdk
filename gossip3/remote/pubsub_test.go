@@ -64,7 +64,7 @@ func TestPubSub(t *testing.T) {
 	parent := func(actCtx actor.Context) {
 		switch msg := actCtx.Message().(type) {
 		case *actor.Started:
-			actCtx.Spawn(NewNetworkSubscriberProps(tx.TypeCode(), nodeB))
+			actCtx.Spawn(NewNetworkSubscriberProps("testpubsub", nodeB))
 			actCtx.Send(ready.PID(), true)
 		case *messages.Transaction:
 			actCtx.Send(subscriber.PID(), msg)
@@ -78,7 +78,7 @@ func TestPubSub(t *testing.T) {
 	_, err = ready.Result()
 	require.Nil(t, err)
 
-	err = broadcaster.Broadcast(tx)
+	err = broadcaster.Broadcast("testpubsub", tx)
 	require.Nil(t, err)
 
 	resp, err := subscriber.Result()

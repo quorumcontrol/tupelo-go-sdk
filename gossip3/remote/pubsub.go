@@ -32,7 +32,7 @@ func NewNetworkBroadcaster(host p2p.Node) *NetworkBroadcaster {
 }
 
 // Broadcast sends the message over the wire to any receivers
-func (nb *NetworkBroadcaster) Broadcast(message messages.WireMessage) error {
+func (nb *NetworkBroadcaster) Broadcast(topic string, message messages.WireMessage) error {
 	msg, ok := message.(messages.WireMessage)
 	if !ok {
 		return fmt.Errorf("error, message of type %s is not a messages.WireMessage", reflect.TypeOf(msg).String())
@@ -54,7 +54,7 @@ func (nb *NetworkBroadcaster) Broadcast(message messages.WireMessage) error {
 		return fmt.Errorf("error marshaling message: %v", err)
 	}
 
-	return nb.host.GetPubSub().Publish(topicNameFromTypeCode(wd.Type), bits)
+	return nb.host.GetPubSub().Publish(topic, bits)
 }
 
 func topicNameFromTypeCode(typeCode int8) string {
@@ -74,14 +74,14 @@ type broadcastSubscriber struct {
 // A NetworkSubscriber is a subscription to a pubsub style system for a specific message type
 // it is designed to be spawned inside another context so that it can use Parent in order to
 // deliver the messages
-func NewNetworkSubscriberProps(typeCode int8, host p2p.Node) *actor.Props {
+func NewNetworkSubscriberProps(topic string, host p2p.Node) *actor.Props {
 	ctx, cancel := context.WithCancel(context.Background())
 	return actor.PropsFromProducer(func() actor.Actor {
 		return &broadcastSubscriber{
 			host:       host,
 			cancelFunc: cancel,
 			subCtx:     ctx,
-			topicName:  topicNameFromTypeCode(typeCode),
+			topicName:  topic,
 		}
 	}).WithReceiverMiddleware(
 		middleware.LoggingMiddleware,
