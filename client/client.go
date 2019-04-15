@@ -20,10 +20,12 @@ import (
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/types"
 )
 
+const TransactionBroadcastTopic = "tupelo-transaction-broadcast"
+
 // Broadcaster is the interface a client needs to send
 // transactions to the network
 type Broadcaster interface {
-	Broadcast(msg messages.WireMessage) error
+	Broadcast(topic string, msg messages.WireMessage) error
 }
 
 // Client represents a Tupelo client.
@@ -122,7 +124,7 @@ func (c *Client) Subscribe(signer *types.Signer, treeDid string, expectedTip cid
 
 // SendTransaction sends a transaction to a signer.
 func (c *Client) SendTransaction(trans *messages.Transaction) error {
-	return c.broadcaster.Broadcast(trans)
+	return c.broadcaster.Broadcast(TransactionBroadcastTopic, trans)
 }
 
 // PlayTransactions plays transactions in chain tree.

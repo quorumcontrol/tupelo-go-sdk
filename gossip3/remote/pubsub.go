@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strconv"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/AsynkronIT/protoactor-go/plugin"
@@ -14,8 +13,6 @@ import (
 	"github.com/quorumcontrol/tupelo-go-client/p2p"
 	"github.com/quorumcontrol/tupelo-go-client/tracing"
 )
-
-const topicNamePrefix = "tupelo-broadcast"
 
 // NetworkBroadcaster implements the broadcast interface necessary
 // for the client
@@ -55,10 +52,6 @@ func (nb *NetworkBroadcaster) Broadcast(topic string, message messages.WireMessa
 	}
 
 	return nb.host.GetPubSub().Publish(topic, bits)
-}
-
-func topicNameFromTypeCode(typeCode int8) string {
-	return topicNamePrefix + "-" + strconv.Itoa(int(typeCode))
 }
 
 type broadcastSubscriber struct {
