@@ -15,9 +15,14 @@ import (
 )
 
 type PubSub interface {
-	Publish(topic string, data []byte) error
+	Broadcast(topic string, msg messages.WireMessage) error
 	// RegisterTopicValidator(topic string, val pubsub.Validator, opts ...pubsub.ValidatorOpt) error
 	NewSubscriberProps(topic string) *actor.Props
+	Subscribe(ctx spawner, topic string, subscribers ...*actor.PID) *actor.PID
+}
+
+type spawner interface {
+	Spawn(props *actor.Props) *actor.PID
 }
 
 // NetworkPubSub implements the broadcast interface necessary
@@ -61,30 +66,38 @@ func (nps *NetworkPubSub) Broadcast(topic string, message messages.WireMessage) 
 }
 
 func (nps *NetworkPubSub) NewSubscriberProps(topic string) *actor.Props {
-	return newBroadcastSubscriberProps(topic, nps.host)
+	return newBroadcastSubscriberProps(topic, nps.host, true)
+}
+
+func (nps *NetworkPubSub) Subscribe(ctx spawner, topic string, subscribers ...*actor.PID) *actor.PID {
+	return ctx.Spawn(newBroadcastSubscriberProps(topic, nps.host, false, subscribers...))
 }
 
 type broadcastSubscriber struct {
 	middleware.LogAwareHolder
 	tracing.ContextHolder
 
-	subCtx     context.Context
-	cancelFunc context.CancelFunc
-	host       p2p.Node
-	topicName  string
+	subCtx       context.Context
+	cancelFunc   context.CancelFunc
+	host         p2p.Node
+	topicName    string
+	subscribers  []*actor.PID
+	notifyParent bool
 }
 
 // A NetworkSubscriber is a subscription to a pubsub style system for a specific message type
 // it is designed to be spawned inside another context so that it can use Parent in order to
 // deliver the messages
-func newBroadcastSubscriberProps(topic string, host p2p.Node) *actor.Props {
+func newBroadcastSubscriberProps(topic string, host p2p.Node, notifyParent bool, subscribers ...*actor.PID) *actor.Props {
 	ctx, cancel := context.WithCancel(context.Background())
 	return actor.PropsFromProducer(func() actor.Actor {
 		return &broadcastSubscriber{
-			host:       host,
-			cancelFunc: cancel,
-			subCtx:     ctx,
-			topicName:  topic,
+			host:         host,
+			cancelFunc:   cancel,
+			subCtx:       ctx,
+			topicName:    topic,
+			notifyParent: notifyParent,
+			subscribers:  subscribers,
 		}
 	}).WithReceiverMiddleware(
 		middleware.LoggingMiddleware,
@@ -95,7 +108,7 @@ func newBroadcastSubscriberProps(topic string, host p2p.Node) *actor.Props {
 func (bs *broadcastSubscriber) Receive(actorContext actor.Context) {
 	switch msg := actorContext.Message().(type) {
 	case *actor.Started:
-		bs.Log.Debugw("subscribed")
+		bs.Log.Debugw("subscribed", "topic", bs.topicName)
 		sub, err := bs.host.GetPubSub().Subscribe(bs.topicName)
 		if err != nil {
 			panic(fmt.Sprintf("subscription failed, dying %v", err))
@@ -103,19 +116,15 @@ func (bs *broadcastSubscriber) Receive(actorContext actor.Context) {
 		self := actorContext.Self()
 		go func() {
 			for {
-				bs.Log.Debugw("for loop")
 				msg, err := sub.Next(bs.subCtx)
 				if err == nil {
-					bs.Log.Debugw("msg received", "type", reflect.TypeOf(msg).String())
 					actor.EmptyRootContext.Send(self, msg)
 				} else {
 					if err.Error() == "context canceled" {
 						return // end the loop on a context cancel
 					}
-
 					bs.Log.Errorw("error getting message", "err", err)
 					panic("error getting message")
-
 				}
 			}
 		}()
@@ -139,5 +148,10 @@ func (bs *broadcastSubscriber) handlePubSubMessage(actorContext actor.Context, p
 		bs.Log.Errorw("error getting message", "err", err)
 		return
 	}
-	actorContext.Send(actorContext.Parent(), msg)
+	if bs.notifyParent {
+		actorContext.Send(actorContext.Parent(), msg)
+	}
+	for _, subscriber := range bs.subscribers {
+		actorContext.Send(subscriber, msg)
+	}
 }

@@ -7,8 +7,7 @@ import (
 	"time"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
-	"github.com/AsynkronIT/protoactor-go/plugin"
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/safewrap"
@@ -17,83 +16,34 @@ import (
 	"github.com/quorumcontrol/tupelo-go-client/consensus"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/middleware"
+	"github.com/quorumcontrol/tupelo-go-client/gossip3/remote"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/types"
 )
 
+// TransactionBroadcastTopic is the topic from which clients
+// broadcast their transactions to the NotaryGroup
 const TransactionBroadcastTopic = "tupelo-transaction-broadcast"
-
-// Broadcaster is the interface a client needs to send
-// transactions to the network
-type Broadcaster interface {
-	Broadcast(topic string, msg messages.WireMessage) error
-}
 
 // Client represents a Tupelo client.
 type Client struct {
-	Group            *types.NotaryGroup
-	log              *zap.SugaredLogger
-	subscriberActors []*actor.PID
-	broadcaster      Broadcaster
-}
-
-type subscriberActor struct {
-	middleware.LogAwareHolder
-
-	ch      chan interface{}
-	timeout time.Duration
-}
-
-func newSubscriberActorProps(ch chan interface{}, timeout time.Duration) *actor.Props {
-	return actor.PropsFromProducer(func() actor.Actor {
-		return &subscriberActor{
-			ch:      ch,
-			timeout: timeout,
-		}
-	}).WithReceiverMiddleware(
-		middleware.LoggingMiddleware,
-		plugin.Use(&middleware.LogPlugin{}),
-	)
-}
-
-func (sa *subscriberActor) Receive(ctx actor.Context) {
-	switch msg := ctx.Message().(type) {
-	case *actor.Started:
-		ctx.SetReceiveTimeout(sa.timeout)
-	case *actor.ReceiveTimeout:
-		ctx.Self().Poison()
-		sa.ch <- msg
-		close(sa.ch)
-	case *actor.Terminated:
-		// For some reason we never seem to receive this when we timeout and self-poison
-		close(sa.ch)
-	case *messages.CurrentState:
-		sa.ch <- msg
-		ctx.Respond(&messages.TipSubscription{
-			ObjectID:    msg.Signature.ObjectID,
-			TipValue:    msg.Signature.NewTip,
-			Unsubscribe: true,
-		})
-		ctx.Self().Poison()
-	case *messages.Error:
-		sa.ch <- msg
-		ctx.Self().Poison()
-	}
+	Group *types.NotaryGroup
+	log   *zap.SugaredLogger
+	// subscriberActors []*actor.PID
+	pubsub remote.PubSub
 }
 
 // New instantiates a Client for a notary group.
-func New(group *types.NotaryGroup, broadcaster Broadcaster) *Client {
+func New(group *types.NotaryGroup, pubsub remote.PubSub) *Client {
 	return &Client{
-		Group:       group,
-		log:         middleware.Log.Named("client"),
-		broadcaster: broadcaster,
+		Group:  group,
+		log:    middleware.Log.Named("client"),
+		pubsub: pubsub,
 	}
 }
 
 // Stop stops a Client.
 func (c *Client) Stop() {
-	for _, act := range c.subscriberActors {
-		act.Stop()
-	}
+	// no op
 }
 
 // TipRequest requests the tip of a chain tree.
@@ -111,20 +61,26 @@ func (c *Client) TipRequest(chainID string) (*messages.CurrentState, error) {
 }
 
 // Subscribe creates a subscription to a chain tree.
-func (c *Client) Subscribe(signer *types.Signer, treeDid string, expectedTip cid.Cid, timeout time.Duration) (chan interface{}, error) {
-	ch := make(chan interface{}, 1)
-	act := actor.EmptyRootContext.SpawnPrefix(newSubscriberActorProps(ch, timeout), "sub-"+treeDid)
-	c.subscriberActors = append(c.subscriberActors, act)
-	actor.EmptyRootContext.RequestWithCustomSender(signer.Actor, &messages.TipSubscription{
-		ObjectID: []byte(treeDid),
-		TipValue: expectedTip.Bytes(),
-	}, act)
-	return ch, nil
+func (c *Client) Subscribe(treeDid string, expectedTip cid.Cid, timeout time.Duration) *actor.Future {
+	fut := actor.NewFuture(timeout)
+	act := c.pubsub.Subscribe(actor.EmptyRootContext, treeDid, fut.PID())
+
+	// the future we'll use to kill the subscriber actor
+	killFut := actor.NewFuture(timeout + 1*time.Second)
+	fut.PipeTo(killFut.PID())
+	go func() {
+		err := killFut.Wait()
+		if err != nil {
+			c.log.Debugw("future timed out in client subscribe", "did", treeDid, "tip", expectedTip)
+		}
+		act.Poison()
+	}()
+	return fut
 }
 
 // SendTransaction sends a transaction to a signer.
 func (c *Client) SendTransaction(trans *messages.Transaction) error {
-	return c.broadcaster.Broadcast(TransactionBroadcastTopic, trans)
+	return c.pubsub.Broadcast(TransactionBroadcastTopic, trans)
 }
 
 // PlayTransactions plays transactions in chain tree.
@@ -192,19 +148,18 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 		State:       nodes,
 	}
 
-	target := c.Group.GetRandomSigner()
+	fut := c.Subscribe(tree.MustId(), expectedTip, 60*time.Second)
 
-	respChan, err := c.Subscribe(target, tree.MustId(), expectedTip, 60*time.Second)
-	if err != nil {
-		return nil, fmt.Errorf("error subscribing: %v", err)
-	}
-
+	time.Sleep(100 * time.Millisecond)
 	err = c.SendTransaction(&transaction)
 	if err != nil {
 		panic(fmt.Errorf("error sending transaction %v", err))
 	}
 
-	uncastResp := <-respChan
+	uncastResp, err := fut.Result()
+	if err != nil {
+		return nil, fmt.Errorf("error response: %v", err)
+	}
 
 	if uncastResp == nil {
 		return nil, fmt.Errorf("error timeout")
