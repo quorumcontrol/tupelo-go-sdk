@@ -280,14 +280,16 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDeliv
 
 	if b.outgoingStream == nil {
 		sp.SetTag("existing-stream", false)
-		b.Log.Debugw("creating new stream from write operation")
+		b.Log.Debugw("creating new stream from write operation", "remoteAddress", b.remoteAddress)
 		bs := newBridgeStream(gocontext.Background(), b, context.Self())
 		err := bs.SetupOutgoing(b.remoteAddress)
 		if err != nil {
-			b.Log.Warnw("error opening stream", "err", err)
 			// back off dialing if we have trouble with the stream
 			// non-cryptographic random here to add jitter
-			time.Sleep(time.Duration(rand.Intn(500)) * time.Millisecond)
+			backoff := time.Duration(rand.Intn(500))
+			b.Log.Warnw("error opening stream, backing off", "err", err,
+				"remoteAddress", b.remoteAddress, "backoff", backoff, "backoffCount", b.backoffCount)
+			time.Sleep(backoff * time.Millisecond)
 			b.backoffCount++
 			if b.backoffCount > maxBridgeBackoffs {
 				context.Self().Stop()
