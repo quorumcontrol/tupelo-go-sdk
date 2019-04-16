@@ -5,6 +5,8 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
+
+	extmsgs "github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
 )
 
 func init() {
@@ -38,7 +40,7 @@ type AddBlockResponse struct {
 	SignerId  string
 	ChainId   string
 	Tip       *cid.Cid
-	Signature Signature
+	Signature extmsgs.Signature
 }
 
 type GetDiffNodesRequest struct {
@@ -53,7 +55,7 @@ type GetDiffNodesResponse struct {
 type FeedbackRequest struct {
 	ChainId   string
 	Tip       *cid.Cid
-	Signature Signature
+	Signature extmsgs.Signature
 }
 
 type TipRequest struct {
@@ -63,10 +65,10 @@ type TipRequest struct {
 type TipResponse struct {
 	ChainId   string
 	Tip       *cid.Cid
-	Signature Signature
+	Signature extmsgs.Signature
 }
 
 type TipSignature struct {
 	Tip       *cid.Cid
-	Signature Signature
+	Signature extmsgs.Signature
 }

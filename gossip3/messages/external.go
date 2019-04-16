@@ -119,6 +119,7 @@ type Signature struct {
 	Cycle         uint64
 	Signers       []byte // this is a marshaled BitArray from github.com/Workiva/go-datastructures
 	Signature     []byte
+	Type          string
 }
 
 func (Signature) TypeCode() int8 {

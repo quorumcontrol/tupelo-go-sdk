@@ -13,6 +13,7 @@ import (
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/chaintree/typecaster"
+	extmsgs "github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
 )
 
 const (
@@ -230,7 +231,7 @@ func SendTokenTransaction(tree *dag.Dag, transaction *chaintree.Transaction) (ne
 type ReceiveTokenPayload struct {
 	SendTokenTransactionId string
 	Tip                    []byte
-	Signature              Signature
+	Signature              extmsgs.Signature
 	Leaves                 [][]byte
 }
 
@@ -380,7 +381,6 @@ func ReceiveTokenTransaction(tree *dag.Dag, transaction *chaintree.Transaction) 
 	if codedErr != nil {
 		return nil, false, codedErr
 	}
-
 
 	tokenSend, codedErr := getSendTokenFromReceive(senderDag, tokenName)
 	if codedErr != nil {
