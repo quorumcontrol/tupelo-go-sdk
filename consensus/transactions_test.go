@@ -13,6 +13,8 @@ import (
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/typecaster"
+
+	extmsgs "github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
 )
 
 func TestEstablishTokenTransactionWithMaximum(t *testing.T) {
@@ -1089,6 +1091,12 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 	signature, ok := headers.Signatures[sigAddr]
 	require.True(t, ok)
 
+	objectID, err := senderChainTree.Id()
+	require.Nil(t, err)
+	signature.ObjectID = []byte(objectID)
+	signature.NewTip = senderChainTree.Dag.Tip.Bytes()
+	signature.PreviousTip = signedBlock.PreviousTip.Bytes()
+
 	tokenPath := []string{"tree", "_tupelo", "tokens", "testtoken2", TokenSendLabel, "0"}
 	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
 	require.Nil(t, err)
@@ -1120,7 +1128,13 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 
 	recipientChainTree, err := NewSignedChainTree(recipientKey.PublicKey, store)
 	require.Nil(t, err)
-	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators, IsTokenRecipient)
+
+	isValidSignature := GenerateIsValidSignature(func(sig *extmsgs.Signature) (bool, error) {
+		return false, nil
+	})
+
+	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators,
+		IsTokenRecipient, isValidSignature)
 
 	valid, err := recipientChainTree.ChainTree.ProcessBlock(receiveBlockWithHeaders)
 	assert.Nil(t, err)
@@ -1263,6 +1277,161 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 	recipientChainTree, err := NewSignedChainTree(recipientKey.PublicKey, store)
 	require.Nil(t, err)
 	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators, IsTokenRecipient)
+
+	valid, err := recipientChainTree.ChainTree.ProcessBlock(receiveBlockWithHeaders)
+	assert.Nil(t, err)
+	assert.False(t, valid)
+}
+
+func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	assert.Nil(t, err)
+
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	treeDID := AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
+	emptyTree := NewEmptyTree(treeDID, store)
+
+	maximumAmount := uint64(50)
+	senderHeight := uint64(0)
+	blockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: nil,
+			Height:      senderHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type: TransactionTypeEstablishToken,
+					Payload: map[string]interface{}{
+						"name": "testtoken1",
+					},
+				},
+				{
+					Type: TransactionTypeMintToken,
+					Payload: map[string]interface{}{
+						"name":   "testtoken1",
+						"amount": maximumAmount,
+					},
+				},
+			},
+		},
+	}
+
+	senderChainTree, err := chaintree.NewChainTree(emptyTree, nil, DefaultTransactors)
+	assert.Nil(t, err)
+
+	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	// establish & mint another token to ensure we aren't relying on there only being one
+	blockWithHeaders = &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: &senderChainTree.Dag.Tip,
+			Height: senderHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type: TransactionTypeEstablishToken,
+					Payload: map[string]interface{}{
+						"name": "testtoken2",
+					},
+				},
+				{
+					Type: TransactionTypeMintToken,
+					Payload: map[string]interface{}{
+						"name":   "testtoken2",
+						"amount": maximumAmount / 2,
+					},
+				},
+			},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	recipientKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	recipientTreeDID := AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
+
+	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: &senderChainTree.Dag.Tip,
+			Height:      senderHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type:    TransactionTypeSendToken,
+					Payload: map[string]interface{}{
+						"id":          "1234",
+						"name":        "testtoken2",
+						"amount":      20,
+						"destination": recipientTreeDID,
+					},
+				},
+			},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(sendBlockWithHeaders)
+	assert.Nil(t, err)
+
+	otherKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+
+	signedBlock, err := SignBlock(sendBlockWithHeaders, otherKey)
+	require.Nil(t, err)
+
+	headers := &StandardHeaders{}
+	err = typecaster.ToType(signedBlock.Headers, headers)
+	require.Nil(t, err)
+
+	sigAddr := crypto.PubkeyToAddress(otherKey.PublicKey).String()
+	signature, ok := headers.Signatures[sigAddr]
+	require.True(t, ok)
+
+	objectID, err := senderChainTree.Id()
+	require.Nil(t, err)
+	signature.ObjectID = []byte(objectID)
+	signature.NewTip = emptyTree.Tip.Bytes() // invalid
+	signature.PreviousTip = signedBlock.PreviousTip.Bytes()
+
+	tokenPath := []string{"tree", "_tupelo", "tokens", "testtoken2", TokenSendLabel, "0"}
+	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
+	require.Nil(t, err)
+
+	leaves := make([][]byte, 0)
+	for _, ln := range leafNodes {
+		leaves = append(leaves, ln.RawData())
+	}
+
+	recipientHeight := uint64(0)
+
+	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       recipientHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type:    TransactionTypeReceiveToken,
+					Payload: map[string]interface{}{
+						"sendTokenTransactionId": "1234",
+						"tip":                    senderChainTree.Dag.Tip.Bytes(),
+						"signature":              signature,
+						"leaves":                 leaves,
+					},
+				},
+			},
+		},
+	}
+
+	recipientChainTree, err := NewSignedChainTree(recipientKey.PublicKey, store)
+	require.Nil(t, err)
+
+	isValidSignature := GenerateIsValidSignature(func(sig *extmsgs.Signature) (bool, error) {
+		return true, nil // this should get caught before it gets here; so ensure this doesn't cause false positives
+	})
+
+	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators,
+		IsTokenRecipient, isValidSignature)
 
 	valid, err := recipientChainTree.ChainTree.ProcessBlock(receiveBlockWithHeaders)
 	assert.Nil(t, err)

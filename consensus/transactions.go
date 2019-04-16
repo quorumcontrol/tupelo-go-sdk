@@ -354,8 +354,6 @@ func getSendTokenFromReceive(senderDag *dag.Dag, tokenName string) (*TokenSend, 
 }
 
 func ReceiveTokenTransaction(tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedError chaintree.CodedError) {
-	// TODO: Still need to validate signature
-
 	payload := &ReceiveTokenPayload{}
 	err := typecaster.ToType(transaction.Payload, payload)
 	if err != nil {
