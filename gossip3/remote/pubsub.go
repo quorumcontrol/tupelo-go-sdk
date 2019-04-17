@@ -124,7 +124,7 @@ func (bs *broadcastSubscriber) Receive(actorContext actor.Context) {
 		go func() {
 			for {
 				msg, err := sub.Next(bs.subCtx)
-				if bs.stopped == true {
+				if bs.stopped {
 					return // no need to process here anymore
 				}
 				if err == nil {
