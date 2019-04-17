@@ -100,8 +100,6 @@ func GenerateIsValidSignature(sigVerifier func(sig *extmsgs.Signature) (bool, er
 		for _, rt := range receiveTokens {
 			sig := &rt.Signature
 
-			fmt.Printf("Got sig: %+v\n", sig)
-
 			tip, err := cid.Cast(rt.Tip)
 			if err != nil {
 				return false, &ErrorCode{Code: ErrInvalidTip, Memo: fmt.Sprintf("error casting tip to CID: %v", err)}
