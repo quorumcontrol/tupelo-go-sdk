@@ -90,7 +90,7 @@ func DecodePath(path string) ([]string, error) {
 }
 
 // SetDataTransaction just sets a path in tree/data to arbitrary data.
-func SetDataTransaction(tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
+func SetDataTransaction(_ string, tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
 	payload := &SetDataPayload{}
 	err := typecaster.ToType(transaction.Payload, payload)
 	if err != nil {
@@ -123,7 +123,7 @@ type SetOwnershipPayload struct {
 }
 
 // SetOwnershipTransaction changes the ownership of a tree by adding a public key array to /_tupelo/authentications
-func SetOwnershipTransaction(tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
+func SetOwnershipTransaction(_ string, tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
 	payload := &SetOwnershipPayload{}
 	err := typecaster.ToType(transaction.Payload, payload)
 	if err != nil {
@@ -143,6 +143,69 @@ func SetOwnershipTransaction(tree *dag.Dag, transaction *chaintree.Transaction) 
 	return newTree, true, nil
 }
 
+type TokenName struct {
+	ChainTreeDID string
+	LocalName    string
+}
+
+func (tn *TokenName) String() string {
+	return strings.Join([]string{tn.ChainTreeDID, tn.LocalName}, ":")
+}
+
+func tokenNameFromString(tokenName string) TokenName {
+	components := strings.Split(tokenName, ":")
+	ctDIDComponents := components[:len(components) - 1]
+	localName := components[len(components) - 1]
+	ctDID := strings.Join(ctDIDComponents, ":")
+	return TokenName{ChainTreeDID: ctDID, LocalName: localName}
+}
+
+func CanonicalTokenName(tree *dag.Dag, defaultChainTreeDID, tokenName string, requireDefault bool) (*TokenName, error) {
+	if strings.HasPrefix(tokenName, "did:tupelo:") {
+		tn := tokenNameFromString(tokenName)
+		if requireDefault && tn.ChainTreeDID != defaultChainTreeDID {
+			return nil, fmt.Errorf("invalid chaintree DID in token name")
+		}
+		return &tn, nil
+	}
+
+	tokensPath, err := DecodePath(TreePathForTokens)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding tokens path: %v", err)
+	}
+
+	tokensObj, remaining, err := tree.Resolve(tokensPath)
+	if err != nil {
+		return nil, fmt.Errorf("error resolving tokens path: %v", err)
+	}
+	if len(remaining) > 0 {
+		// probably just haven't established any tokens yet
+		return &TokenName{ChainTreeDID: defaultChainTreeDID, LocalName: tokenName}, nil
+	}
+
+	tokens, ok := tokensObj.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("tokens node was a %T; expected map[string]interface{}", tokensObj)
+	}
+
+	var matchedToken *TokenName
+	for token := range tokens {
+		tn := tokenNameFromString(token)
+		if tn.LocalName == tokenName {
+			if matchedToken != nil {
+				return nil, fmt.Errorf("ambiguous token names found for %s; please provide full name", tokenName)
+			}
+			matchedToken = &tn
+		}
+	}
+
+	if matchedToken != nil {
+		return matchedToken, nil
+	}
+
+	return &TokenName{ChainTreeDID: defaultChainTreeDID, LocalName: tokenName}, nil
+}
+
 type TokenMonetaryPolicy struct {
 	Maximum uint64
 }
@@ -152,16 +215,19 @@ type EstablishTokenPayload struct {
 	MonetaryPolicy TokenMonetaryPolicy
 }
 
-func EstablishTokenTransaction(tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
+func EstablishTokenTransaction(chainTreeDID string, tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
 	payload := &EstablishTokenPayload{}
 	err := typecaster.ToType(transaction.Payload, payload)
 	if err != nil {
 		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error typecasting payload: %v", err)}
 	}
 
-	tokenName := payload.Name
+	tokenName, err := CanonicalTokenName(tree, chainTreeDID, payload.Name, true)
+	if err != nil {
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting canonical token name for %s: %v", payload.Name, err)}
+	}
 
-	ledger := NewTreeLedger(tree, tokenName)
+	ledger := NewTreeLedger(tree, tokenName.String())
 
 	tokenExists, err := ledger.TokenExists()
 	if err != nil {
@@ -184,15 +250,19 @@ type MintTokenPayload struct {
 	Amount uint64
 }
 
-func MintTokenTransaction(tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
+func MintTokenTransaction(chainTreeDID string, tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
 	payload := &MintTokenPayload{}
 	err := typecaster.ToType(transaction.Payload, payload)
 	if err != nil {
 		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error typecasting payload: %v", err)}
 	}
 
-	tokenName := payload.Name
-	ledger := NewTreeLedger(tree, tokenName)
+	tokenName, err := CanonicalTokenName(tree, chainTreeDID, payload.Name, true)
+	if err != nil {
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting canonical token name for %s: %v", payload.Name, err)}
+	}
+
+	ledger := NewTreeLedger(tree, tokenName.String())
 
 	newTree, err = ledger.MintToken(payload.Amount)
 	if err != nil {
@@ -209,16 +279,19 @@ type SendTokenPayload struct {
 	Destination string
 }
 
-func SendTokenTransaction(tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
+func SendTokenTransaction(chainTreeDID string, tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
 	payload := &SendTokenPayload{}
 	err := typecaster.ToType(transaction.Payload, payload)
 	if err != nil {
 		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error typecasting payload: %v", err)}
 	}
 
-	tokenName := payload.Name
+	tokenName, err := CanonicalTokenName(tree, chainTreeDID, payload.Name, false)
+	if err != nil {
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting canonical token name for %s: %v", payload.Name, err)}
+	}
 
-	ledger := NewTreeLedger(tree, tokenName)
+	ledger := NewTreeLedger(tree, tokenName.String())
 
 	newTree, err = ledger.SendToken(payload.Id, payload.Destination, payload.Amount)
 	if err != nil {
@@ -353,7 +426,7 @@ func getSendTokenFromReceive(senderDag *dag.Dag, tokenName string) (*TokenSend, 
 	return &tokenSend, nil
 }
 
-func ReceiveTokenTransaction(tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedError chaintree.CodedError) {
+func ReceiveTokenTransaction(_ string, tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedError chaintree.CodedError) {
 	payload := &ReceiveTokenPayload{}
 	err := typecaster.ToType(transaction.Payload, payload)
 	if err != nil {
@@ -407,7 +480,7 @@ type StakePayload struct {
 
 // THIS IS A pre-ALPHA TRANSACTION AND NO RULES ARE ENFORCED! Anyone can stake and join a group with no consequences.
 // additionally, it only allows staking a single group at the moment
-func StakeTransaction(tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
+func StakeTransaction(_ string, tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
 	payload := &StakePayload{}
 	err := typecaster.ToType(transaction.Payload, payload)
 	if err != nil {
