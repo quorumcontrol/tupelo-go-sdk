@@ -45,6 +45,10 @@ func (nps *NetworkPubSub) Broadcast(topic string, message messages.WireMessage) 
 	if !ok {
 		return fmt.Errorf("error, message of type %s is not a messages.WireMessage", reflect.TypeOf(msg).String())
 	}
+	if traceable, ok := msg.(tracing.Traceable); ok {
+		sp := traceable.NewSpan("pubsub-publish")
+		defer sp.Finish()
+	}
 	marshaled, err := msg.MarshalMsg(nil)
 	if err != nil {
 		return fmt.Errorf("could not marshal message: %v", err)
@@ -79,10 +83,12 @@ type broadcastSubscriber struct {
 
 	subCtx       context.Context
 	cancelFunc   context.CancelFunc
+	subscription *pubsub.Subscription
 	host         p2p.Node
 	topicName    string
 	subscribers  []*actor.PID
 	notifyParent bool
+	stopped      bool
 }
 
 // A NetworkSubscriber is a subscription to a pubsub style system for a specific message type
@@ -113,10 +119,14 @@ func (bs *broadcastSubscriber) Receive(actorContext actor.Context) {
 		if err != nil {
 			panic(fmt.Sprintf("subscription failed, dying %v", err))
 		}
+		bs.subscription = sub
 		self := actorContext.Self()
 		go func() {
 			for {
 				msg, err := sub.Next(bs.subCtx)
+				if bs.stopped == true {
+					return // no need to process here anymore
+				}
 				if err == nil {
 					actor.EmptyRootContext.Send(self, msg)
 				} else {
@@ -129,6 +139,8 @@ func (bs *broadcastSubscriber) Receive(actorContext actor.Context) {
 			}
 		}()
 	case *actor.Stopping:
+		bs.stopped = true
+		bs.subscription.Cancel()
 		bs.cancelFunc()
 	case *pubsub.Message:
 		bs.handlePubSubMessage(actorContext, msg)
@@ -147,6 +159,10 @@ func (bs *broadcastSubscriber) handlePubSubMessage(actorContext actor.Context, p
 	if err != nil {
 		bs.Log.Errorw("error getting message", "err", err)
 		return
+	}
+	if traceable, ok := msg.(tracing.Traceable); ok {
+		sp := traceable.NewSpan("pubsub-receive")
+		defer sp.Finish()
 	}
 	if bs.notifyParent {
 		actorContext.Send(actorContext.Parent(), msg)

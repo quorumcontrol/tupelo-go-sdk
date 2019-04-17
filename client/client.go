@@ -26,9 +26,8 @@ const TransactionBroadcastTopic = "tupelo-transaction-broadcast"
 
 // Client represents a Tupelo client.
 type Client struct {
-	Group *types.NotaryGroup
-	log   *zap.SugaredLogger
-	// subscriberActors []*actor.PID
+	Group  *types.NotaryGroup
+	log    *zap.SugaredLogger
 	pubsub remote.PubSub
 }
 
@@ -73,7 +72,7 @@ func (c *Client) Subscribe(treeDid string, expectedTip cid.Cid, timeout time.Dur
 		if err != nil {
 			c.log.Debugw("future timed out in client subscribe", "did", treeDid, "tip", expectedTip)
 		}
-		act.Poison()
+		act.Stop()
 	}()
 	return fut
 }
