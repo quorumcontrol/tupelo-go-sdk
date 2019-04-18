@@ -4,10 +4,9 @@ go 1.12
 
 require (
 	github.com/AsynkronIT/protoactor-go v0.0.0-20190318154652-aa1aa20c2fa0
-	github.com/Workiva/go-datastructures v1.0.50
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/elastic/go-sysinfo v0.0.0-20190107121835-59ef8c0eae46 // indirect
-	github.com/ethereum/go-ethereum v1.8.23
+	github.com/ethereum/go-ethereum v1.8.25
 	github.com/huin/goupnp v1.0.0 // indirect
 	github.com/ipfs/go-cid v0.0.1
 	github.com/ipfs/go-datastore v0.0.2
@@ -36,7 +35,7 @@ require (
 	github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829
 	github.com/prometheus/client_model v0.0.0-20190129233127-fd36f4220a90 // indirect
 	github.com/prometheus/procfs v0.0.0-20190319124303-40f3c57fb198 // indirect
-	github.com/quorumcontrol/chaintree v0.0.0-20190329154239-0a2da8b38ce9
+	github.com/quorumcontrol/chaintree v0.0.0-20190411154239-922edd1eb41ea5a299e5eb1d6d9ff38c4dee330a
 	github.com/quorumcontrol/storage v1.1.1
 	github.com/santhosh-tekuri/jsonschema v1.2.4 // indirect
 	github.com/stretchr/testify v1.3.0

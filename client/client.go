@@ -8,16 +8,16 @@ import (
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/AsynkronIT/protoactor-go/plugin"
-	"github.com/Workiva/go-datastructures/bitarray"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/safewrap"
+	"go.uber.org/zap"
+
 	"github.com/quorumcontrol/tupelo-go-client/consensus"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/middleware"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/types"
-	"go.uber.org/zap"
 )
 
 // Broadcaster is the interface a client needs to send
@@ -228,12 +228,7 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 		return nil, fmt.Errorf("error processing block (valid: %t): %v", valid, err)
 	}
 
-	consensusSig, err := toConsensusSig(resp.Signature, c.Group)
-	if err != nil {
-		return nil, fmt.Errorf("error converting sig: %v", err)
-	}
-
-	tree.Signatures[c.Group.ID] = *consensusSig
+	tree.Signatures[c.Group.ID] = *resp.Signature
 
 	newCid, err := cid.Cast(resp.Signature.NewTip)
 	if err != nil {
@@ -251,28 +246,6 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 	}
 
 	return addResponse, nil
-}
-
-func toConsensusSig(sig *messages.Signature, ng *types.NotaryGroup) (*consensus.Signature, error) {
-	signersBitArray, err := bitarray.Unmarshal(sig.Signers)
-	if err != nil {
-		return nil, fmt.Errorf("error getting bit array: %v", err)
-	}
-
-	signersSlice := make([]bool, len(ng.AllSigners()))
-	for i := range ng.AllSigners() {
-		isSet, err := signersBitArray.GetBit(uint64(i))
-		if err != nil {
-			return nil, fmt.Errorf("error getting bit: %v", err)
-		}
-		signersSlice[i] = isSet
-	}
-
-	return &consensus.Signature{
-		Signers:   signersSlice,
-		Signature: sig.Signature,
-		Type:      consensus.KeyTypeBLSGroupSig,
-	}, nil
 }
 
 func getRoot(sct *consensus.SignedChainTree) (*chaintree.RootNode, error) {

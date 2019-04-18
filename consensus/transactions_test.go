@@ -4,13 +4,17 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
-	"github.com/quorumcontrol/chaintree/chaintree"
-	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/quorumcontrol/chaintree/chaintree"
+	"github.com/quorumcontrol/chaintree/nodestore"
+	"github.com/quorumcontrol/chaintree/typecaster"
+
+	extmsgs "github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
 )
 
 func TestEstablishTokenTransactionWithMaximum(t *testing.T) {
@@ -26,7 +30,7 @@ func TestEstablishTokenTransactionWithMaximum(t *testing.T) {
 			PreviousTip: nil,
 			Transactions: []*chaintree.Transaction{
 				{
-					Type: "ESTABLISH_TOKEN",
+					Type: TransactionTypeEstablishToken,
 					Payload: map[string]interface{}{
 						"name": "testtoken",
 						"monetaryPolicy": map[string]interface{}{
@@ -74,7 +78,7 @@ func TestMintToken(t *testing.T) {
 			PreviousTip: nil,
 			Transactions: []*chaintree.Transaction{
 				{
-					Type: "ESTABLISH_TOKEN",
+					Type: TransactionTypeEstablishToken,
 					Payload: map[string]interface{}{
 						"name": "testtoken",
 						"monetaryPolicy": map[string]interface{}{
@@ -98,7 +102,7 @@ func TestMintToken(t *testing.T) {
 			Height:      1,
 			Transactions: []*chaintree.Transaction{
 				{
-					Type: "MINT_TOKEN",
+					Type: TransactionTypeMintToken,
 					Payload: map[string]interface{}{
 						"name":   "testtoken",
 						"amount": 40,
@@ -122,7 +126,7 @@ func TestMintToken(t *testing.T) {
 			Height:      2,
 			Transactions: []*chaintree.Transaction{
 				{
-					Type: "MINT_TOKEN",
+					Type: TransactionTypeMintToken,
 					Payload: map[string]interface{}{
 						"name":   "testtoken",
 						"amount": 1,
@@ -146,7 +150,7 @@ func TestMintToken(t *testing.T) {
 			Height:      2,
 			Transactions: []*chaintree.Transaction{
 				{
-					Type: "MINT_TOKEN",
+					Type: TransactionTypeMintToken,
 					Payload: map[string]interface{}{
 						"name":   "testtoken",
 						"amount": 100,
@@ -176,7 +180,7 @@ func TestEstablishTokenTransactionWithoutMonetaryPolicy(t *testing.T) {
 			PreviousTip: nil,
 			Transactions: []*chaintree.Transaction{
 				{
-					Type: "ESTABLISH_TOKEN",
+					Type: TransactionTypeEstablishToken,
 					Payload: map[string]interface{}{
 						"name": "testtoken",
 					},
@@ -222,7 +226,7 @@ func TestSetData(t *testing.T) {
 			PreviousTip: nil,
 			Transactions: []*chaintree.Transaction{
 				{
-					Type: "SET_DATA",
+					Type: TransactionTypeSetData,
 					Payload: map[string]string{
 						"path":  path,
 						"value": value,
@@ -283,7 +287,7 @@ func TestSetData(t *testing.T) {
 			PreviousTip: &testTree.Dag.Tip,
 			Transactions: []*chaintree.Transaction{
 				{
-					Type: "SET_DATA",
+					Type: TransactionTypeSetData,
 					Payload: map[string]string{
 						"path":  path,
 						"value": value,
@@ -329,7 +333,7 @@ func TestSetOwnership(t *testing.T) {
 			PreviousTip: nil,
 			Transactions: []*chaintree.Transaction{
 				{
-					Type: "SET_DATA",
+					Type: TransactionTypeSetData,
 					Payload: map[string]string{
 						"path":  path,
 						"value": value,
@@ -360,7 +364,7 @@ func TestSetOwnership(t *testing.T) {
 			Height:      1,
 			Transactions: []*chaintree.Transaction{
 				{
-					Type: "SET_OWNERSHIP",
+					Type: TransactionTypeSetOwnership,
 					Payload: &SetOwnershipPayload{
 						Authentication: []string{keyAddr},
 					},
@@ -396,13 +400,13 @@ func TestSendToken(t *testing.T) {
 			Height: height,
 			Transactions: []*chaintree.Transaction{
 				{
-					Type: "ESTABLISH_TOKEN",
+					Type: TransactionTypeEstablishToken,
 					Payload: map[string]interface{}{
 						"name": "testtoken",
 					},
 				},
 				{
-					Type: "MINT_TOKEN",
+					Type: TransactionTypeMintToken,
 					Payload: map[string]interface{}{
 						"name":   "testtoken",
 						"amount": maximumAmount,
@@ -429,7 +433,7 @@ func TestSendToken(t *testing.T) {
 			Height: height,
 			Transactions: []*chaintree.Transaction{
 				{
-					Type: "SEND_TOKEN",
+					Type: TransactionTypeSendToken,
 					Payload: map[string]interface{}{
 						"id":          "1234",
 						"name":        "testtoken",
@@ -461,7 +465,7 @@ func TestSendToken(t *testing.T) {
 			Height: height,
 			Transactions: []*chaintree.Transaction{
 				{
-					Type: "SEND_TOKEN",
+					Type: TransactionTypeSendToken,
 					Payload: map[string]interface{}{
 						"id":          "1234",
 						"name":        "testtoken",
@@ -475,6 +479,963 @@ func TestSendToken(t *testing.T) {
 
 	_, err = testTree.ProcessBlock(overSpendBlockWithHeaders)
 	assert.NotNil(t, err)
+}
+
+func TestReceiveToken(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	assert.Nil(t, err)
+
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	treeDID := AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
+	emptyTree := NewEmptyTree(treeDID, store)
+
+	maximumAmount := uint64(50)
+	senderHeight := uint64(0)
+	blockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: nil,
+			Height:      senderHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type: TransactionTypeEstablishToken,
+					Payload: map[string]interface{}{
+						"name": "testtoken1",
+					},
+				},
+				{
+					Type: TransactionTypeMintToken,
+					Payload: map[string]interface{}{
+						"name":   "testtoken1",
+						"amount": maximumAmount,
+					},
+				},
+			},
+		},
+	}
+
+	senderChainTree, err := chaintree.NewChainTree(emptyTree, nil, DefaultTransactors)
+	assert.Nil(t, err)
+
+	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	// establish & mint another token to ensure we aren't relying on there only being one
+	blockWithHeaders = &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: &senderChainTree.Dag.Tip,
+			Height: senderHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type: TransactionTypeEstablishToken,
+					Payload: map[string]interface{}{
+						"name": "testtoken2",
+					},
+				},
+				{
+					Type: TransactionTypeMintToken,
+					Payload: map[string]interface{}{
+						"name":   "testtoken2",
+						"amount": maximumAmount / 2,
+					},
+				},
+			},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	recipientKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	recipientTreeDID := AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
+
+	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: &senderChainTree.Dag.Tip,
+			Height:      senderHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type:    TransactionTypeSendToken,
+					Payload: map[string]interface{}{
+						"id":          "1234",
+						"name":        "testtoken2",
+						"amount":      20,
+						"destination": recipientTreeDID,
+					},
+				},
+			},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(sendBlockWithHeaders)
+	assert.Nil(t, err)
+
+	recipientHeight := uint64(0)
+
+	signedBlock, err := SignBlock(sendBlockWithHeaders, key)
+	require.Nil(t, err)
+
+	headers := &StandardHeaders{}
+	err = typecaster.ToType(signedBlock.Headers, headers)
+	require.Nil(t, err)
+
+	sigAddr := crypto.PubkeyToAddress(key.PublicKey).String()
+	signature, ok := headers.Signatures[sigAddr]
+	require.True(t, ok)
+
+	tokenPath := []string{"tree", "_tupelo", "tokens", "testtoken2", TokenSendLabel, "0"}
+	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
+	require.Nil(t, err)
+
+	leaves := make([][]byte, 0)
+	for _, ln := range leafNodes {
+		leaves = append(leaves, ln.RawData())
+	}
+
+	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       recipientHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type:    TransactionTypeReceiveToken,
+					Payload: map[string]interface{}{
+						"sendTokenTransactionId": "1234",
+						"tip":                    senderChainTree.Dag.Tip.Bytes(),
+						"signature":              signature,
+						"leaves":                 leaves,
+					},
+				},
+			},
+		},
+	}
+
+	recipientChainTree, err := NewSignedChainTree(recipientKey.PublicKey, store)
+	require.Nil(t, err)
+	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators, IsTokenRecipient)
+
+	valid, err := recipientChainTree.ChainTree.ProcessBlock(receiveBlockWithHeaders)
+	assert.Nil(t, err)
+	assert.True(t, valid)
+
+	senderTree, err := senderChainTree.Tree()
+	require.Nil(t, err)
+	senderLedger := NewTreeLedger(senderTree, "testtoken2")
+	senderBalance, err := senderLedger.Balance()
+	require.Nil(t, err)
+
+	recipientTree, err := recipientChainTree.ChainTree.Tree()
+	require.Nil(t, err)
+	recipientLedger := NewTreeLedger(recipientTree, "testtoken2")
+	recipientBalance, err := recipientLedger.Balance()
+	require.Nil(t, err)
+
+	assert.Equal(t, uint64(5), senderBalance)
+	assert.Equal(t, uint64(20), recipientBalance)
+}
+
+func TestReceiveTokenInvalidTip(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	assert.Nil(t, err)
+
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	treeDID := AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
+	emptyTree := NewEmptyTree(treeDID, store)
+
+	maximumAmount := uint64(50)
+	senderHeight := uint64(0)
+	blockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: nil,
+			Height:      senderHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type: TransactionTypeEstablishToken,
+					Payload: map[string]interface{}{
+						"name": "testtoken1",
+					},
+				},
+				{
+					Type: TransactionTypeMintToken,
+					Payload: map[string]interface{}{
+						"name":   "testtoken1",
+						"amount": maximumAmount,
+					},
+				},
+			},
+		},
+	}
+
+	senderChainTree, err := chaintree.NewChainTree(emptyTree, nil, DefaultTransactors)
+	assert.Nil(t, err)
+
+	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	// establish & mint another token to ensure we aren't relying on there only being one
+	blockWithHeaders = &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: &senderChainTree.Dag.Tip,
+			Height: senderHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type: TransactionTypeEstablishToken,
+					Payload: map[string]interface{}{
+						"name": "testtoken2",
+					},
+				},
+				{
+					Type: TransactionTypeMintToken,
+					Payload: map[string]interface{}{
+						"name":   "testtoken2",
+						"amount": maximumAmount / 2,
+					},
+				},
+			},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	recipientKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	recipientTreeDID := AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
+
+	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: &senderChainTree.Dag.Tip,
+			Height:      senderHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type:    TransactionTypeSendToken,
+					Payload: map[string]interface{}{
+						"id":          "1234",
+						"name":        "testtoken2",
+						"amount":      20,
+						"destination": recipientTreeDID,
+					},
+				},
+			},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(sendBlockWithHeaders)
+	assert.Nil(t, err)
+
+	recipientHeight := uint64(0)
+
+	signedBlock, err := SignBlock(sendBlockWithHeaders, key)
+	require.Nil(t, err)
+
+	headers := &StandardHeaders{}
+	err = typecaster.ToType(signedBlock.Headers, headers)
+	require.Nil(t, err)
+
+	sigAddr := crypto.PubkeyToAddress(key.PublicKey).String()
+	signature, ok := headers.Signatures[sigAddr]
+	require.True(t, ok)
+
+	tokenPath := []string{"tree", "_tupelo", "tokens", "testtoken2", TokenSendLabel, "0"}
+	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
+	require.Nil(t, err)
+
+	leaves := make([][]byte, 0)
+	for _, ln := range leafNodes {
+		leaves = append(leaves, ln.RawData())
+	}
+
+	otherChainTree, err := chaintree.NewChainTree(emptyTree, nil, DefaultTransactors)
+	require.Nil(t, err)
+
+	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       recipientHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type:    TransactionTypeReceiveToken,
+					Payload: map[string]interface{}{
+						"sendTokenTransactionId": "1234",
+						"tip":                    otherChainTree.Dag.Tip.Bytes(),
+						"signature":              signature,
+						"leaves":                 leaves,
+					},
+				},
+			},
+		},
+	}
+
+	recipientChainTree, err := NewSignedChainTree(recipientKey.PublicKey, store)
+	require.Nil(t, err)
+	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators, IsTokenRecipient)
+
+	valid, err := recipientChainTree.ChainTree.ProcessBlock(receiveBlockWithHeaders)
+	assert.NotNil(t, err)
+	assert.False(t, valid)
+}
+
+func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	assert.Nil(t, err)
+
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	treeDID := AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
+	emptyTree := NewEmptyTree(treeDID, store)
+
+	maximumAmount := uint64(50)
+	senderHeight := uint64(0)
+	blockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: nil,
+			Height:      senderHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type: TransactionTypeEstablishToken,
+					Payload: map[string]interface{}{
+						"name": "testtoken1",
+					},
+				},
+				{
+					Type: TransactionTypeMintToken,
+					Payload: map[string]interface{}{
+						"name":   "testtoken1",
+						"amount": maximumAmount,
+					},
+				},
+			},
+		},
+	}
+
+	senderChainTree, err := chaintree.NewChainTree(emptyTree, nil, DefaultTransactors)
+	assert.Nil(t, err)
+
+	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	// establish & mint another token to ensure we aren't relying on there only being one
+	blockWithHeaders = &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: &senderChainTree.Dag.Tip,
+			Height: senderHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type: TransactionTypeEstablishToken,
+					Payload: map[string]interface{}{
+						"name": "testtoken2",
+					},
+				},
+				{
+					Type: TransactionTypeMintToken,
+					Payload: map[string]interface{}{
+						"name":   "testtoken2",
+						"amount": maximumAmount / 2,
+					},
+				},
+			},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	recipientKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	recipientTreeDID := AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
+
+	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: &senderChainTree.Dag.Tip,
+			Height:      senderHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type:    TransactionTypeSendToken,
+					Payload: map[string]interface{}{
+						"id":          "1234",
+						"name":        "testtoken2",
+						"amount":      20,
+						"destination": recipientTreeDID,
+					},
+				},
+			},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(sendBlockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	recipientHeight := uint64(0)
+
+	signedBlock, err := SignBlock(sendBlockWithHeaders, key)
+	require.Nil(t, err)
+
+	headers := &StandardHeaders{}
+	err = typecaster.ToType(signedBlock.Headers, headers)
+	require.Nil(t, err)
+
+	sigAddr := crypto.PubkeyToAddress(key.PublicKey).String()
+	signature, ok := headers.Signatures[sigAddr]
+	require.True(t, ok)
+
+	tokenPath := []string{"tree", "_tupelo", "tokens", "testtoken2", TokenSendLabel, "0"}
+	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
+	require.Nil(t, err)
+
+	leaves := make([][]byte, 0)
+	for _, ln := range leafNodes {
+		leaves = append(leaves, ln.RawData())
+	}
+
+	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       recipientHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type:    TransactionTypeReceiveToken,
+					Payload: map[string]interface{}{
+						"sendTokenTransactionId": "1234",
+						"tip":                    senderChainTree.Dag.Tip.Bytes(),
+						"signature":              signature,
+						"leaves":                 leaves,
+					},
+				},
+			},
+		},
+	}
+
+	recipientChainTree, err := NewSignedChainTree(recipientKey.PublicKey, store)
+	require.Nil(t, err)
+	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators, IsTokenRecipient)
+
+	valid, err := recipientChainTree.ChainTree.ProcessBlock(receiveBlockWithHeaders)
+	assert.Nil(t, err)
+	assert.True(t, valid)
+	recipientHeight++
+
+	// now attempt to receive a new, otherwise valid send w/ the same transaction id (which should fail)
+
+	sendBlockWithHeaders = &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: &senderChainTree.Dag.Tip,
+			Height:      senderHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type:    TransactionTypeSendToken,
+					Payload: map[string]interface{}{
+						"id":          "1234",
+						"name":        "testtoken2",
+						"amount":      2,
+						"destination": recipientTreeDID,
+					},
+				},
+			},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(sendBlockWithHeaders)
+	assert.Nil(t, err)
+
+	signedBlock, err = SignBlock(sendBlockWithHeaders, key)
+	require.Nil(t, err)
+
+	headers = &StandardHeaders{}
+	err = typecaster.ToType(signedBlock.Headers, headers)
+	require.Nil(t, err)
+
+	sigAddr = crypto.PubkeyToAddress(key.PublicKey).String()
+	signature, ok = headers.Signatures[sigAddr]
+	require.True(t, ok)
+
+	tokenPath = []string{"tree", "_tupelo", "tokens", "testtoken2", TokenSendLabel, "1"}
+	leafNodes, err = senderChainTree.Dag.NodesForPath(tokenPath)
+	require.Nil(t, err)
+
+	leaves = make([][]byte, 0)
+	for _, ln := range leafNodes {
+		leaves = append(leaves, ln.RawData())
+	}
+
+	receiveBlockWithHeaders = &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  &recipientChainTree.ChainTree.Dag.Tip,
+			Height:       recipientHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type:    TransactionTypeReceiveToken,
+					Payload: map[string]interface{}{
+						"sendTokenTransactionId": "1234",
+						"tip":                    senderChainTree.Dag.Tip.Bytes(),
+						"signature":              signature,
+						"leaves":                 leaves,
+					},
+				},
+			},
+		},
+	}
+
+	valid, err = recipientChainTree.ChainTree.ProcessBlock(receiveBlockWithHeaders)
+	assert.NotNil(t, err)
+	assert.False(t, valid)
+}
+
+func TestReceiveTokenInvalidSignature(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	assert.Nil(t, err)
+
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	treeDID := AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
+	emptyTree := NewEmptyTree(treeDID, store)
+
+	maximumAmount := uint64(50)
+	senderHeight := uint64(0)
+	blockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: nil,
+			Height:      senderHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type: TransactionTypeEstablishToken,
+					Payload: map[string]interface{}{
+						"name": "testtoken1",
+					},
+				},
+				{
+					Type: TransactionTypeMintToken,
+					Payload: map[string]interface{}{
+						"name":   "testtoken1",
+						"amount": maximumAmount,
+					},
+				},
+			},
+		},
+	}
+
+	senderChainTree, err := chaintree.NewChainTree(emptyTree, nil, DefaultTransactors)
+	assert.Nil(t, err)
+
+	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	// establish & mint another token to ensure we aren't relying on there only being one
+	blockWithHeaders = &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: &senderChainTree.Dag.Tip,
+			Height: senderHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type: TransactionTypeEstablishToken,
+					Payload: map[string]interface{}{
+						"name": "testtoken2",
+					},
+				},
+				{
+					Type: TransactionTypeMintToken,
+					Payload: map[string]interface{}{
+						"name":   "testtoken2",
+						"amount": maximumAmount / 2,
+					},
+				},
+			},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	recipientKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	recipientTreeDID := AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
+
+	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: &senderChainTree.Dag.Tip,
+			Height:      senderHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type:    TransactionTypeSendToken,
+					Payload: map[string]interface{}{
+						"id":          "1234",
+						"name":        "testtoken2",
+						"amount":      20,
+						"destination": recipientTreeDID,
+					},
+				},
+			},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(sendBlockWithHeaders)
+	assert.Nil(t, err)
+
+	otherKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+
+	signedBlock, err := SignBlock(sendBlockWithHeaders, otherKey)
+	require.Nil(t, err)
+
+	headers := &StandardHeaders{}
+	err = typecaster.ToType(signedBlock.Headers, headers)
+	require.Nil(t, err)
+
+	sigAddr := crypto.PubkeyToAddress(otherKey.PublicKey).String()
+	signature, ok := headers.Signatures[sigAddr]
+	require.True(t, ok)
+
+	objectID, err := senderChainTree.Id()
+	require.Nil(t, err)
+	signature.ObjectID = []byte(objectID)
+	signature.NewTip = senderChainTree.Dag.Tip.Bytes()
+	signature.PreviousTip = signedBlock.PreviousTip.Bytes()
+
+	tokenPath := []string{"tree", "_tupelo", "tokens", "testtoken2", TokenSendLabel, "0"}
+	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
+	require.Nil(t, err)
+
+	leaves := make([][]byte, 0)
+	for _, ln := range leafNodes {
+		leaves = append(leaves, ln.RawData())
+	}
+
+	recipientHeight := uint64(0)
+
+	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       recipientHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type:    TransactionTypeReceiveToken,
+					Payload: map[string]interface{}{
+						"sendTokenTransactionId": "1234",
+						"tip":                    senderChainTree.Dag.Tip.Bytes(),
+						"signature":              signature,
+						"leaves":                 leaves,
+					},
+				},
+			},
+		},
+	}
+
+	recipientChainTree, err := NewSignedChainTree(recipientKey.PublicKey, store)
+	require.Nil(t, err)
+
+	isValidSignature := GenerateIsValidSignature(func(sig *extmsgs.Signature) (bool, error) {
+		return false, nil
+	})
+
+	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators,
+		IsTokenRecipient, isValidSignature)
+
+	valid, err := recipientChainTree.ChainTree.ProcessBlock(receiveBlockWithHeaders)
+	assert.Nil(t, err)
+	assert.False(t, valid)
+}
+
+func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	assert.Nil(t, err)
+
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	treeDID := AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
+	emptyTree := NewEmptyTree(treeDID, store)
+
+	maximumAmount := uint64(50)
+	senderHeight := uint64(0)
+	blockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: nil,
+			Height:      senderHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type: TransactionTypeEstablishToken,
+					Payload: map[string]interface{}{
+						"name": "testtoken1",
+					},
+				},
+				{
+					Type: TransactionTypeMintToken,
+					Payload: map[string]interface{}{
+						"name":   "testtoken1",
+						"amount": maximumAmount,
+					},
+				},
+			},
+		},
+	}
+
+	senderChainTree, err := chaintree.NewChainTree(emptyTree, nil, DefaultTransactors)
+	assert.Nil(t, err)
+
+	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	// establish & mint another token to ensure we aren't relying on there only being one
+	blockWithHeaders = &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: &senderChainTree.Dag.Tip,
+			Height: senderHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type: TransactionTypeEstablishToken,
+					Payload: map[string]interface{}{
+						"name": "testtoken2",
+					},
+				},
+				{
+					Type: TransactionTypeMintToken,
+					Payload: map[string]interface{}{
+						"name":   "testtoken2",
+						"amount": maximumAmount / 2,
+					},
+				},
+			},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	otherKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	otherTreeDID := AddrToDid(crypto.PubkeyToAddress(otherKey.PublicKey).String())
+
+	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: &senderChainTree.Dag.Tip,
+			Height:      senderHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type:    TransactionTypeSendToken,
+					Payload: map[string]interface{}{
+						"id":          "1234",
+						"name":        "testtoken2",
+						"amount":      20,
+						"destination": otherTreeDID,
+					},
+				},
+			},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(sendBlockWithHeaders)
+	assert.Nil(t, err)
+
+	signedBlock, err := SignBlock(sendBlockWithHeaders, key)
+	require.Nil(t, err)
+
+	headers := &StandardHeaders{}
+	err = typecaster.ToType(signedBlock.Headers, headers)
+	require.Nil(t, err)
+
+	sigAddr := crypto.PubkeyToAddress(key.PublicKey).String()
+	signature, ok := headers.Signatures[sigAddr]
+	require.True(t, ok)
+
+	tokenPath := []string{"tree", "_tupelo", "tokens", "testtoken2", TokenSendLabel, "0"}
+	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
+	require.Nil(t, err)
+
+	leaves := make([][]byte, 0)
+	for _, ln := range leafNodes {
+		leaves = append(leaves, ln.RawData())
+	}
+
+	recipientHeight := uint64(0)
+
+	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       recipientHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type:    TransactionTypeReceiveToken,
+					Payload: map[string]interface{}{
+						"sendTokenTransactionId": "1234",
+						"tip":                    senderChainTree.Dag.Tip.Bytes(),
+						"signature":              signature,
+						"leaves":                 leaves,
+					},
+				},
+			},
+		},
+	}
+
+	recipientKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	recipientChainTree, err := NewSignedChainTree(recipientKey.PublicKey, store)
+	require.Nil(t, err)
+	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators, IsTokenRecipient)
+
+	valid, err := recipientChainTree.ChainTree.ProcessBlock(receiveBlockWithHeaders)
+	assert.Nil(t, err)
+	assert.False(t, valid)
+}
+
+func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	assert.Nil(t, err)
+
+	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	treeDID := AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
+	emptyTree := NewEmptyTree(treeDID, store)
+
+	maximumAmount := uint64(50)
+	senderHeight := uint64(0)
+	blockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: nil,
+			Height:      senderHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type: TransactionTypeEstablishToken,
+					Payload: map[string]interface{}{
+						"name": "testtoken1",
+					},
+				},
+				{
+					Type: TransactionTypeMintToken,
+					Payload: map[string]interface{}{
+						"name":   "testtoken1",
+						"amount": maximumAmount,
+					},
+				},
+			},
+		},
+	}
+
+	senderChainTree, err := chaintree.NewChainTree(emptyTree, nil, DefaultTransactors)
+	assert.Nil(t, err)
+
+	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	// establish & mint another token to ensure we aren't relying on there only being one
+	blockWithHeaders = &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: &senderChainTree.Dag.Tip,
+			Height: senderHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type: TransactionTypeEstablishToken,
+					Payload: map[string]interface{}{
+						"name": "testtoken2",
+					},
+				},
+				{
+					Type: TransactionTypeMintToken,
+					Payload: map[string]interface{}{
+						"name":   "testtoken2",
+						"amount": maximumAmount / 2,
+					},
+				},
+			},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	recipientKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	recipientTreeDID := AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
+
+	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip: &senderChainTree.Dag.Tip,
+			Height:      senderHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type:    TransactionTypeSendToken,
+					Payload: map[string]interface{}{
+						"id":          "1234",
+						"name":        "testtoken2",
+						"amount":      20,
+						"destination": recipientTreeDID,
+					},
+				},
+			},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(sendBlockWithHeaders)
+	assert.Nil(t, err)
+
+	otherKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+
+	signedBlock, err := SignBlock(sendBlockWithHeaders, otherKey)
+	require.Nil(t, err)
+
+	headers := &StandardHeaders{}
+	err = typecaster.ToType(signedBlock.Headers, headers)
+	require.Nil(t, err)
+
+	sigAddr := crypto.PubkeyToAddress(otherKey.PublicKey).String()
+	signature, ok := headers.Signatures[sigAddr]
+	require.True(t, ok)
+
+	objectID, err := senderChainTree.Id()
+	require.Nil(t, err)
+	signature.ObjectID = []byte(objectID)
+	signature.NewTip = emptyTree.Tip.Bytes() // invalid
+	signature.PreviousTip = signedBlock.PreviousTip.Bytes()
+
+	tokenPath := []string{"tree", "_tupelo", "tokens", "testtoken2", TokenSendLabel, "0"}
+	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
+	require.Nil(t, err)
+
+	leaves := make([][]byte, 0)
+	for _, ln := range leafNodes {
+		leaves = append(leaves, ln.RawData())
+	}
+
+	recipientHeight := uint64(0)
+
+	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       recipientHeight,
+			Transactions: []*chaintree.Transaction{
+				{
+					Type:    TransactionTypeReceiveToken,
+					Payload: map[string]interface{}{
+						"sendTokenTransactionId": "1234",
+						"tip":                    senderChainTree.Dag.Tip.Bytes(),
+						"signature":              signature,
+						"leaves":                 leaves,
+					},
+				},
+			},
+		},
+	}
+
+	recipientChainTree, err := NewSignedChainTree(recipientKey.PublicKey, store)
+	require.Nil(t, err)
+
+	isValidSignature := GenerateIsValidSignature(func(sig *extmsgs.Signature) (bool, error) {
+		return true, nil // this should get caught before it gets here; so ensure this doesn't cause false positives
+	})
+
+	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators,
+		IsTokenRecipient, isValidSignature)
+
+	valid, err := recipientChainTree.ChainTree.ProcessBlock(receiveBlockWithHeaders)
+	assert.Nil(t, err)
+	assert.False(t, valid)
 }
 
 func TestDecodePath(t *testing.T) {

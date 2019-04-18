@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/tupelo-go-client/bls"
+	extmsgs "github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -44,7 +45,7 @@ func TestVerify(t *testing.T) {
 		Description   string
 		PublicKey     PublicKey
 		Payload       []byte
-		Signature     Signature
+		Signature     extmsgs.Signature
 		ShouldSucceed bool
 		ShouldError   bool
 	}

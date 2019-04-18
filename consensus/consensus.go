@@ -15,18 +15,19 @@ import (
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/chaintree/typecaster"
 	"github.com/quorumcontrol/tupelo-go-client/bls"
+	extmsgs "github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
 )
 
 func init() {
 	typecaster.AddType(StandardHeaders{})
-	typecaster.AddType(Signature{})
+	typecaster.AddType(extmsgs.Signature{})
 	typecaster.AddType(PublicKey{})
 	cbornode.RegisterCborType(StandardHeaders{})
-	cbornode.RegisterCborType(Signature{})
+	cbornode.RegisterCborType(extmsgs.Signature{})
 	cbornode.RegisterCborType(PublicKey{})
 }
 
-type SignatureMap map[string]Signature
+type SignatureMap map[string]extmsgs.Signature
 
 // Merge returns a new SignatatureMap composed of the original with the other merged in
 // other wins when both SignatureMaps have signatures
@@ -76,12 +77,6 @@ type PublicKey struct {
 	Id        string `refmt:"id,omitempty" json:"id,omitempty" cbor:"id,omitempty"`
 	Type      string `refmt:"type,omitempty" json:"type,omitempty" cbor:"type,omitempty"`
 	PublicKey []byte `refmt:"publicKey,omitempty" json:"publicKey,omitempty" cbor:"publicKey,omitempty"`
-}
-
-type Signature struct {
-	Signers   []bool `refmt:"signers,omitempty" json:"signers,omitempty" cbor:"signers,omitempty"`
-	Signature []byte `refmt:"signature,omitempty" json:"signature,omitempty" cbor:"signature,omitempty"`
-	Type      string `refmt:"type,omitempty" json:"type,omitempty" cbor:"type,omitempty"`
 }
 
 type StandardHeaders struct {
@@ -189,7 +184,7 @@ func SignBlock(blockWithHeaders *chaintree.BlockWithHeaders, key *ecdsa.PrivateK
 
 	addr := crypto.PubkeyToAddress(key.PublicKey).String()
 
-	sig := Signature{
+	sig := extmsgs.Signature{
 		Signature: sigBytes,
 		Type:      KeyTypeSecp256k1,
 	}
@@ -254,7 +249,7 @@ func IsBlockSignedBy(blockWithHeaders *chaintree.BlockWithHeaders, addr string) 
 	return false, fmt.Errorf("unkown signature type")
 }
 
-func BlsSign(payload interface{}, key *bls.SignKey) (*Signature, error) {
+func BlsSign(payload interface{}, key *bls.SignKey) (*extmsgs.Signature, error) {
 	hsh, err := ObjToHash(payload)
 	if err != nil {
 		return nil, fmt.Errorf("error hashing block: %v", err)
@@ -265,7 +260,7 @@ func BlsSign(payload interface{}, key *bls.SignKey) (*Signature, error) {
 		return nil, fmt.Errorf("error signing: %v", err)
 	}
 
-	sig := &Signature{
+	sig := &extmsgs.Signature{
 		Signature: sigBytes,
 		Type:      KeyTypeBLSGroupSig,
 	}
@@ -274,13 +269,13 @@ func BlsSign(payload interface{}, key *bls.SignKey) (*Signature, error) {
 }
 
 // Sign the bytes sent in with no additional manipulation (no hashing or serializing)
-func BlsSignBytes(hsh []byte, key *bls.SignKey) (*Signature, error) {
+func BlsSignBytes(hsh []byte, key *bls.SignKey) (*extmsgs.Signature, error) {
 	sigBytes, err := key.Sign(hsh)
 	if err != nil {
 		return nil, fmt.Errorf("error signing: %v", err)
 	}
 
-	sig := &Signature{
+	sig := &extmsgs.Signature{
 		Signature: sigBytes,
 		Type:      KeyTypeBLSGroupSig,
 	}
@@ -288,7 +283,7 @@ func BlsSignBytes(hsh []byte, key *bls.SignKey) (*Signature, error) {
 	return sig, nil
 }
 
-func EcdsaSign(payload interface{}, key *ecdsa.PrivateKey) (*Signature, error) {
+func EcdsaSign(payload interface{}, key *ecdsa.PrivateKey) (*extmsgs.Signature, error) {
 	hsh, err := ObjToHash(payload)
 	if err != nil {
 		return nil, fmt.Errorf("error hashing block: %v", err)
@@ -298,13 +293,13 @@ func EcdsaSign(payload interface{}, key *ecdsa.PrivateKey) (*Signature, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error signing: %v", err)
 	}
-	return &Signature{
+	return &extmsgs.Signature{
 		Signature: sigBytes,
 		Type:      KeyTypeSecp256k1,
 	}, nil
 }
 
-func Verify(hsh []byte, sig Signature, key PublicKey) (bool, error) {
+func Verify(hsh []byte, sig extmsgs.Signature, key PublicKey) (bool, error) {
 	switch sig.Type {
 	case KeyTypeSecp256k1:
 		recoverdPub, err := crypto.SigToPub(hsh, sig.Signature)
