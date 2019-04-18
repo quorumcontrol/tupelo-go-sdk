@@ -428,19 +428,24 @@ func TestTreeLedger_SendToken(t *testing.T) {
 	assert.Equal(t, uint64(5), balance)
 }
 
-// func TestTreeLedger_ReceiveToken(t *testing.T) {
-// 	recipientTreeNodes := map[string]interface{}{
-// 		"_tupelo": map[string]interface{}{
-// 			"tokens": map[string]interface{}{},
-// 		},
-// 	}
-//
-// 	recipientTree := NewTestTree(t, recipientTreeNodes)
-//
-// 	recipientLedger := NewTreeLedger(recipientTree, "test-token")
-//
-// 	recipientTree, err := recipientLedger.ReceiveToken("test-send-token-2", uint64(5))
-// 	require.Nil(t, err)
-//
-// 	TODO: Finish this
-// }
+func TestTreeLedger_ReceiveToken(t *testing.T) {
+	recipientTreeNodes := map[string]interface{}{
+		"_tupelo": map[string]interface{}{
+			"tokens": map[string]interface{}{},
+		},
+	}
+
+	recipientTree := NewTestTree(t, recipientTreeNodes)
+
+	recipientLedger := NewTreeLedger(recipientTree, "test-token")
+
+	recipientTree, err := recipientLedger.ReceiveToken("test-send-token-2", uint64(5))
+	require.Nil(t, err)
+
+    recipientLedger = NewTreeLedger(recipientTree, "test-token")
+
+    balance, err := recipientLedger.Balance()
+    require.Nil(t, err)
+
+    assert.Equal(t, uint64(5), balance)
+}
