@@ -16,7 +16,6 @@ import (
 
 type PubSub interface {
 	Broadcast(topic string, msg messages.WireMessage) error
-	// RegisterTopicValidator(topic string, val pubsub.Validator, opts ...pubsub.ValidatorOpt) error
 	NewSubscriberProps(topic string) *actor.Props
 	Subscribe(ctx spawner, topic string, subscribers ...*actor.PID) *actor.PID
 }
