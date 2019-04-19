@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strconv"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/AsynkronIT/protoactor-go/plugin"
@@ -15,27 +14,39 @@ import (
 	"github.com/quorumcontrol/tupelo-go-client/tracing"
 )
 
-const topicNamePrefix = "tupelo-broadcast"
+type PubSub interface {
+	Broadcast(topic string, msg messages.WireMessage) error
+	NewSubscriberProps(topic string) *actor.Props
+	Subscribe(ctx spawner, topic string, subscribers ...*actor.PID) *actor.PID
+}
 
-// NetworkBroadcaster implements the broadcast interface necessary
+type spawner interface {
+	Spawn(props *actor.Props) *actor.PID
+}
+
+// NetworkPubSub implements the broadcast interface necessary
 // for the client
-type NetworkBroadcaster struct {
+type NetworkPubSub struct {
 	host p2p.Node
 }
 
-// NewNetworkBroadcaster returns a NetworkBroadcaster that can be used
+// NewNetworkPubSub returns a NetworkBroadcaster that can be used
 // to send messages.WireMessage across the p2p network using pubsub.
-func NewNetworkBroadcaster(host p2p.Node) *NetworkBroadcaster {
-	return &NetworkBroadcaster{
+func NewNetworkPubSub(host p2p.Node) *NetworkPubSub {
+	return &NetworkPubSub{
 		host: host,
 	}
 }
 
 // Broadcast sends the message over the wire to any receivers
-func (nb *NetworkBroadcaster) Broadcast(message messages.WireMessage) error {
+func (nps *NetworkPubSub) Broadcast(topic string, message messages.WireMessage) error {
 	msg, ok := message.(messages.WireMessage)
 	if !ok {
 		return fmt.Errorf("error, message of type %s is not a messages.WireMessage", reflect.TypeOf(msg).String())
+	}
+	if traceable, ok := msg.(tracing.Traceable); ok {
+		sp := traceable.NewSpan("pubsub-publish")
+		defer sp.Finish()
 	}
 	marshaled, err := msg.MarshalMsg(nil)
 	if err != nil {
@@ -54,34 +65,44 @@ func (nb *NetworkBroadcaster) Broadcast(message messages.WireMessage) error {
 		return fmt.Errorf("error marshaling message: %v", err)
 	}
 
-	return nb.host.Publish(topicNameFromTypeCode(wd.Type), bits)
+	return nps.host.GetPubSub().Publish(topic, bits)
 }
 
-func topicNameFromTypeCode(typeCode int8) string {
-	return topicNamePrefix + "-" + strconv.Itoa(int(typeCode))
+func (nps *NetworkPubSub) NewSubscriberProps(topic string) *actor.Props {
+	return newBroadcastSubscriberProps(topic, nps.host, true)
+}
+
+func (nps *NetworkPubSub) Subscribe(ctx spawner, topic string, subscribers ...*actor.PID) *actor.PID {
+	return ctx.Spawn(newBroadcastSubscriberProps(topic, nps.host, false, subscribers...))
 }
 
 type broadcastSubscriber struct {
 	middleware.LogAwareHolder
 	tracing.ContextHolder
 
-	subCtx     context.Context
-	cancelFunc context.CancelFunc
-	host       p2p.Node
-	topicName  string
+	subCtx       context.Context
+	cancelFunc   context.CancelFunc
+	subscription *pubsub.Subscription
+	host         p2p.Node
+	topicName    string
+	subscribers  []*actor.PID
+	notifyParent bool
+	stopped      bool
 }
 
 // A NetworkSubscriber is a subscription to a pubsub style system for a specific message type
 // it is designed to be spawned inside another context so that it can use Parent in order to
 // deliver the messages
-func NewNetworkSubscriberProps(typeCode int8, host p2p.Node) *actor.Props {
+func newBroadcastSubscriberProps(topic string, host p2p.Node, notifyParent bool, subscribers ...*actor.PID) *actor.Props {
 	ctx, cancel := context.WithCancel(context.Background())
 	return actor.PropsFromProducer(func() actor.Actor {
 		return &broadcastSubscriber{
-			host:       host,
-			cancelFunc: cancel,
-			subCtx:     ctx,
-			topicName:  topicNameFromTypeCode(typeCode),
+			host:         host,
+			cancelFunc:   cancel,
+			subCtx:       ctx,
+			topicName:    topic,
+			notifyParent: notifyParent,
+			subscribers:  subscribers,
 		}
 	}).WithReceiverMiddleware(
 		middleware.LoggingMiddleware,
@@ -92,31 +113,33 @@ func NewNetworkSubscriberProps(typeCode int8, host p2p.Node) *actor.Props {
 func (bs *broadcastSubscriber) Receive(actorContext actor.Context) {
 	switch msg := actorContext.Message().(type) {
 	case *actor.Started:
-		bs.Log.Debugw("subscribed")
-		sub, err := bs.host.Subscribe(bs.topicName)
+		bs.Log.Debugw("subscribed", "topic", bs.topicName)
+		sub, err := bs.host.GetPubSub().Subscribe(bs.topicName)
 		if err != nil {
 			panic(fmt.Sprintf("subscription failed, dying %v", err))
 		}
+		bs.subscription = sub
 		self := actorContext.Self()
 		go func() {
 			for {
-				bs.Log.Debugw("for loop")
 				msg, err := sub.Next(bs.subCtx)
+				if bs.stopped {
+					return // no need to process here anymore
+				}
 				if err == nil {
-					bs.Log.Debugw("msg received", "type", reflect.TypeOf(msg).String())
 					actor.EmptyRootContext.Send(self, msg)
 				} else {
 					if err.Error() == "context canceled" {
 						return // end the loop on a context cancel
 					}
-
 					bs.Log.Errorw("error getting message", "err", err)
 					panic("error getting message")
-
 				}
 			}
 		}()
 	case *actor.Stopping:
+		bs.stopped = true
+		bs.subscription.Cancel()
 		bs.cancelFunc()
 	case *pubsub.Message:
 		bs.handlePubSubMessage(actorContext, msg)
@@ -136,5 +159,14 @@ func (bs *broadcastSubscriber) handlePubSubMessage(actorContext actor.Context, p
 		bs.Log.Errorw("error getting message", "err", err)
 		return
 	}
-	actorContext.Send(actorContext.Parent(), msg)
+	if traceable, ok := msg.(tracing.Traceable); ok {
+		sp := traceable.NewSpan("pubsub-receive")
+		defer sp.Finish()
+	}
+	if bs.notifyParent {
+		actorContext.Send(actorContext.Parent(), msg)
+	}
+	for _, subscriber := range bs.subscribers {
+		actorContext.Send(subscriber, msg)
+	}
 }

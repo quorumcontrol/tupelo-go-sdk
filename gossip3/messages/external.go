@@ -21,7 +21,6 @@ func init() {
 	RegisterMessage(&Transaction{})
 	RegisterMessage(&GetTip{})
 	RegisterMessage(&ActorPID{})
-	RegisterMessage(&TipSubscription{})
 }
 
 type DestinationSettable interface {
@@ -65,16 +64,6 @@ type Store struct {
 
 func (Store) TypeCode() int8 {
 	return -4
-}
-
-type TipSubscription struct {
-	Unsubscribe bool
-	ObjectID    []byte
-	TipValue    []byte
-}
-
-func (TipSubscription) TypeCode() int8 {
-	return -5
 }
 
 type CurrentState struct {

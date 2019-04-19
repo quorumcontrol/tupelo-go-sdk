@@ -128,10 +128,10 @@ func PubSubTest(t *testing.T, generator nodeGenerator) {
 	err = nodeA.WaitForBootstrap(2, 10*time.Second)
 	require.Nil(t, err)
 
-	sub, err := nodeB.Subscribe("testSubscription")
+	sub, err := nodeB.GetPubSub().Subscribe("testSubscription")
 	require.Nil(t, err)
 
-	err = nodeA.Publish("testSubscription", []byte("hi"))
+	err = nodeA.GetPubSub().Publish("testSubscription", []byte("hi"))
 	require.Nil(t, err)
 
 	msg, err := sub.Next(ctx)

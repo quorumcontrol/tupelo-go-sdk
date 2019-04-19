@@ -27,6 +27,5 @@ type Node interface {
 	NewStreamWithPeerID(ctx context.Context, peerID peer.ID, protocol protocol.ID) (net.Stream, error)
 	Send(publicKey *ecdsa.PublicKey, protocol protocol.ID, payload []byte) error
 	SendAndReceive(publicKey *ecdsa.PublicKey, protocol protocol.ID, payload []byte) ([]byte, error)
-	Subscribe(topic string, opts ...pubsub.SubOpt) (*pubsub.Subscription, error)
-	Publish(topic string, data []byte) error
+	GetPubSub() *pubsub.PubSub
 }
