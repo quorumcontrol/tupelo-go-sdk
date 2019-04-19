@@ -33,7 +33,7 @@ test: $(gosources) $(generated) go.mod go.sum $(FIRSTGOPATH)/bin/gotestsum
 
 ci-test: $(gosources) $(generated) go.mod go.sum $(FIRSTGOPATH)/bin/gotestsum
 	mkdir -p test_results/unit_tests
-	gotestsum --junitfile=test_results/unit_tests/results.xml
+	gotestsum --junitfile=test_results/unit_tests/results.xml -- -mod=readonly ./...
 
 integration-test: docker-image
 	docker run -e TUPELO_BOOTSTRAP_NODES=/ip4/172.16.238.10/tcp/34001/ipfs/\
