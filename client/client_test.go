@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	cid "github.com/ipfs/go-cid"
 
@@ -55,7 +56,7 @@ func loadSignerKeys() ([]*publicKeySet, error) {
 	return keySet, nil
 }
 
-func setupNotaryGroup(ctx context.Context) (*types.NotaryGroup, error) {
+func setupRemote(ctx context.Context, group *types.NotaryGroup) (p2p.Node, error) {
 	remote.Start()
 	key, err := crypto.GenerateKey()
 	if err != nil {
@@ -66,12 +67,16 @@ func setupNotaryGroup(ctx context.Context) (*types.NotaryGroup, error) {
 		return nil, fmt.Errorf("error setting up p2p host: %s", err)
 	}
 	p2pHost.Bootstrap(p2p.BootstrapNodes())
-	if err = p2pHost.WaitForBootstrap(1, 15*time.Second); err != nil {
+	if err = p2pHost.WaitForBootstrap(len(group.Signers), 15*time.Second); err != nil {
 		return nil, err
 	}
 
 	remote.NewRouter(p2pHost)
+	group.SetupAllRemoteActors(&key.PublicKey)
+	return p2pHost, nil
+}
 
+func setupNotaryGroup(ctx context.Context) (*types.NotaryGroup, error) {
 	keys, err := loadSignerKeys()
 	if err != nil {
 		return nil, err
@@ -87,7 +92,6 @@ func setupNotaryGroup(ctx context.Context) (*types.NotaryGroup, error) {
 		signer := types.NewRemoteSigner(ecdsaPubKey, bls.BytesToVerKey(verKeyBytes))
 		group.AddSigner(signer)
 	}
-	group.SetupAllRemoteActors(&key.PublicKey)
 
 	return group, nil
 }
@@ -99,11 +103,14 @@ func TestClientSendTransaction(t *testing.T) {
 	ng, err := setupNotaryGroup(ctx)
 	require.Nil(t, err)
 
-	client := New(ng)
+	host, err := setupRemote(ctx, ng)
+	require.Nil(t, err)
+
+	client := New(ng, remote.NewNetworkPubSub(host))
 	defer client.Stop()
 
 	trans := testhelpers.NewValidTransaction(t)
-	err = client.SendTransaction(ng.GetRandomSigner(), &trans)
+	err = client.SendTransaction(&trans)
 	require.Nil(t, err)
 }
 
@@ -114,23 +121,25 @@ func TestClientSubscribe(t *testing.T) {
 	ng, err := setupNotaryGroup(ctx)
 	require.Nil(t, err)
 
-	client := New(ng)
+	host, err := setupRemote(ctx, ng)
+	require.Nil(t, err)
+
+	client := New(ng, remote.NewNetworkPubSub(host))
 	defer client.Stop()
 
 	trans := testhelpers.NewValidTransaction(t)
 
 	newTip, err := cid.Cast(trans.NewTip)
 	require.Nil(t, err)
-	signer := ng.GetRandomSigner()
-	ch, err := client.Subscribe(signer, string(trans.ObjectID), newTip, 5*time.Second)
-	require.Nil(t, err)
+	fut := client.Subscribe(string(trans.ObjectID), newTip, 5*time.Second)
 
 	time.Sleep(100 * time.Millisecond) // make sure the subscription completes
 
-	err = client.SendTransaction(signer, &trans)
+	err = client.SendTransaction(&trans)
 	require.Nil(t, err)
 
-	resp := <-ch
+	resp, err := fut.Result()
+	require.Nil(t, err)
 	require.NotNil(t, resp)
 	require.IsType(t, &messages.CurrentState{}, resp)
 	currState := resp.(*messages.CurrentState)
@@ -144,7 +153,10 @@ func TestPlayTransactions(t *testing.T) {
 	ng, err := setupNotaryGroup(ctx)
 	require.Nil(t, err)
 
-	client := New(ng)
+	host, err := setupRemote(ctx, ng)
+	require.Nil(t, err)
+
+	client := New(ng, remote.NewNetworkPubSub(host))
 	defer client.Stop()
 
 	treeKey, err := crypto.GenerateKey()
@@ -206,7 +218,10 @@ func TestNonNilPreviousTipOnFirstTransaction(t *testing.T) {
 	ng, err := setupNotaryGroup(ctx)
 	require.Nil(t, err)
 
-	client := New(ng)
+	host, err := setupRemote(ctx, ng)
+	require.Nil(t, err)
+
+	client := New(ng, remote.NewNetworkPubSub(host))
 	defer client.Stop()
 
 	treeKey, err := crypto.GenerateKey()
@@ -278,14 +293,13 @@ func TestNonNilPreviousTipOnFirstTransaction(t *testing.T) {
 		ObjectID:    []byte(chain2.MustId()),
 	}
 
-	signer := ng.GetRandomSigner()
-	respChan, err := client.Subscribe(signer, chain2.MustId(), cid.Undef, 5*time.Second)
+	fut := client.Subscribe(chain2.MustId(), cid.Undef, 5*time.Second)
+
+	err = client.SendTransaction(transactionMsg)
 	require.Nil(t, err)
 
-	err = client.SendTransaction(signer, transactionMsg)
+	resp, err := fut.Result()
 	require.Nil(t, err)
-
-	resp := <-respChan
 
 	require.IsType(t, &messages.Error{}, resp)
 }
@@ -322,7 +336,7 @@ func transactLocal(t testing.TB, tree *consensus.SignedChainTree, treeKey *ecdsa
 	return blockWithHeaders
 }
 
-func transactRemote(t testing.TB, client *Client, signer *types.Signer, treeID string, blockWithHeaders *chaintree.BlockWithHeaders, newTip cid.Cid, stateNodes [][]byte, emptyTip cid.Cid) chan interface{} {
+func transactRemote(t testing.TB, client *Client, treeID string, blockWithHeaders *chaintree.BlockWithHeaders, newTip cid.Cid, stateNodes [][]byte, emptyTip cid.Cid) *actor.Future {
 	sw := safewrap.SafeWrap{}
 
 	var previousTipBytes []byte
@@ -341,13 +355,12 @@ func transactRemote(t testing.TB, client *Client, signer *types.Signer, treeID s
 		ObjectID:    []byte(treeID),
 	}
 
-	respChan, err := client.Subscribe(signer, treeID, newTip, 30*time.Second)
+	fut := client.Subscribe(treeID, newTip, 30*time.Second)
+
+	err := client.SendTransaction(transMsg)
 	require.Nil(t, err)
 
-	err = client.SendTransaction(signer, transMsg)
-	require.Nil(t, err)
-
-	return respChan
+	return fut
 }
 
 func TestSnoozedTransaction(t *testing.T) {
@@ -357,7 +370,10 @@ func TestSnoozedTransaction(t *testing.T) {
 	ng, err := setupNotaryGroup(ctx)
 	require.Nil(t, err)
 
-	client := New(ng)
+	host, err := setupRemote(ctx, ng)
+	require.Nil(t, err)
+
+	client := New(ng, remote.NewNetworkPubSub(host))
 	defer client.Stop()
 
 	treeKey, err := crypto.GenerateKey()
@@ -379,17 +395,18 @@ func TestSnoozedTransaction(t *testing.T) {
 	blockWithHeaders1 := transactLocal(t, testTree, treeKey, 1, "other/thing", "sometestvalue")
 	tip1 := testTree.Tip()
 
-	signer := ng.GetRandomSigner()
-	sub1 := transactRemote(t, client, signer, testTree.MustId(), blockWithHeaders1, tip1, basisNodes1, emptyTip)
+	sub1 := transactRemote(t, client, testTree.MustId(), blockWithHeaders1, tip1, basisNodes1, emptyTip)
 
 	time.Sleep(1 * time.Second)
 
-	sub0 := transactRemote(t, client, signer, testTree.MustId(), blockWithHeaders0, tip0, basisNodes0, emptyTip)
+	sub0 := transactRemote(t, client, testTree.MustId(), blockWithHeaders0, tip0, basisNodes0, emptyTip)
 
-	resp0 := <-sub0
+	resp0, err := sub0.Result()
+	require.Nil(t, err)
 	require.IsType(t, &messages.CurrentState{}, resp0)
 
-	resp1 := <-sub1
+	resp1, err := sub1.Result()
+	require.Nil(t, err)
 	require.IsType(t, &messages.CurrentState{}, resp1)
 }
 
@@ -400,7 +417,10 @@ func TestInvalidPreviousTipOnSnoozedTransaction(t *testing.T) {
 	ng, err := setupNotaryGroup(ctx)
 	require.Nil(t, err)
 
-	client := New(ng)
+	host, err := setupRemote(ctx, ng)
+	require.Nil(t, err)
+
+	client := New(ng, remote.NewNetworkPubSub(host))
 	defer client.Stop()
 
 	treeKey, err := crypto.GenerateKey()
@@ -434,19 +454,24 @@ func TestInvalidPreviousTipOnSnoozedTransaction(t *testing.T) {
 	   This can't be checked until after tx 0 is committed and this test is for
 	   verifying that that happens and results in an error response.
 	*/
-	signer := ng.GetRandomSigner()
-	sub1 := transactRemote(t, client, signer, testTreeB.MustId(), blockWithHeadersA1, tipA1, basisNodesA1, emptyTip)
+	sub1 := transactRemote(t, client, testTreeB.MustId(), blockWithHeadersA1, tipA1, basisNodesA1, emptyTip)
 
 	time.Sleep(1 * time.Second)
 
-	sub0 := transactRemote(t, client, signer, testTreeB.MustId(), blockWithHeadersB0, tipB0, basisNodesB0, emptyTip)
+	sub0 := transactRemote(t, client, testTreeB.MustId(), blockWithHeadersB0, tipB0, basisNodesB0, emptyTip)
 
-	resp0 := <-sub0
+	resp0, err := sub0.Result()
+	require.Nil(t, err)
 	require.IsType(t, &messages.CurrentState{}, resp0)
 
-	resp1 := <-sub1
+	t.Logf("resp0 tip %v", resp0.(*messages.CurrentState).Signature.NewTip)
+
+	resp1, err := sub1.Result()
+	require.Nil(t, err)
+	t.Logf("resp1 tip %v", resp1.(*messages.CurrentState).Signature.NewTip)
 	require.IsType(t, &messages.Error{}, resp1)
 	require.Equal(t, consensus.ErrInvalidTip, resp1.(*messages.Error).Code)
+
 }
 
 func TestNonOwnerTransactions(t *testing.T) {
@@ -456,7 +481,10 @@ func TestNonOwnerTransactions(t *testing.T) {
 	ng, err := setupNotaryGroup(ctx)
 	require.Nil(t, err)
 
-	client := New(ng)
+	host, err := setupRemote(ctx, ng)
+	require.Nil(t, err)
+
+	client := New(ng, remote.NewNetworkPubSub(host))
 	defer client.Stop()
 
 	treeKey1, err := crypto.GenerateKey()

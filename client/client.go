@@ -59,6 +59,8 @@ func (c *Client) TipRequest(chainID string) (*messages.CurrentState, error) {
 	return res.(*messages.CurrentState), nil
 }
 
+func (c *Client) NextTip(timeout time.Duration) (*messages.CurrentState,error)
+
 // Subscribe creates a subscription to a chain tree.
 func (c *Client) Subscribe(treeDid string, expectedTip cid.Cid, timeout time.Duration) *actor.Future {
 	fut := actor.NewFuture(timeout)
