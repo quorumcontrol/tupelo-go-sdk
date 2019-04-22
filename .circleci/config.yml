@@ -2,10 +2,19 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/golang:1.12.1
+      - image: circleci/golang:1.12.3
     steps:
       - checkout
       - add_ssh_keys:
           fingerprints:
             - "06:4a:76:ba:0c:08:2f:ee:d6:2c:0f:7f:fa:f0:28:45"
+      - restore_cache:
+          keys:
+            - go-mod-v1-{{ checksum "go.sum" }}
       - run: ./scripts/test-within-docker.sh
+      - save_cache:
+          key: go-mod-v1-{{ checksum "go.sum" }}
+          paths:
+            - "/go/pkg/mod"
+      - store_test_results:
+          path: test_results

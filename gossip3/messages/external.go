@@ -21,7 +21,6 @@ func init() {
 	RegisterMessage(&Transaction{})
 	RegisterMessage(&GetTip{})
 	RegisterMessage(&ActorPID{})
-	RegisterMessage(&TipSubscription{})
 }
 
 type DestinationSettable interface {
@@ -67,16 +66,6 @@ func (Store) TypeCode() int8 {
 	return -4
 }
 
-type TipSubscription struct {
-	Unsubscribe bool
-	ObjectID    []byte
-	TipValue    []byte
-}
-
-func (TipSubscription) TypeCode() int8 {
-	return -5
-}
-
 type CurrentState struct {
 	Signature *Signature
 }
@@ -119,6 +108,7 @@ type Signature struct {
 	Cycle         uint64
 	Signers       []byte // this is a marshaled BitArray from github.com/Workiva/go-datastructures
 	Signature     []byte
+	Type          string
 }
 
 func (Signature) TypeCode() int8 {
@@ -150,6 +140,14 @@ type Transaction struct {
 
 func (Transaction) TypeCode() int8 {
 	return -9
+}
+
+func (t *Transaction) ID() []byte {
+	bits, err := t.MarshalMsg(nil)
+	if err != nil {
+		panic(fmt.Errorf("error marshaling: %v", err))
+	}
+	return crypto.Keccak256(bits)
 }
 
 func (t *Transaction) ConflictSetID() string {

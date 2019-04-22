@@ -15,6 +15,8 @@ import (
 const (
 	TransactionTypeEstablishToken = "ESTABLISH_TOKEN"
 	TransactionTypeMintToken      = "MINT_TOKEN"
+	TransactionTypeSendToken      = "SEND_TOKEN"
+	TransactionTypeReceiveToken   = "RECEIVE_TOKEN"
 	TransactionTypeSetData        = "SET_DATA"
 	TransactionTypeSetOwnership   = "SET_OWNERSHIP"
 	TransactionTypeStake          = "STAKE"
@@ -23,6 +25,8 @@ const (
 var DefaultTransactors = map[transactions.TransactionType]chaintree.TransactorFunc{
 	transactions.TransactionType_EstablishToken: EstablishTokenTransaction,
 	transactions.TransactionType_MintToken:      MintTokenTransaction,
+	transactions.TransactionType_SendToken:      SendTokenTransaction,
+	transactions.TransactionType_ReceiveToken:   ReceiveTokenTransaction,
 	transactions.TransactionType_SetData:        SetDataTransaction,
 	transactions.TransactionType_SetOwnership:   SetOwnershipTransaction,
 	transactions.TransactionType_Stake:          StakeTransaction,
