@@ -7,16 +7,22 @@ import (
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/AsynkronIT/protoactor-go/plugin"
+	peer "github.com/libp2p/go-libp2p-peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/middleware"
 	"github.com/quorumcontrol/tupelo-go-client/p2p"
 	"github.com/quorumcontrol/tupelo-go-client/tracing"
+	"go.uber.org/zap"
 )
+
+type PubSubValidator func(context.Context, peer.ID, messages.WireMessage) bool
 
 type PubSub interface {
 	Broadcast(topic string, msg messages.WireMessage) error
 	NewSubscriberProps(topic string) *actor.Props
+	RegisterTopicValidator(topic string, validatorFunc PubSubValidator, opts ...pubsub.ValidatorOpt) error
+	UnregisterTopicValidator(topic string)
 	Subscribe(ctx spawner, topic string, subscribers ...*actor.PID) *actor.PID
 }
 
@@ -28,6 +34,7 @@ type spawner interface {
 // for the client
 type NetworkPubSub struct {
 	host p2p.Node
+	log  *zap.SugaredLogger
 }
 
 // NewNetworkPubSub returns a NetworkBroadcaster that can be used
@@ -35,6 +42,7 @@ type NetworkPubSub struct {
 func NewNetworkPubSub(host p2p.Node) *NetworkPubSub {
 	return &NetworkPubSub{
 		host: host,
+		log:  middleware.Log.Named("network-pubsub"),
 	}
 }
 
@@ -66,6 +74,26 @@ func (nps *NetworkPubSub) Broadcast(topic string, message messages.WireMessage) 
 	}
 
 	return nps.host.GetPubSub().Publish(topic, bits)
+}
+
+func (nps *NetworkPubSub) RegisterTopicValidator(topic string, validatorFunc PubSubValidator, opts ...pubsub.ValidatorOpt) error {
+	var wrappedFunc pubsub.Validator = func(ctx context.Context, peer peer.ID, pubsubMsg *pubsub.Message) bool {
+		msg, err := pubsubMessageToWireMessage(pubsubMsg)
+		if err != nil {
+			nps.log.Errorw("error getting wire message", "err", err)
+			return false
+		}
+		if traceable, ok := msg.(tracing.Traceable); ok {
+			sp := traceable.NewSpan("validating")
+			defer sp.Finish()
+		}
+		return validatorFunc(ctx, peer, msg)
+	}
+	return nps.host.GetPubSub().RegisterTopicValidator(topic, wrappedFunc, opts...)
+}
+
+func (nps *NetworkPubSub) UnregisterTopicValidator(topic string) {
+	nps.host.GetPubSub().UnregisterTopicValidator(topic)
 }
 
 func (nps *NetworkPubSub) NewSubscriberProps(topic string) *actor.Props {
@@ -148,17 +176,12 @@ func (bs *broadcastSubscriber) Receive(actorContext actor.Context) {
 
 func (bs *broadcastSubscriber) handlePubSubMessage(actorContext actor.Context, pubsubMsg *pubsub.Message) {
 	bs.Log.Debugw("received")
-	wd := WireDelivery{}
-	_, err := wd.UnmarshalMsg(pubsubMsg.Data)
+	msg, err := pubsubMessageToWireMessage(pubsubMsg)
 	if err != nil {
-		bs.Log.Errorw("error unmarshaling", "err", err)
+		bs.Log.Errorw("error getting wire message", "err", err)
 		return
 	}
-	msg, err := wd.GetMessage()
-	if err != nil {
-		bs.Log.Errorw("error getting message", "err", err)
-		return
-	}
+
 	if traceable, ok := msg.(tracing.Traceable); ok {
 		sp := traceable.NewSpan("pubsub-receive")
 		defer sp.Finish()
@@ -169,4 +192,17 @@ func (bs *broadcastSubscriber) handlePubSubMessage(actorContext actor.Context, p
 	for _, subscriber := range bs.subscribers {
 		actorContext.Send(subscriber, msg)
 	}
+}
+
+func pubsubMessageToWireMessage(pubsubMsg *pubsub.Message) (messages.WireMessage, error) {
+	wd := WireDelivery{}
+	_, err := wd.UnmarshalMsg(pubsubMsg.Data)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshaling: %v", err)
+	}
+	msg, err := wd.GetMessage()
+	if err != nil {
+		return nil, fmt.Errorf("error getting message: %v", err)
+	}
+	return msg, nil
 }
