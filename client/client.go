@@ -69,7 +69,10 @@ func (c *Client) Stop() {
 func (c *Client) subscriptionReceive(actorContext actor.Context) {
 	switch msg := actorContext.Message().(type) {
 	case *actor.Started:
-		actorContext.SpawnNamed(c.pubsub.NewSubscriberProps(c.TreeDID), "client-subscriber")
+		_, err := actorContext.SpawnNamed(c.pubsub.NewSubscriberProps(c.TreeDID), "client-subscriber")
+		if err != nil {
+			panic(fmt.Errorf("error spawning client-subscriber: %v", err))
+		}
 	case *messages.CurrentState:
 		heightString := strconv.FormatUint(msg.Signature.Height, 10)
 		existed, _ := c.cache.ContainsOrAdd(heightString, msg)
@@ -136,7 +139,10 @@ func (c *Client) Subscribe(trans *messages.Transaction, timeout time.Duration) *
 	})
 
 	go func() {
-		killer.Wait()
+		err := killer.Wait()
+		if err != nil {
+			c.log.Errorw("error waiting", "err", err)
+		}
 		c.stream.Unsubscribe(sub)
 	}()
 

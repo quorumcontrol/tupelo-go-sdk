@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/middleware"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/remote"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/testhelpers"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/types"
@@ -13,7 +12,6 @@ import (
 )
 
 func TestSubscription(t *testing.T) {
-	middleware.SetLogLevel("debug")
 	ng := types.NewNotaryGroup("testSubscriptions")
 
 	trans := testhelpers.NewValidTransaction(t)
@@ -32,7 +30,8 @@ func TestSubscription(t *testing.T) {
 				Height:   trans.Height,
 			},
 		}
-		pubSubSystem.Broadcast(string(trans.ObjectID), currState)
+		err := pubSubSystem.Broadcast(string(trans.ObjectID), currState)
+		require.Nil(t, err)
 
 		res, err := fut.Result()
 		require.Nil(t, err)
@@ -48,7 +47,8 @@ func TestSubscription(t *testing.T) {
 		msgErr := &messages.Error{
 			Source: string(trans.ID()),
 		}
-		pubSubSystem.Broadcast(string(trans.ObjectID), msgErr)
+		err := pubSubSystem.Broadcast(string(trans.ObjectID), msgErr)
+		require.Nil(t, err)
 
 		res, err := fut.Result()
 		require.Nil(t, err)
