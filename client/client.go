@@ -28,7 +28,8 @@ import (
 // broadcast their transactions to the NotaryGroup
 const TransactionBroadcastTopic = "tupelo-transaction-broadcast"
 
-// Client represents a Tupelo client.
+// Client represents a Tupelo client for interacting with and
+// listening to ChainTree events
 type Client struct {
 	Group      *types.NotaryGroup
 	TreeDID    string
@@ -39,7 +40,7 @@ type Client struct {
 	stream     *eventstream.EventStream
 }
 
-// New instantiates a Client for a notary group.
+// New instantiates a Client specific to a ChainTree/NotaryGroup
 func New(group *types.NotaryGroup, treeDid string, pubsub remote.PubSub) *Client {
 	cache, err := lru.New(10000)
 	if err != nil {
