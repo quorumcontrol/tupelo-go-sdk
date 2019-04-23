@@ -26,7 +26,7 @@ build: $(gosources) $(generated) go.mod go.sum
 	go build ./...
 
 lint: $(FIRSTGOPATH)/bin/golangci-lint
-	$(FIRSTGOPATH)/bin/golangci-lint run
+	$(FIRSTGOPATH)/bin/golangci-lint run --build-tags integration
 
 test: $(gosources) $(generated) go.mod go.sum $(FIRSTGOPATH)/bin/gotestsum
 	gotestsum

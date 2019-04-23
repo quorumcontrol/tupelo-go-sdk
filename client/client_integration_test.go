@@ -67,7 +67,9 @@ func setupRemote(ctx context.Context, group *types.NotaryGroup) (p2p.Node, error
 	if err != nil {
 		return nil, fmt.Errorf("error setting up p2p host: %s", err)
 	}
-	p2pHost.Bootstrap(p2p.BootstrapNodes())
+	if _, err = p2pHost.Bootstrap(p2p.BootstrapNodes()); err != nil {
+		return nil, err
+	}
 	if err = p2pHost.WaitForBootstrap(len(group.Signers), 15*time.Second); err != nil {
 		return nil, err
 	}
@@ -160,6 +162,7 @@ func TestPlayTransactions(t *testing.T) {
 	require.Nil(t, err)
 	nodeStore := nodestore.NewStorageBasedStore(storage.NewMemStorage())
 	chain, err := consensus.NewSignedChainTree(treeKey.PublicKey, nodeStore)
+	require.Nil(t, err)
 
 	client := New(ng, chain.MustId(), remote.NewNetworkPubSub(host))
 	defer client.Stop()
@@ -499,6 +502,7 @@ func TestNonOwnerTransactions(t *testing.T) {
 	require.Nil(t, err)
 	nodeStore := nodestore.NewStorageBasedStore(storage.NewMemStorage())
 	chain, err := consensus.NewSignedChainTree(treeKey1.PublicKey, nodeStore)
+	require.Nil(t, err)
 
 	client := New(ng, chain.MustId(), remote.NewNetworkPubSub(host))
 	defer client.Stop()
