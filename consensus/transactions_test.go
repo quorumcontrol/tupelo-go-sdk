@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -29,7 +30,10 @@ func TestEstablishTokenTransactionWithMaximum(t *testing.T) {
 	treeDID := AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
 	emptyTree := NewEmptyTree(treeDID, store)
 
-	txn := testfakes.EstablishTokenTransaction("testtoken", 42)
+	tokenName := "testtoken"
+	tokenFullName := strings.Join([]string{treeDID, tokenName}, ":")
+
+	txn := testfakes.EstablishTokenTransaction(tokenName, 42)
 	blockWithHeaders := testfakes.NewValidUnsignedTransactionBlock(txn)
 
 	testTree, err := chaintree.NewChainTree(emptyTree, nil, DefaultTransactors)
@@ -38,19 +42,19 @@ func TestEstablishTokenTransactionWithMaximum(t *testing.T) {
 	_, err = testTree.ProcessBlock(blockWithHeaders)
 	assert.Nil(t, err)
 
-	maximum, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", "testtoken", "monetaryPolicy", "maximum"})
+	maximum, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "monetaryPolicy", "maximum"})
 	assert.Nil(t, err)
 	assert.Equal(t, maximum, uint64(42))
 
-	mints, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", "testtoken", "mints"})
+	mints, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "mints"})
 	assert.Nil(t, err)
 	assert.Nil(t, mints)
 
-	sends, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", "testtoken", "sends"})
+	sends, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "sends"})
 	assert.Nil(t, err)
 	assert.Nil(t, sends)
 
-	receives, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", "testtoken", "receives"})
+	receives, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "receives"})
 	assert.Nil(t, err)
 	assert.Nil(t, receives)
 }
@@ -63,7 +67,10 @@ func TestMintToken(t *testing.T) {
 	treeDID := AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
 	emptyTree := NewEmptyTree(treeDID, store)
 
-	txn := testfakes.EstablishTokenTransaction("testtoken", 42)
+	tokenName := "testtoken"
+	tokenFullName := strings.Join([]string{treeDID, tokenName}, ":")
+
+	txn := testfakes.EstablishTokenTransaction(tokenName, 42)
 	blockWithHeaders := testfakes.NewValidUnsignedTransactionBlock(txn)
 
 	testTree, err := chaintree.NewChainTree(emptyTree, nil, DefaultTransactors)
@@ -72,34 +79,34 @@ func TestMintToken(t *testing.T) {
 	_, err = testTree.ProcessBlock(blockWithHeaders)
 	assert.Nil(t, err)
 
-	mintTxn := testfakes.MintTokenTransaction("testtoken", 40)
+	mintTxn := testfakes.MintTokenTransaction(tokenName, 40)
 	mintBlockWithHeaders := testfakes.NewValidUnsignedTransactionBlock(mintTxn)
 	_, err = testTree.ProcessBlock(mintBlockWithHeaders)
 	assert.Nil(t, err)
 
-	mints, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", "testtoken", "mints"})
+	mints, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "mints"})
 	assert.Nil(t, err)
 	assert.Len(t, mints.([]interface{}), 1)
 
 	// a 2nd mint succeeds when it's within the bounds of the maximum
 
-	mintTxn2 := testfakes.EstablishTokenTransaction("testtoken", 1)
+	mintTxn2 := testfakes.EstablishTokenTransaction(tokenName, 1)
 	mintBlockWithHeaders2 := testfakes.NewValidUnsignedTransactionBlock(mintTxn2)
 	_, err = testTree.ProcessBlock(mintBlockWithHeaders2)
 	assert.Nil(t, err)
 
-	mints, _, err = testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", "testtoken", "mints"})
+	mints, _, err = testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "mints"})
 	assert.Nil(t, err)
 	assert.Len(t, mints.([]interface{}), 2)
 
 	// a third mint fails if it exceeds the max
 
-	mintTxn3 := testfakes.EstablishTokenTransaction("testtoken", 100)
+	mintTxn3 := testfakes.MintTokenTransaction(tokenName, 100)
 	mintBlockWithHeaders3 := testfakes.NewValidUnsignedTransactionBlock(mintTxn3)
 	_, err = testTree.ProcessBlock(mintBlockWithHeaders3)
 	assert.NotNil(t, err)
 
-	mints, _, err = testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", "testtoken", "mints"})
+	mints, _, err = testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "mints"})
 	assert.Nil(t, err)
 	assert.Len(t, mints.([]interface{}), 2)
 }
@@ -112,7 +119,7 @@ func TestEstablishTokenTransactionWithoutMonetaryPolicy(t *testing.T) {
 	treeDID := AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
 	emptyTree := NewEmptyTree(treeDID, store)
 
-	payload := &transactions.EstablishTokenPayload{Name: "testtoken"}
+	payload := &transactions.EstablishTokenPayload{Name: tokenName}
 	txn := &transactions.Transaction{
 		Type:    transactions.TransactionType_EstablishToken,
 		Payload: &transactions.Transaction_EstablishTokenPayload{EstablishTokenPayload: payload},
@@ -125,19 +132,19 @@ func TestEstablishTokenTransactionWithoutMonetaryPolicy(t *testing.T) {
 	_, err = testTree.ProcessBlock(blockWithHeaders)
 	assert.Nil(t, err)
 
-	maximum, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", "testtoken", "monetaryPolicy", "maximum"})
+	maximum, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "monetaryPolicy", "maximum"})
 	assert.Nil(t, err)
 	assert.Empty(t, maximum)
 
-	mints, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", "testtoken", "mints"})
+	mints, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "mints"})
 	assert.Nil(t, err)
 	assert.Nil(t, mints)
 
-	sends, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", "testtoken", "sends"})
+	sends, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "sends"})
 	assert.Nil(t, err)
 	assert.Nil(t, sends)
 
-	receives, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", "testtoken", "receives"})
+	receives, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "receives"})
 	assert.Nil(t, err)
 	assert.Nil(t, receives)
 }
@@ -279,6 +286,9 @@ func TestSendToken(t *testing.T) {
 	treeDID := AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
 	emptyTree := NewEmptyTree(treeDID, store)
 
+	tokenName := "testtoken"
+	tokenFullName := strings.Join([]string{treeDID, tokenName}, ":")
+
 	maximumAmount := uint64(50)
 	height := uint64(0)
 	blockWithHeaders := &chaintree.BlockWithHeaders{
@@ -289,13 +299,13 @@ func TestSendToken(t *testing.T) {
 				{
 					Type: TransactionTypeEstablishToken,
 					Payload: map[string]interface{}{
-						"name": "testtoken",
+						"name": tokenName,
 					},
 				},
 				{
 					Type: TransactionTypeMintToken,
 					Payload: map[string]interface{}{
-						"name":   "testtoken",
+						"name":   tokenName,
 						"amount": maximumAmount,
 					},
 				},
@@ -323,7 +333,7 @@ func TestSendToken(t *testing.T) {
 					Type: TransactionTypeSendToken,
 					Payload: map[string]interface{}{
 						"id":          "1234",
-						"name":        "testtoken",
+						"name":        tokenName,
 						"amount":      30,
 						"destination": targetTreeDID,
 					},
@@ -336,7 +346,7 @@ func TestSendToken(t *testing.T) {
 	assert.Nil(t, err)
 	height++
 
-	sends, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", "testtoken", "sends", "0"})
+	sends, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "sends", "0"})
 	assert.Nil(t, err)
 	assert.NotNil(t, sends)
 
@@ -355,7 +365,7 @@ func TestSendToken(t *testing.T) {
 					Type: TransactionTypeSendToken,
 					Payload: map[string]interface{}{
 						"id":          "1234",
-						"name":        "testtoken",
+						"name":        tokenName,
 						"amount":      (maximumAmount - lastSendAmount) + 1,
 						"destination": targetTreeDID,
 					},
@@ -376,6 +386,8 @@ func TestReceiveToken(t *testing.T) {
 	treeDID := AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
 	emptyTree := NewEmptyTree(treeDID, store)
 
+	tokenName1 := "testtoken1"
+
 	maximumAmount := uint64(50)
 	senderHeight := uint64(0)
 	blockWithHeaders := &chaintree.BlockWithHeaders{
@@ -386,13 +398,13 @@ func TestReceiveToken(t *testing.T) {
 				{
 					Type: TransactionTypeEstablishToken,
 					Payload: map[string]interface{}{
-						"name": "testtoken1",
+						"name": tokenName1,
 					},
 				},
 				{
 					Type: TransactionTypeMintToken,
 					Payload: map[string]interface{}{
-						"name":   "testtoken1",
+						"name":   tokenName1,
 						"amount": maximumAmount,
 					},
 				},
@@ -408,6 +420,10 @@ func TestReceiveToken(t *testing.T) {
 	senderHeight++
 
 	// establish & mint another token to ensure we aren't relying on there only being one
+
+	tokenName2 := "testtoken2"
+	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
+
 	blockWithHeaders = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip: &senderChainTree.Dag.Tip,
@@ -416,13 +432,13 @@ func TestReceiveToken(t *testing.T) {
 				{
 					Type: TransactionTypeEstablishToken,
 					Payload: map[string]interface{}{
-						"name": "testtoken2",
+						"name": tokenName2,
 					},
 				},
 				{
 					Type: TransactionTypeMintToken,
 					Payload: map[string]interface{}{
-						"name":   "testtoken2",
+						"name":   tokenName2,
 						"amount": maximumAmount / 2,
 					},
 				},
@@ -447,7 +463,7 @@ func TestReceiveToken(t *testing.T) {
 					Type: TransactionTypeSendToken,
 					Payload: map[string]interface{}{
 						"id":          "1234",
-						"name":        "testtoken2",
+						"name":        tokenName2,
 						"amount":      20,
 						"destination": recipientTreeDID,
 					},
@@ -472,7 +488,7 @@ func TestReceiveToken(t *testing.T) {
 	signature, ok := headers.Signatures[sigAddr]
 	require.True(t, ok)
 
-	tokenPath := []string{"tree", "_tupelo", "tokens", "testtoken2", TokenSendLabel, "0"}
+	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, TokenSendLabel, "0"}
 	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
 	require.Nil(t, err)
 
@@ -509,13 +525,13 @@ func TestReceiveToken(t *testing.T) {
 
 	senderTree, err := senderChainTree.Tree()
 	require.Nil(t, err)
-	senderLedger := NewTreeLedger(senderTree, "testtoken2")
+	senderLedger := NewTreeLedger(senderTree, tokenFullName2)
 	senderBalance, err := senderLedger.Balance()
 	require.Nil(t, err)
 
 	recipientTree, err := recipientChainTree.ChainTree.Tree()
 	require.Nil(t, err)
-	recipientLedger := NewTreeLedger(recipientTree, "testtoken2")
+	recipientLedger := NewTreeLedger(recipientTree, tokenFullName2)
 	recipientBalance, err := recipientLedger.Balance()
 	require.Nil(t, err)
 
@@ -531,6 +547,8 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 	treeDID := AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
 	emptyTree := NewEmptyTree(treeDID, store)
 
+	tokenName1 := "testtoken1"
+
 	maximumAmount := uint64(50)
 	senderHeight := uint64(0)
 	blockWithHeaders := &chaintree.BlockWithHeaders{
@@ -541,13 +559,13 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 				{
 					Type: TransactionTypeEstablishToken,
 					Payload: map[string]interface{}{
-						"name": "testtoken1",
+						"name": tokenName1,
 					},
 				},
 				{
 					Type: TransactionTypeMintToken,
 					Payload: map[string]interface{}{
-						"name":   "testtoken1",
+						"name":   tokenName1,
 						"amount": maximumAmount,
 					},
 				},
@@ -563,6 +581,10 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 	senderHeight++
 
 	// establish & mint another token to ensure we aren't relying on there only being one
+
+	tokenName2 := "testtoken2"
+	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
+
 	blockWithHeaders = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip: &senderChainTree.Dag.Tip,
@@ -571,13 +593,13 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 				{
 					Type: TransactionTypeEstablishToken,
 					Payload: map[string]interface{}{
-						"name": "testtoken2",
+						"name": tokenName2,
 					},
 				},
 				{
 					Type: TransactionTypeMintToken,
 					Payload: map[string]interface{}{
-						"name":   "testtoken2",
+						"name":   tokenName2,
 						"amount": maximumAmount / 2,
 					},
 				},
@@ -602,7 +624,7 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 					Type: TransactionTypeSendToken,
 					Payload: map[string]interface{}{
 						"id":          "1234",
-						"name":        "testtoken2",
+						"name":        tokenName2,
 						"amount":      20,
 						"destination": recipientTreeDID,
 					},
@@ -627,7 +649,7 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 	signature, ok := headers.Signatures[sigAddr]
 	require.True(t, ok)
 
-	tokenPath := []string{"tree", "_tupelo", "tokens", "testtoken2", TokenSendLabel, "0"}
+	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, TokenSendLabel, "0"}
 	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
 	require.Nil(t, err)
 
@@ -674,6 +696,8 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 	treeDID := AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
 	emptyTree := NewEmptyTree(treeDID, store)
 
+	tokenName1 := "testtoken1"
+
 	maximumAmount := uint64(50)
 	senderHeight := uint64(0)
 	blockWithHeaders := &chaintree.BlockWithHeaders{
@@ -684,13 +708,13 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 				{
 					Type: TransactionTypeEstablishToken,
 					Payload: map[string]interface{}{
-						"name": "testtoken1",
+						"name": tokenName1,
 					},
 				},
 				{
 					Type: TransactionTypeMintToken,
 					Payload: map[string]interface{}{
-						"name":   "testtoken1",
+						"name":   tokenName1,
 						"amount": maximumAmount,
 					},
 				},
@@ -706,6 +730,10 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 	senderHeight++
 
 	// establish & mint another token to ensure we aren't relying on there only being one
+
+	tokenName2 := "testtoken2"
+	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
+
 	blockWithHeaders = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip: &senderChainTree.Dag.Tip,
@@ -714,13 +742,13 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 				{
 					Type: TransactionTypeEstablishToken,
 					Payload: map[string]interface{}{
-						"name": "testtoken2",
+						"name": tokenName2,
 					},
 				},
 				{
 					Type: TransactionTypeMintToken,
 					Payload: map[string]interface{}{
-						"name":   "testtoken2",
+						"name":   tokenName2,
 						"amount": maximumAmount / 2,
 					},
 				},
@@ -745,7 +773,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 					Type: TransactionTypeSendToken,
 					Payload: map[string]interface{}{
 						"id":          "1234",
-						"name":        "testtoken2",
+						"name":        tokenName2,
 						"amount":      20,
 						"destination": recipientTreeDID,
 					},
@@ -771,7 +799,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 	signature, ok := headers.Signatures[sigAddr]
 	require.True(t, ok)
 
-	tokenPath := []string{"tree", "_tupelo", "tokens", "testtoken2", TokenSendLabel, "0"}
+	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, TokenSendLabel, "0"}
 	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
 	require.Nil(t, err)
 
@@ -818,7 +846,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 					Type: TransactionTypeSendToken,
 					Payload: map[string]interface{}{
 						"id":          "1234",
-						"name":        "testtoken2",
+						"name":        tokenName2,
 						"amount":      2,
 						"destination": recipientTreeDID,
 					},
@@ -841,7 +869,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 	signature, ok = headers.Signatures[sigAddr]
 	require.True(t, ok)
 
-	tokenPath = []string{"tree", "_tupelo", "tokens", "testtoken2", TokenSendLabel, "1"}
+	tokenPath = []string{"tree", "_tupelo", "tokens", tokenFullName2, TokenSendLabel, "1"}
 	leafNodes, err = senderChainTree.Dag.NodesForPath(tokenPath)
 	require.Nil(t, err)
 
@@ -881,6 +909,8 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 	treeDID := AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
 	emptyTree := NewEmptyTree(treeDID, store)
 
+	tokenName1 := "testtoken1"
+
 	maximumAmount := uint64(50)
 	senderHeight := uint64(0)
 	blockWithHeaders := &chaintree.BlockWithHeaders{
@@ -891,13 +921,13 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 				{
 					Type: TransactionTypeEstablishToken,
 					Payload: map[string]interface{}{
-						"name": "testtoken1",
+						"name": tokenName1,
 					},
 				},
 				{
 					Type: TransactionTypeMintToken,
 					Payload: map[string]interface{}{
-						"name":   "testtoken1",
+						"name":   tokenName1,
 						"amount": maximumAmount,
 					},
 				},
@@ -913,6 +943,10 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 	senderHeight++
 
 	// establish & mint another token to ensure we aren't relying on there only being one
+
+	tokenName2 := "testtoken2"
+	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
+
 	blockWithHeaders = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip: &senderChainTree.Dag.Tip,
@@ -921,13 +955,13 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 				{
 					Type: TransactionTypeEstablishToken,
 					Payload: map[string]interface{}{
-						"name": "testtoken2",
+						"name": tokenName2,
 					},
 				},
 				{
 					Type: TransactionTypeMintToken,
 					Payload: map[string]interface{}{
-						"name":   "testtoken2",
+						"name":   tokenName2,
 						"amount": maximumAmount / 2,
 					},
 				},
@@ -952,7 +986,7 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 					Type: TransactionTypeSendToken,
 					Payload: map[string]interface{}{
 						"id":          "1234",
-						"name":        "testtoken2",
+						"name":        tokenName2,
 						"amount":      20,
 						"destination": recipientTreeDID,
 					},
@@ -984,7 +1018,7 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 	signature.NewTip = senderChainTree.Dag.Tip.Bytes()
 	signature.PreviousTip = signedBlock.PreviousTip.Bytes()
 
-	tokenPath := []string{"tree", "_tupelo", "tokens", "testtoken2", TokenSendLabel, "0"}
+	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, TokenSendLabel, "0"}
 	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
 	require.Nil(t, err)
 
@@ -1036,6 +1070,8 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 	treeDID := AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
 	emptyTree := NewEmptyTree(treeDID, store)
 
+	tokenName1 := "testtoken1"
+
 	maximumAmount := uint64(50)
 	senderHeight := uint64(0)
 	blockWithHeaders := &chaintree.BlockWithHeaders{
@@ -1046,13 +1082,13 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 				{
 					Type: TransactionTypeEstablishToken,
 					Payload: map[string]interface{}{
-						"name": "testtoken1",
+						"name": tokenName1,
 					},
 				},
 				{
 					Type: TransactionTypeMintToken,
 					Payload: map[string]interface{}{
-						"name":   "testtoken1",
+						"name":   tokenName1,
 						"amount": maximumAmount,
 					},
 				},
@@ -1068,6 +1104,10 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 	senderHeight++
 
 	// establish & mint another token to ensure we aren't relying on there only being one
+
+	tokenName2 := "testtoken2"
+	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
+
 	blockWithHeaders = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip: &senderChainTree.Dag.Tip,
@@ -1076,13 +1116,13 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 				{
 					Type: TransactionTypeEstablishToken,
 					Payload: map[string]interface{}{
-						"name": "testtoken2",
+						"name": tokenName2,
 					},
 				},
 				{
 					Type: TransactionTypeMintToken,
 					Payload: map[string]interface{}{
-						"name":   "testtoken2",
+						"name":   tokenName2,
 						"amount": maximumAmount / 2,
 					},
 				},
@@ -1107,7 +1147,7 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 					Type: TransactionTypeSendToken,
 					Payload: map[string]interface{}{
 						"id":          "1234",
-						"name":        "testtoken2",
+						"name":        tokenName2,
 						"amount":      20,
 						"destination": otherTreeDID,
 					},
@@ -1130,7 +1170,7 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 	signature, ok := headers.Signatures[sigAddr]
 	require.True(t, ok)
 
-	tokenPath := []string{"tree", "_tupelo", "tokens", "testtoken2", TokenSendLabel, "0"}
+	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, TokenSendLabel, "0"}
 	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
 	require.Nil(t, err)
 
@@ -1178,6 +1218,8 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 	treeDID := AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
 	emptyTree := NewEmptyTree(treeDID, store)
 
+	tokenName1 := "testtoken1"
+
 	maximumAmount := uint64(50)
 	senderHeight := uint64(0)
 	blockWithHeaders := &chaintree.BlockWithHeaders{
@@ -1188,13 +1230,13 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 				{
 					Type: TransactionTypeEstablishToken,
 					Payload: map[string]interface{}{
-						"name": "testtoken1",
+						"name": tokenName1,
 					},
 				},
 				{
 					Type: TransactionTypeMintToken,
 					Payload: map[string]interface{}{
-						"name":   "testtoken1",
+						"name":   tokenName1,
 						"amount": maximumAmount,
 					},
 				},
@@ -1210,6 +1252,10 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 	senderHeight++
 
 	// establish & mint another token to ensure we aren't relying on there only being one
+
+	tokenName2 := "testtoken2"
+	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
+
 	blockWithHeaders = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip: &senderChainTree.Dag.Tip,
@@ -1218,13 +1264,13 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 				{
 					Type: TransactionTypeEstablishToken,
 					Payload: map[string]interface{}{
-						"name": "testtoken2",
+						"name": tokenName2,
 					},
 				},
 				{
 					Type: TransactionTypeMintToken,
 					Payload: map[string]interface{}{
-						"name":   "testtoken2",
+						"name":   tokenName2,
 						"amount": maximumAmount / 2,
 					},
 				},
@@ -1249,7 +1295,7 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 					Type: TransactionTypeSendToken,
 					Payload: map[string]interface{}{
 						"id":          "1234",
-						"name":        "testtoken2",
+						"name":        tokenName2,
 						"amount":      20,
 						"destination": recipientTreeDID,
 					},
@@ -1281,7 +1327,7 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 	signature.NewTip = emptyTree.Tip.Bytes() // invalid
 	signature.PreviousTip = signedBlock.PreviousTip.Bytes()
 
-	tokenPath := []string{"tree", "_tupelo", "tokens", "testtoken2", TokenSendLabel, "0"}
+	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, TokenSendLabel, "0"}
 	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
 	require.Nil(t, err)
 
