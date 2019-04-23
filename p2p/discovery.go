@@ -56,7 +56,6 @@ func (td *tupeloDiscoverer) findPeers(ctx context.Context) error {
 }
 
 func (td *tupeloDiscoverer) handleNewPeerInfo(ctx context.Context, p pstore.PeerInfo) {
-	log.Debugf("new peer: %s", p.ID)
 	host := td.host.host
 	if host.Network().Connectedness(p.ID) == inet.Connected {
 		return // we are already connected
@@ -68,9 +67,10 @@ func (td *tupeloDiscoverer) handleNewPeerInfo(ctx context.Context, p pstore.Peer
 	}
 
 	if p.ID == "" {
-		log.Debugf("empty id %v", p)
 		return // empty id
 	}
+
+	log.Debugf("new peer: %s", p.ID)
 
 	// do the connection async because connect can hang
 	go func() {
