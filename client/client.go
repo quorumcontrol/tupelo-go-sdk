@@ -64,6 +64,7 @@ func (c *Client) Listen() {
 func (c *Client) Stop() {
 	if c.subscriber != nil {
 		c.subscriber.Stop()
+		c.subscriber = nil
 	}
 }
 
