@@ -71,9 +71,9 @@ func (c *Client) Stop() {
 func (c *Client) subscriptionReceive(actorContext actor.Context) {
 	switch msg := actorContext.Message().(type) {
 	case *actor.Started:
-		_, err := actorContext.SpawnNamed(c.pubsub.NewSubscriberProps(c.TreeDID), "client-subscriber")
+		_, err := actorContext.SpawnNamed(c.pubsub.NewSubscriberProps(c.TreeDID), "pubsub")
 		if err != nil {
-			panic(fmt.Errorf("error spawning client-subscriber: %v", err))
+			panic(fmt.Errorf("error spawning pubsub: %v", err))
 		}
 	case *messages.CurrentState:
 		heightString := strconv.FormatUint(msg.Signature.Height, 10)
