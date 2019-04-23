@@ -99,11 +99,14 @@ func (c *Client) TipRequest() (*messages.CurrentState, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting tip: %v", err)
 	}
+	// cache the result to the LRU so future requests to height will
+	// return the answer by sending the answer to the subscriber
 	actor.EmptyRootContext.Send(c.subscriber, res)
 	return res.(*messages.CurrentState), nil
 }
 
-// Subscribe creates a subscription to a chain tree.
+// Subscribe returns a future that will return when the height the transaction
+// is targeting is complete or an error with the transaction occurs.
 func (c *Client) Subscribe(trans *messages.Transaction, timeout time.Duration) *actor.Future {
 	if c.subscriber == nil {
 		c.Listen()
