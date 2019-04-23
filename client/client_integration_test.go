@@ -5,6 +5,7 @@ package client
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -357,7 +358,10 @@ func transactRemote(t testing.TB, client *Client, treeID string, blockWithHeader
 		ObjectID:    []byte(treeID),
 	}
 
+	t.Logf("sending remote transaction id: %s height: %d", base64.StdEncoding.EncodeToString(transMsg.ID()), transMsg.Height)
+
 	fut := client.Subscribe(transMsg, 30*time.Second)
+	time.Sleep(1 * time.Second)
 
 	err := client.SendTransaction(transMsg)
 	require.Nil(t, err)
@@ -383,6 +387,7 @@ func TestSnoozedTransaction(t *testing.T) {
 	require.Nil(t, err)
 
 	client1 := New(ng, testTree.MustId(), remote.NewNetworkPubSub(host))
+	client1.Listen()
 	defer client1.Stop()
 
 	emptyTip := testTree.Tip()
@@ -431,6 +436,7 @@ func TestInvalidPreviousTipOnSnoozedTransaction(t *testing.T) {
 	require.Nil(t, err)
 
 	clientA := New(ng, testTreeA.MustId(), remote.NewNetworkPubSub(host))
+	clientA.Listen()
 	defer clientA.Stop()
 
 	// establish different first valid transactions on 2 different local chaintrees
@@ -442,6 +448,7 @@ func TestInvalidPreviousTipOnSnoozedTransaction(t *testing.T) {
 	emptyTip := testTreeB.Tip()
 
 	clientB := New(ng, testTreeB.MustId(), remote.NewNetworkPubSub(host))
+	clientB.Listen()
 	defer clientB.Stop()
 
 	basisNodesB0 := testhelpers.DagToByteNodes(t, testTreeB.ChainTree.Dag)
@@ -452,10 +459,10 @@ func TestInvalidPreviousTipOnSnoozedTransaction(t *testing.T) {
 	blockWithHeadersA1 := transactLocal(t, testTreeA, treeKey, 1, "other/thing", "sometestvalue")
 	tipA1 := testTreeA.Tip()
 
-	/* Now send tx 1 from chaintree A to a signer for chaintree B followed by
-	   tx 0 from chaintree B to the same signer.
-	   tx1 should be a byzantine transaction because its previous tip value
-	   from chaintree A won't line up with tx 0's from chaintree B.
+	/* Now send tx at height 1 from chaintree A followed by
+	   tx at height 0 from chaintree B to the same signer.
+	   tx at height 1 should be a byzantine transaction because its previous tip value
+	   from chaintree A won't line up with tx at height 0 from chaintree B.
 	   This can't be checked until after tx 0 is committed and this test is for
 	   verifying that that happens and results in an error response.
 	*/
@@ -463,7 +470,7 @@ func TestInvalidPreviousTipOnSnoozedTransaction(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	sub0 := transactRemote(t, clientB, testTreeB.MustId(), blockWithHeadersB0, tipB0, basisNodesB0, emptyTip)
+	sub0 := transactRemote(t, clientA, testTreeB.MustId(), blockWithHeadersB0, tipB0, basisNodesB0, emptyTip)
 
 	resp0, err := sub0.Result()
 	require.Nil(t, err)
@@ -473,7 +480,6 @@ func TestInvalidPreviousTipOnSnoozedTransaction(t *testing.T) {
 
 	resp1, err := sub1.Result()
 	require.Nil(t, err)
-	t.Logf("resp1 tip %v", resp1.(*messages.CurrentState).Signature.NewTip)
 	require.IsType(t, &messages.Error{}, resp1)
 	require.Equal(t, consensus.ErrInvalidTip, resp1.(*messages.Error).Code)
 
