@@ -155,8 +155,6 @@ func bootstrapRound(ctx context.Context, h *rhost.RoutedHost, cfg BootstrapConfi
 	connected := h.Network().Peers()
 	if len(connected) >= cfg.MinPeerThreshold {
 		log.Event(ctx, "bootstrapSkip", id)
-		// log.Debugf("%s core bootstrap skipped -- connected to %d (> %d) nodes",
-		// 	id, len(connected), cfg.MinPeerThreshold)
 		return nil
 	}
 	numToDial := cfg.MinPeerThreshold - len(connected)
