@@ -57,12 +57,19 @@ func New(group *types.NotaryGroup, treeDid string, pubsub remote.PubSub) *Client
 }
 
 func (c *Client) Listen() {
+	if c.alreadyListening() {
+		return
+	}
 	c.subscriber = actor.EmptyRootContext.SpawnPrefix(actor.PropsFromFunc(c.subscriptionReceive), c.TreeDID+"-subscriber")
+}
+
+func (c *Client) alreadyListening() bool {
+	return c.subscriber != nil
 }
 
 // Stop stops a Client.
 func (c *Client) Stop() {
-	if c.subscriber != nil {
+	if !c.alreadyListening() {
 		c.subscriber.Stop()
 		c.subscriber = nil
 	}
@@ -113,7 +120,7 @@ func (c *Client) TipRequest() (*messages.CurrentState, error) {
 // Subscribe returns a future that will return when the height the transaction
 // is targeting is complete or an error with the transaction occurs.
 func (c *Client) Subscribe(trans *messages.Transaction, timeout time.Duration) *actor.Future {
-	if c.subscriber == nil {
+	if !c.alreadyListening() {
 		c.Listen()
 	}
 	actorContext := actor.EmptyRootContext
