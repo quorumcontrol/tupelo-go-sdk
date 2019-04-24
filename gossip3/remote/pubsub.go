@@ -93,7 +93,9 @@ func (nps *NetworkPubSub) RegisterTopicValidator(topic string, validatorFunc Pub
 }
 
 func (nps *NetworkPubSub) UnregisterTopicValidator(topic string) {
-	nps.host.GetPubSub().UnregisterTopicValidator(topic)
+	if err := nps.host.GetPubSub().UnregisterTopicValidator(topic); err != nil {
+		nps.log.Errorw("error unregistering validator", "err", err)
+	}
 }
 
 func (nps *NetworkPubSub) NewSubscriberProps(topic string) *actor.Props {
