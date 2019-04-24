@@ -135,17 +135,18 @@ func TestRemoteMessageSending(t *testing.T) {
 		require.Nil(t, err)
 		_, err = host4.Bootstrap(testnotarygroup.BootstrapAddresses(bootstrap))
 		require.Nil(t, err)
-		err = host4.WaitForBootstrap(1, 1*time.Second)
+		err = host4.WaitForBootstrap(2, 1*time.Second)
 		require.Nil(t, err)
 		host4Ping, err := rootContext.SpawnNamed(actor.PropsFromFunc(pingFunc), "ping-host4")
 		require.Nil(t, err)
+		
 		remote4Ping := actor.NewPID(types.NewRoutableAddress(host1.Identity(), host4.Identity()).String(), host4Ping.GetId())
 
 		NewRouter(host4)
 
 		resp, err := rootContext.RequestFuture(remote4Ping, &messages.Ping{Msg: "hi"}, 100*time.Millisecond).Result()
+		require.Nil(t, err)
 		assert.Equal(t, resp.(*messages.Pong).Msg, "hi")
-		assert.Nil(t, err)
 
 		host4Ping.Stop()
 		cancel()

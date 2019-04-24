@@ -111,7 +111,9 @@ func PeerDiscovery(t *testing.T, generator nodeGenerator) {
 }
 
 func PubSubTest(t *testing.T, generator nodeGenerator) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, timeoutCancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer timeoutCancel()
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	bootstrapper := generator(ctx, t)
@@ -130,6 +132,8 @@ func PubSubTest(t *testing.T, generator nodeGenerator) {
 
 	sub, err := nodeB.GetPubSub().Subscribe("testSubscription")
 	require.Nil(t, err)
+
+	time.Sleep(100 * time.Millisecond)
 
 	err = nodeA.GetPubSub().Publish("testSubscription", []byte("hi"))
 	require.Nil(t, err)
