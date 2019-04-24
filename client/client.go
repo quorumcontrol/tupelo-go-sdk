@@ -4,9 +4,13 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"fmt"
+	"reflect"
+	"strconv"
 	"time"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
+	"github.com/AsynkronIT/protoactor-go/eventstream"
+	lru "github.com/hashicorp/golang-lru"
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/chaintree"
@@ -25,56 +29,143 @@ import (
 // broadcast their transactions to the NotaryGroup
 const TransactionBroadcastTopic = "tupelo-transaction-broadcast"
 
-// Client represents a Tupelo client.
+// Client represents a Tupelo client for interacting with and
+// listening to ChainTree events
 type Client struct {
-	Group  *types.NotaryGroup
-	log    *zap.SugaredLogger
-	pubsub remote.PubSub
+	Group      *types.NotaryGroup
+	TreeDID    string
+	log        *zap.SugaredLogger
+	pubsub     remote.PubSub
+	subscriber *actor.PID
+	cache      *lru.Cache
+	stream     *eventstream.EventStream
 }
 
-// New instantiates a Client for a notary group.
-func New(group *types.NotaryGroup, pubsub remote.PubSub) *Client {
-	return &Client{
-		Group:  group,
-		log:    middleware.Log.Named("client"),
-		pubsub: pubsub,
+// New instantiates a Client specific to a ChainTree/NotaryGroup
+func New(group *types.NotaryGroup, treeDid string, pubsub remote.PubSub) *Client {
+	cache, err := lru.New(10000)
+	if err != nil {
+		panic(fmt.Errorf("error generating LRU: %v", err))
 	}
+	return &Client{
+		Group:   group,
+		TreeDID: treeDid,
+		log:     middleware.Log.Named("client"),
+		pubsub:  pubsub,
+		cache:   cache,
+		stream:  &eventstream.EventStream{},
+	}
+}
+
+func (c *Client) Listen() {
+	if c.alreadyListening() {
+		return
+	}
+	c.subscriber = actor.EmptyRootContext.SpawnPrefix(actor.PropsFromFunc(c.subscriptionReceive), c.TreeDID+"-subscriber")
+}
+
+func (c *Client) alreadyListening() bool {
+	return c.subscriber != nil
 }
 
 // Stop stops a Client.
 func (c *Client) Stop() {
-	// no op
+	if !c.alreadyListening() {
+		c.subscriber.Stop()
+		c.subscriber = nil
+	}
+}
+
+func (c *Client) subscriptionReceive(actorContext actor.Context) {
+	switch msg := actorContext.Message().(type) {
+	case *actor.Started:
+		_, err := actorContext.SpawnNamed(c.pubsub.NewSubscriberProps(c.TreeDID), "pubsub")
+		if err != nil {
+			panic(fmt.Errorf("error spawning pubsub: %v", err))
+		}
+	case *messages.CurrentState:
+		heightString := strconv.FormatUint(msg.Signature.Height, 10)
+		existed, _ := c.cache.ContainsOrAdd(heightString, msg)
+		if !existed {
+			c.log.Debugw("publishing current state", "height", heightString)
+			c.stream.Publish(msg)
+		}
+	case *messages.Error:
+		existed, _ := c.cache.ContainsOrAdd(string(msg.Source), msg)
+		if !existed {
+			c.log.Debugw("publishing error", "tx", string(msg.Source))
+			c.stream.Publish(msg)
+		}
+	default:
+		c.log.Debugw("unknown message received", "type", reflect.TypeOf(msg).String())
+	}
 }
 
 // TipRequest requests the tip of a chain tree.
-func (c *Client) TipRequest(chainID string) (*messages.CurrentState, error) {
+func (c *Client) TipRequest() (*messages.CurrentState, error) {
 	target := c.Group.GetRandomSyncer()
 	fut := actor.NewFuture(10 * time.Second)
 	actor.EmptyRootContext.RequestWithCustomSender(target, &messages.GetTip{
-		ObjectID: []byte(chainID),
+		ObjectID: []byte(c.TreeDID),
 	}, fut.PID())
 	res, err := fut.Result()
 	if err != nil {
 		return nil, fmt.Errorf("error getting tip: %v", err)
 	}
+	// cache the result to the LRU so future requests to height will
+	// return the answer by sending the answer to the subscriber
+	actor.EmptyRootContext.Send(c.subscriber, res)
 	return res.(*messages.CurrentState), nil
 }
 
-// Subscribe creates a subscription to a chain tree.
-func (c *Client) Subscribe(treeDid string, expectedTip cid.Cid, timeout time.Duration) *actor.Future {
-	fut := actor.NewFuture(timeout)
-	act := c.pubsub.Subscribe(actor.EmptyRootContext, treeDid, fut.PID())
+// Subscribe returns a future that will return when the height the transaction
+// is targeting is complete or an error with the transaction occurs.
+func (c *Client) Subscribe(trans *messages.Transaction, timeout time.Duration) *actor.Future {
+	if !c.alreadyListening() {
+		c.Listen()
+	}
+	actorContext := actor.EmptyRootContext
+	transID := trans.ID()
 
-	// the future we'll use to kill the subscriber actor
-	killFut := actor.NewFuture(timeout + 1*time.Second)
-	fut.PipeTo(killFut.PID())
-	go func() {
-		err := killFut.Wait()
-		if err != nil {
-			c.log.Debugw("future timed out in client subscribe", "did", treeDid, "tip", expectedTip)
+	fut := actor.NewFuture(timeout)
+	killer := actor.NewFuture(timeout + 100*time.Millisecond)
+	fut.PipeTo(killer.PID())
+
+	sub := c.stream.Subscribe(func(msg interface{}) {
+		actorContext.Send(fut.PID(), msg)
+	})
+	sub.WithPredicate(func(msgInterface interface{}) bool {
+		switch msg := msgInterface.(type) {
+		case *messages.CurrentState:
+			if msg.Signature.Height == trans.Height {
+				return true
+			}
+		case *messages.Error:
+			if msg.Source == string(transID) {
+				return true
+			}
 		}
-		act.Stop()
+		return false
+	})
+
+	go func() {
+		err := killer.Wait()
+		if err != nil {
+			c.log.Errorw("error waiting", "err", err)
+		}
+		c.stream.Unsubscribe(sub)
 	}()
+
+	if val, ok := c.cache.Get(string(trans.ID())); ok {
+		actorContext.Send(fut.PID(), val)
+		return fut
+	}
+
+	if val, ok := c.cache.Get(strconv.FormatUint(trans.Height, 10)); ok {
+		actorContext.Send(fut.PID(), val)
+		return fut
+	}
+
 	return fut
 }
 
@@ -148,7 +239,7 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 		State:       nodes,
 	}
 
-	fut := c.Subscribe(tree.MustId(), expectedTip, 60*time.Second)
+	fut := c.Subscribe(&transaction, 60*time.Second)
 
 	time.Sleep(100 * time.Millisecond)
 	err = c.SendTransaction(&transaction)

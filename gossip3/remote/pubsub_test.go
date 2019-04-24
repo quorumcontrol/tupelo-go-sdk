@@ -79,6 +79,8 @@ func TestPubSub(t *testing.T) {
 	_, err = ready.Result()
 	require.Nil(t, err)
 
+	time.Sleep(100 * time.Millisecond)
+
 	err = newtworkPubsubA.Broadcast("testpubsub", tx)
 	require.Nil(t, err)
 
