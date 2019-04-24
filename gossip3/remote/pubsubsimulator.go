@@ -3,6 +3,7 @@ package remote
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/AsynkronIT/protoactor-go/eventstream"
@@ -16,15 +17,17 @@ import (
 
 func NewSimulatedPubSub() *SimulatedPubSub {
 	return &SimulatedPubSub{
-		eventStream: &eventstream.EventStream{},
-		validators:  make(map[string]PubSubValidator),
+		eventStream:   &eventstream.EventStream{},
+		validators:    make(map[string]PubSubValidator),
+		validatorLock: new(sync.RWMutex),
 	}
 }
 
 // SimulatedBroadcaster is a simulated in-memory pubsub that doesn't need a network connection
 type SimulatedPubSub struct {
-	eventStream *eventstream.EventStream
-	validators  map[string]PubSubValidator
+	eventStream   *eventstream.EventStream
+	validators    map[string]PubSubValidator
+	validatorLock *sync.RWMutex
 }
 
 type simulatorMessage struct {
@@ -36,6 +39,9 @@ type simulatorMessage struct {
 func (sb *SimulatedPubSub) Broadcast(topic string, message messages.WireMessage) error {
 	middleware.Log.Debugw("publishing")
 	isValid := true
+
+	sb.validatorLock.RLock()
+	defer sb.validatorLock.RUnlock()
 
 	validator, ok := sb.validators[topic]
 	if ok {
@@ -61,6 +67,9 @@ func (sb *SimulatedPubSub) Subscribe(ctx spawner, topic string, subscribers ...*
 }
 
 func (sb *SimulatedPubSub) RegisterTopicValidator(topic string, validatorFunc PubSubValidator, opts ...pubsub.ValidatorOpt) error {
+	sb.validatorLock.Lock()
+	defer sb.validatorLock.Unlock()
+
 	_, ok := sb.validators[topic]
 	if ok {
 		return fmt.Errorf("only one validator may be registered per topic")
@@ -70,6 +79,9 @@ func (sb *SimulatedPubSub) RegisterTopicValidator(topic string, validatorFunc Pu
 }
 
 func (sb *SimulatedPubSub) UnregisterTopicValidator(topic string) {
+	sb.validatorLock.Lock()
+	defer sb.validatorLock.Unlock()
+
 	delete(sb.validators, topic)
 }
 
@@ -111,6 +123,10 @@ func (bs *simulatedSubscriber) Receive(actorContext actor.Context) {
 			bs.Log.Debugw("received", "topic", bs.topic, "subscribers", bs.subscribers)
 			msg := evt.(*simulatorMessage).msg
 			isValid := true
+
+			bs.pubsubSystem.validatorLock.RLock()
+			defer bs.pubsubSystem.validatorLock.RUnlock()
+
 			if validator, ok := bs.pubsubSystem.validators[evt.(*simulatorMessage).topic]; ok {
 				isValid = validator(context.Background(), *new(peer.ID), msg)
 			}
