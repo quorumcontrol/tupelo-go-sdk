@@ -2,7 +2,6 @@ package remote
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
@@ -72,7 +71,9 @@ func (sb *SimulatedPubSub) RegisterTopicValidator(topic string, validatorFunc Pu
 
 	_, ok := sb.validators[topic]
 	if ok {
-		return fmt.Errorf("only one validator may be registered per topic")
+		// we allow multiple validators here actually because
+		// the simulator is used across tupelos
+		return nil
 	}
 	sb.validators[topic] = validatorFunc
 	return nil
