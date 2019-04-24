@@ -69,7 +69,7 @@ func (c *Client) alreadyListening() bool {
 
 // Stop stops a Client.
 func (c *Client) Stop() {
-	if !c.alreadyListening() {
+	if c.alreadyListening() {
 		c.subscriber.Stop()
 		c.subscriber = nil
 	}
