@@ -121,8 +121,14 @@ func (bs *simulatedSubscriber) Receive(actorContext actor.Context) {
 		bs.Log.Debugw("subscribed", "topic", bs.topic, "subscribers", bs.subscribers)
 		parent := actorContext.Parent()
 		sub := bs.pubsubSystem.eventStream.Subscribe(func(evt interface{}) {
-			bs.Log.Debugw("received", "topic", bs.topic, "subscribers", bs.subscribers)
+			// there is a short delay on adding the predicate, so this make sure
+			// nothijng slips through
+			if evt.(*simulatorMessage).topic != bs.topic {
+				return
+			}
 			msg := evt.(*simulatorMessage).msg
+			bs.Log.Debugw("received", "topic", bs.topic, "subscribers", bs.subscribers, "msg", msg)
+
 			isValid := true
 
 			bs.pubsubSystem.validatorLock.RLock()
