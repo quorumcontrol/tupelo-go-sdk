@@ -49,7 +49,7 @@ func New(group *types.NotaryGroup, treeDid string, pubsub remote.PubSub) *Client
 	return &Client{
 		Group:   group,
 		TreeDID: treeDid,
-		log:     middleware.Log.Named("client"),
+		log:     middleware.Log.Named("client-" + treeDid),
 		pubsub:  pubsub,
 		cache:   cache,
 		stream:  &eventstream.EventStream{},
@@ -86,7 +86,7 @@ func (c *Client) subscriptionReceive(actorContext actor.Context) {
 		heightString := strconv.FormatUint(msg.Signature.Height, 10)
 		existed, _ := c.cache.ContainsOrAdd(heightString, msg)
 		if !existed {
-			c.log.Debugw("publishing current state", "height", heightString)
+			c.log.Debugw("publishing current state", "objectID", string(msg.Signature.ObjectID), "height", heightString)
 			c.stream.Publish(msg)
 		}
 	case *messages.Error:
@@ -130,21 +130,17 @@ func (c *Client) Subscribe(trans *messages.Transaction, timeout time.Duration) *
 	killer := actor.NewFuture(timeout + 100*time.Millisecond)
 	fut.PipeTo(killer.PID())
 
-	sub := c.stream.Subscribe(func(msg interface{}) {
-		actorContext.Send(fut.PID(), msg)
-	})
-	sub.WithPredicate(func(msgInterface interface{}) bool {
-		switch msg := msgInterface.(type) {
+	sub := c.stream.Subscribe(func(msgInter interface{}) {
+		switch msg := msgInter.(type) {
 		case *messages.CurrentState:
 			if msg.Signature.Height == trans.Height {
-				return true
+				actorContext.Send(fut.PID(), msg)
 			}
 		case *messages.Error:
 			if msg.Source == string(transID) {
-				return true
+				actorContext.Send(fut.PID(), msg)
 			}
 		}
-		return false
 	})
 
 	go func() {
