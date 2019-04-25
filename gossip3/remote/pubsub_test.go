@@ -1,6 +1,7 @@
 package remote
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"reflect"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/ethereum/go-ethereum/crypto"
+	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/middleware"
 	"github.com/quorumcontrol/tupelo-go-client/p2p"
@@ -53,81 +55,182 @@ func TestPubSub(t *testing.T) {
 
 	actorContext := actor.EmptyRootContext
 
-	tx := &messages.Transaction{
-		ObjectID: []byte("totaltest"),
+	validTx := &messages.Transaction{
+		ObjectID: []byte("valid"),
 	}
 
-	newtworkPubsubA := NewNetworkPubSub(nodeA)
-	newtworkPubsubB := NewNetworkPubSub(nodeB)
+	networkPubsubA := NewNetworkPubSub(nodeA)
+	networkPubsubB := NewNetworkPubSub(nodeB)
 
-	subscriber := actor.NewFuture(5 * time.Second)
-	ready := actor.NewFuture(1 * time.Second)
-	parent := func(actCtx actor.Context) {
-		switch msg := actCtx.Message().(type) {
-		case *actor.Started:
-			actCtx.Spawn(newtworkPubsubB.NewSubscriberProps("testpubsub"))
-			actCtx.Send(ready.PID(), true)
-		case *messages.Transaction:
-			actCtx.Send(subscriber.PID(), msg)
+	topicName := "testpubsub"
+
+	t.Run("regular broadcast", func(t *testing.T) {
+		subscriber := actor.NewFuture(200 * time.Millisecond)
+		ready := actor.NewFuture(1 * time.Second)
+		parent := func(actCtx actor.Context) {
+			switch msg := actCtx.Message().(type) {
+			case *actor.Started:
+				actCtx.Spawn(networkPubsubB.NewSubscriberProps(topicName))
+				actCtx.Send(ready.PID(), true)
+			case *messages.Transaction:
+				actCtx.Send(subscriber.PID(), msg)
+			}
 		}
-	}
 
-	receiver, err := actorContext.SpawnNamed(actor.PropsFromFunc(parent), "pubsubtest-receiver")
-	require.Nil(t, err)
-	defer receiver.Poison()
+		receiver, err := actorContext.SpawnNamed(actor.PropsFromFunc(parent), "pubsubtest-receiver-broadcast")
+		require.Nil(t, err)
+		defer receiver.Poison()
 
-	_, err = ready.Result()
-	require.Nil(t, err)
+		_, err = ready.Result()
+		require.Nil(t, err)
+		time.Sleep(100 * time.Millisecond)
 
-	time.Sleep(100 * time.Millisecond)
+		err = networkPubsubA.Broadcast(topicName, validTx)
+		require.Nil(t, err)
 
-	err = newtworkPubsubA.Broadcast("testpubsub", tx)
-	require.Nil(t, err)
+		resp, err := subscriber.Result()
+		require.Nil(t, err)
 
-	resp, err := subscriber.Result()
-	require.Nil(t, err)
+		assert.Equal(t, validTx.ObjectID, resp.(*messages.Transaction).ObjectID)
+	})
 
-	assert.Equal(t, tx.ObjectID, resp.(*messages.Transaction).ObjectID)
+	t.Run("validations", func(t *testing.T) {
+		invalidTx := &messages.Transaction{
+			ObjectID: []byte("invalid"),
+		}
+
+		validator := func(ctx context.Context, p peer.ID, msg messages.WireMessage) bool {
+			return bytes.Equal(msg.(*messages.Transaction).ObjectID, validTx.ObjectID)
+		}
+
+		err := networkPubsubA.RegisterTopicValidator(topicName, validator)
+		require.Nil(t, err)
+		defer networkPubsubA.UnregisterTopicValidator(topicName)
+
+		err = networkPubsubB.RegisterTopicValidator(topicName, validator)
+		require.Nil(t, err)
+		defer networkPubsubB.UnregisterTopicValidator(topicName)
+
+		subscriber := actor.NewFuture(200 * time.Millisecond)
+		ready := actor.NewFuture(1 * time.Second)
+		parent := func(actCtx actor.Context) {
+			switch msg := actCtx.Message().(type) {
+			case *actor.Started:
+				actCtx.Spawn(networkPubsubB.NewSubscriberProps(topicName))
+				actCtx.Send(ready.PID(), true)
+			case *messages.Transaction:
+				actCtx.Send(subscriber.PID(), msg)
+			}
+		}
+
+		receiver, err := actorContext.SpawnNamed(actor.PropsFromFunc(parent), "pubsubtest-receiver-validations")
+		require.Nil(t, err)
+		defer receiver.Poison()
+
+		_, err = ready.Result()
+		require.Nil(t, err)
+
+		err = networkPubsubA.Broadcast(topicName, invalidTx)
+		require.Nil(t, err)
+
+		err = networkPubsubA.Broadcast(topicName, validTx)
+		require.Nil(t, err)
+
+		resp, err := subscriber.Result()
+		require.Nil(t, err)
+
+		// assert that even though we sent the invalidTx first, we still get the validTx back
+		assert.Equal(t, validTx.ObjectID, resp.(*messages.Transaction).ObjectID)
+	})
 }
 
 func TestSimulatedBroadcaster(t *testing.T) {
 	actorContext := actor.EmptyRootContext
 
-	tx := &messages.Transaction{
+	validTx := &messages.Transaction{
 		ObjectID: []byte("totaltest"),
 	}
 
 	simulatedPubSub := NewSimulatedPubSub()
+	topicName := "testsimulatortopic"
 
-	subscriber := actor.NewFuture(3 * time.Second)
-	ready := actor.NewFuture(500 * time.Millisecond)
-	parent := func(actCtx actor.Context) {
-		switch msg := actCtx.Message().(type) {
-		case *actor.Started:
-			actCtx.Spawn(simulatedPubSub.NewSubscriberProps("testsimulatortopic"))
-			time.Sleep(50 * time.Millisecond)
-			actCtx.Send(ready.PID(), true)
-		case *messages.Transaction:
-			actCtx.Send(subscriber.PID(), msg)
-		default:
-			middleware.Log.Debugw("parent received message type", "type", reflect.TypeOf(msg).String())
+	t.Run("regular broadcast", func(t *testing.T) {
+		subscriber := actor.NewFuture(3 * time.Second)
+		ready := actor.NewFuture(500 * time.Millisecond)
+		parent := func(actCtx actor.Context) {
+			switch msg := actCtx.Message().(type) {
+			case *actor.Started:
+				actCtx.Spawn(simulatedPubSub.NewSubscriberProps(topicName))
+				time.Sleep(50 * time.Millisecond)
+				actCtx.Send(ready.PID(), true)
+			case *messages.Transaction:
+				actCtx.Send(subscriber.PID(), msg)
+			default:
+				middleware.Log.Debugw("parent received message type", "type", reflect.TypeOf(msg).String())
+			}
 		}
-	}
 
-	receiver, err := actorContext.SpawnNamed(actor.PropsFromFunc(parent), "pubsubtest-simulator-receiver")
-	require.Nil(t, err)
-	defer receiver.Poison()
+		receiver, err := actorContext.SpawnNamed(actor.PropsFromFunc(parent), "pubsubtest-simulator-broadcast")
+		require.Nil(t, err)
+		defer receiver.Poison()
 
-	_, err = ready.Result()
-	require.Nil(t, err)
+		_, err = ready.Result()
+		require.Nil(t, err)
 
-	err = simulatedPubSub.Broadcast("testsimulatortopic", tx)
-	require.Nil(t, err)
+		err = simulatedPubSub.Broadcast(topicName, validTx)
+		require.Nil(t, err)
 
-	resp, err := subscriber.Result()
-	require.Nil(t, err)
+		resp, err := subscriber.Result()
+		require.Nil(t, err)
 
-	assert.Equal(t, tx.ObjectID, resp.(*messages.Transaction).ObjectID)
+		assert.Equal(t, validTx.ObjectID, resp.(*messages.Transaction).ObjectID)
+	})
+
+	t.Run("validations", func(t *testing.T) {
+		invalidTx := &messages.Transaction{
+			ObjectID: []byte("invalid"),
+		}
+
+		validator := func(ctx context.Context, p peer.ID, msg messages.WireMessage) bool {
+			return bytes.Equal(msg.(*messages.Transaction).ObjectID, validTx.ObjectID)
+		}
+
+		err := simulatedPubSub.RegisterTopicValidator(topicName, validator)
+		require.Nil(t, err)
+		defer simulatedPubSub.UnregisterTopicValidator(topicName)
+
+		subscriber := actor.NewFuture(200 * time.Millisecond)
+		ready := actor.NewFuture(1 * time.Second)
+		parent := func(actCtx actor.Context) {
+			switch msg := actCtx.Message().(type) {
+			case *actor.Started:
+				actCtx.Spawn(simulatedPubSub.NewSubscriberProps(topicName))
+				time.Sleep(50 * time.Millisecond)
+				actCtx.Send(ready.PID(), true)
+			case *messages.Transaction:
+				actCtx.Send(subscriber.PID(), msg)
+			}
+		}
+
+		receiver, err := actorContext.SpawnNamed(actor.PropsFromFunc(parent), "pubsubtest-simulator-validations")
+		require.Nil(t, err)
+		defer receiver.Poison()
+
+		_, err = ready.Result()
+		require.Nil(t, err)
+
+		err = simulatedPubSub.Broadcast(topicName, invalidTx)
+		require.Nil(t, err)
+
+		err = simulatedPubSub.Broadcast(topicName, validTx)
+		require.Nil(t, err)
+
+		resp, err := subscriber.Result()
+		require.Nil(t, err)
+
+		// assert that even though we sent the invalidTx first, we still get the validTx back
+		assert.Equal(t, validTx.ObjectID, resp.(*messages.Transaction).ObjectID)
+	})
 }
 
 func bootstrapAddresses(bootstrapHost p2p.Node) []string {
