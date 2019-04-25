@@ -147,9 +147,6 @@ func (bs *simulatedSubscriber) Receive(actorContext actor.Context) {
 			}
 
 		})
-		sub.WithPredicate(func(evt interface{}) bool {
-			return evt.(*simulatorMessage).topic == bs.topic
-		})
 		bs.subscription = sub
 	case *actor.Stopping:
 		bs.pubsubSystem.eventStream.Unsubscribe(bs.subscription)
