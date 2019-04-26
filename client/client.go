@@ -203,15 +203,6 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 		return nil, fmt.Errorf("error signing: %v", err)
 	}
 
-	//TODO: only send the necessary nodes
-	cborNodes, err := tree.ChainTree.Dag.Nodes()
-	if err != nil {
-		return nil, fmt.Errorf("error getting nodes: %v", err)
-	}
-	nodes := make([][]byte, len(cborNodes))
-	for i, node := range cborNodes {
-		nodes[i] = node.RawData()
-	}
 	storedTip := tree.Tip()
 
 	newTree, err := chaintree.NewChainTree(tree.ChainTree.Dag, tree.ChainTree.BlockValidators, tree.ChainTree.Transactors)
@@ -224,6 +215,11 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 	}
 
 	expectedTip := newTree.Dag.Tip
+
+	nodes, err := nodesForTransaction(tree, newTree)
+	if err != nil {
+		return nil, fmt.Errorf("error generating nodes for transaction %v", err)
+	}
 
 	transaction := messages.Transaction{
 		PreviousTip: storedTip.Bytes(),
@@ -305,4 +301,48 @@ func getRoot(sct *consensus.SignedChainTree) (*chaintree.RootNode, error) {
 		return nil, fmt.Errorf("error decoding root: %v", err)
 	}
 	return root, nil
+}
+
+// This method should calculate all necessary nodes that need to be sent for verification.
+// Currently this takes
+// - the entire resolved tree/ of the existing tree
+// - the nodes for chain/end, but not resolving through the previous tip
+func nodesForTransaction(existingSignedTree *consensus.SignedChainTree, newTree *chaintree.ChainTree) ([][]byte, error) {
+	existingTree := existingSignedTree.ChainTree
+
+	treeNodes, err := existingTree.Dag.NodesForPathWithDecendants([]string{"tree"})
+	if err != nil {
+		return nil, fmt.Errorf("error getting tree nodes: %v", err)
+	}
+
+	// Validation needs all the nodes for chain/end, but not past chain/end. aka no need to
+	// resolve the end node, since that would fetch all the nodes of from the previous tip.
+	// Also, on genesis state chain/end is nil, so deal with that
+	var chainNodes []*cbornode.Node
+	if existingSignedTree.IsGenesis() {
+		chainNodes, err = existingTree.Dag.NodesForPath([]string{chaintree.ChainLabel})
+	} else {
+		chainNodes, err = existingTree.Dag.NodesForPath([]string{chaintree.ChainLabel, chaintree.ChainEndLabel})
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error getting chain nodes: %v", err)
+	}
+
+	// subtract 1 to only include tip node once
+	nodes := make([][]byte, len(treeNodes)+len(chainNodes)-1)
+	i := 0
+	for _, node := range treeNodes {
+		nodes[i] = node.RawData()
+		i++
+	}
+	for _, node := range chainNodes {
+		// tip node was already added in treeNodes loop
+		if node.Cid().Equals(existingTree.Dag.Tip) {
+			continue
+		}
+		nodes[i] = node.RawData()
+		i++
+	}
+
+	return nodes, nil
 }
