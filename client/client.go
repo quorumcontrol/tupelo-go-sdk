@@ -204,7 +204,7 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 	}
 
 	//TODO: only send the necessary nodes
-	cborNodes, err := tree.ChainTree.Dag.Nodes()
+	cborNodes, err := tree.ChainTree.Dag.NodesForPathWithDecendants([]string{"tree"})
 	if err != nil {
 		return nil, fmt.Errorf("error getting nodes: %v", err)
 	}
