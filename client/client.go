@@ -13,10 +13,13 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
-	"github.com/quorumcontrol/chaintree/chaintree"
-	"github.com/quorumcontrol/chaintree/safewrap"
 	"go.uber.org/zap"
 
+	"github.com/quorumcontrol/chaintree/chaintree"
+	"github.com/quorumcontrol/chaintree/dag"
+	"github.com/quorumcontrol/chaintree/nodestore"
+	"github.com/quorumcontrol/chaintree/safewrap"
+	"github.com/quorumcontrol/storage"
 	"github.com/quorumcontrol/tupelo-go-client/consensus"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/middleware"
@@ -203,23 +206,32 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 		return nil, fmt.Errorf("error signing: %v", err)
 	}
 
-	storedTip := tree.Tip()
+	memStore := nodestore.NewStorageBasedStore(storage.NewMemStorage())
 
-	newTree, err := chaintree.NewChainTree(tree.ChainTree.Dag, tree.ChainTree.BlockValidators, tree.ChainTree.Transactors)
+	nodes, err := nodesForTransaction(tree)
+	if err != nil {
+		return nil, fmt.Errorf("error generating nodes for transaction %v", err)
+	}
+
+	for _, node := range nodes {
+		if err = memStore.StoreNode(node); err != nil {
+			return nil, fmt.Errorf("Failed to store node: %v", err)
+		}
+	}
+
+	storedTip := tree.Tip()
+	memoryDag := dag.NewDag(storedTip, memStore)
+
+	memoryTree, err := chaintree.NewChainTree(memoryDag, tree.ChainTree.BlockValidators, tree.ChainTree.Transactors)
 	if err != nil {
 		return nil, fmt.Errorf("error creating new tree: %v", err)
 	}
-	valid, err := newTree.ProcessBlock(blockWithHeaders)
+	valid, err := memoryTree.ProcessBlock(blockWithHeaders)
 	if !valid || err != nil {
 		return nil, fmt.Errorf("error processing block (valid: %t): %v", valid, err)
 	}
 
-	expectedTip := newTree.Dag.Tip
-
-	nodes, err := nodesForTransaction(tree, newTree)
-	if err != nil {
-		return nil, fmt.Errorf("error generating nodes for transaction %v", err)
-	}
+	expectedTip := memoryTree.Dag.Tip
 
 	transaction := messages.Transaction{
 		PreviousTip: storedTip.Bytes(),
@@ -227,7 +239,7 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 		Payload:     sw.WrapObject(blockWithHeaders).RawData(),
 		NewTip:      expectedTip.Bytes(),
 		ObjectID:    []byte(tree.MustId()),
-		State:       nodes,
+		State:       nodesToBytes(nodes),
 	}
 
 	fut := c.Subscribe(&transaction, 60*time.Second)
@@ -307,7 +319,7 @@ func getRoot(sct *consensus.SignedChainTree) (*chaintree.RootNode, error) {
 // Currently this takes
 // - the entire resolved tree/ of the existing tree
 // - the nodes for chain/end, but not resolving through the previous tip
-func nodesForTransaction(existingSignedTree *consensus.SignedChainTree, newTree *chaintree.ChainTree) ([][]byte, error) {
+func nodesForTransaction(existingSignedTree *consensus.SignedChainTree) ([]*cbornode.Node, error) {
 	existingTree := existingSignedTree.ChainTree
 
 	treeNodes, err := existingTree.Dag.NodesForPathWithDecendants([]string{"tree"})
@@ -329,20 +341,27 @@ func nodesForTransaction(existingSignedTree *consensus.SignedChainTree, newTree 
 	}
 
 	// subtract 1 to only include tip node once
-	nodes := make([][]byte, len(treeNodes)+len(chainNodes)-1)
+	nodes := make([]*cbornode.Node, len(treeNodes)+len(chainNodes)-1)
 	i := 0
 	for _, node := range treeNodes {
-		nodes[i] = node.RawData()
+		nodes[i] = node
 		i++
 	}
 	for _, node := range chainNodes {
-		// tip node was already added in treeNodes loop
 		if node.Cid().Equals(existingTree.Dag.Tip) {
 			continue
 		}
-		nodes[i] = node.RawData()
+		nodes[i] = node
 		i++
 	}
 
 	return nodes, nil
+}
+
+func nodesToBytes(nodes []*cbornode.Node) [][]byte {
+	returnBytes := make([][]byte, len(nodes))
+	for i, n := range nodes {
+		returnBytes[i] = n.RawData()
+	}
+	return returnBytes
 }
