@@ -13,11 +13,14 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
-	"github.com/quorumcontrol/chaintree/chaintree"
-	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/messages/transactions"
 	"go.uber.org/zap"
 
+	"github.com/quorumcontrol/chaintree/chaintree"
+	"github.com/quorumcontrol/chaintree/dag"
+	"github.com/quorumcontrol/chaintree/nodestore"
+	"github.com/quorumcontrol/chaintree/safewrap"
+	"github.com/quorumcontrol/storage"
 	"github.com/quorumcontrol/tupelo-go-client/consensus"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
 	"github.com/quorumcontrol/tupelo-go-client/gossip3/middleware"
@@ -50,7 +53,7 @@ func New(group *types.NotaryGroup, treeDid string, pubsub remote.PubSub) *Client
 	return &Client{
 		Group:   group,
 		TreeDID: treeDid,
-		log:     middleware.Log.Named("client"),
+		log:     middleware.Log.Named("client-" + treeDid),
 		pubsub:  pubsub,
 		cache:   cache,
 		stream:  &eventstream.EventStream{},
@@ -70,7 +73,7 @@ func (c *Client) alreadyListening() bool {
 
 // Stop stops a Client.
 func (c *Client) Stop() {
-	if !c.alreadyListening() {
+	if c.alreadyListening() {
 		c.subscriber.Stop()
 		c.subscriber = nil
 	}
@@ -87,7 +90,7 @@ func (c *Client) subscriptionReceive(actorContext actor.Context) {
 		heightString := strconv.FormatUint(msg.Signature.Height, 10)
 		existed, _ := c.cache.ContainsOrAdd(heightString, msg)
 		if !existed {
-			c.log.Debugw("publishing current state", "height", heightString)
+			c.log.Debugw("publishing current state", "objectID", string(msg.Signature.ObjectID), "height", heightString)
 			c.stream.Publish(msg)
 		}
 	case *messages.Error:
@@ -131,21 +134,17 @@ func (c *Client) Subscribe(trans *messages.Transaction, timeout time.Duration) *
 	killer := actor.NewFuture(timeout + 100*time.Millisecond)
 	fut.PipeTo(killer.PID())
 
-	sub := c.stream.Subscribe(func(msg interface{}) {
-		actorContext.Send(fut.PID(), msg)
-	})
-	sub.WithPredicate(func(msgInterface interface{}) bool {
-		switch msg := msgInterface.(type) {
+	sub := c.stream.Subscribe(func(msgInter interface{}) {
+		switch msg := msgInter.(type) {
 		case *messages.CurrentState:
 			if msg.Signature.Height == trans.Height {
-				return true
+				actorContext.Send(fut.PID(), msg)
 			}
 		case *messages.Error:
 			if msg.Source == string(transID) {
-				return true
+				actorContext.Send(fut.PID(), msg)
 			}
 		}
-		return false
 	})
 
 	go func() {
@@ -208,27 +207,32 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 		return nil, fmt.Errorf("error signing: %v", err)
 	}
 
-	//TODO: only send the necessary nodes
-	cborNodes, err := tree.ChainTree.Dag.Nodes()
-	if err != nil {
-		return nil, fmt.Errorf("error getting nodes: %v", err)
-	}
-	nodes := make([][]byte, len(cborNodes))
-	for i, node := range cborNodes {
-		nodes[i] = node.RawData()
-	}
-	storedTip := tree.Tip()
+	memStore := nodestore.NewStorageBasedStore(storage.NewMemStorage())
 
-	newTree, err := chaintree.NewChainTree(tree.ChainTree.Dag, tree.ChainTree.BlockValidators, tree.ChainTree.Transactors)
+	nodes, err := nodesForTransaction(tree)
+	if err != nil {
+		return nil, fmt.Errorf("error generating nodes for transaction %v", err)
+	}
+
+	for _, node := range nodes {
+		if err = memStore.StoreNode(node); err != nil {
+			return nil, fmt.Errorf("Failed to store node: %v", err)
+		}
+	}
+
+	storedTip := tree.Tip()
+	memoryDag := dag.NewDag(storedTip, memStore)
+
+	memoryTree, err := chaintree.NewChainTree(memoryDag, tree.ChainTree.BlockValidators, tree.ChainTree.Transactors)
 	if err != nil {
 		return nil, fmt.Errorf("error creating new tree: %v", err)
 	}
-	valid, err := newTree.ProcessBlock(blockWithHeaders)
+	valid, err := memoryTree.ProcessBlock(blockWithHeaders)
 	if !valid || err != nil {
 		return nil, fmt.Errorf("error processing block (valid: %t): %v", valid, err)
 	}
 
-	expectedTip := newTree.Dag.Tip
+	expectedTip := memoryTree.Dag.Tip
 
 	transaction := messages.Transaction{
 		PreviousTip: storedTip.Bytes(),
@@ -236,7 +240,7 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 		Payload:     sw.WrapObject(blockWithHeaders).RawData(),
 		NewTip:      expectedTip.Bytes(),
 		ObjectID:    []byte(tree.MustId()),
-		State:       nodes,
+		State:       nodesToBytes(nodes),
 	}
 
 	fut := c.Subscribe(&transaction, 60*time.Second)
@@ -310,4 +314,55 @@ func getRoot(sct *consensus.SignedChainTree) (*chaintree.RootNode, error) {
 		return nil, fmt.Errorf("error decoding root: %v", err)
 	}
 	return root, nil
+}
+
+// This method should calculate all necessary nodes that need to be sent for verification.
+// Currently this takes
+// - the entire resolved tree/ of the existing tree
+// - the nodes for chain/end, but not resolving through the previous tip
+func nodesForTransaction(existingSignedTree *consensus.SignedChainTree) ([]*cbornode.Node, error) {
+	existingTree := existingSignedTree.ChainTree
+
+	treeNodes, err := existingTree.Dag.NodesForPathWithDecendants([]string{"tree"})
+	if err != nil {
+		return nil, fmt.Errorf("error getting tree nodes: %v", err)
+	}
+
+	// Validation needs all the nodes for chain/end, but not past chain/end. aka no need to
+	// resolve the end node, since that would fetch all the nodes of from the previous tip.
+	// Also, on genesis state chain/end is nil, so deal with that
+	var chainNodes []*cbornode.Node
+	if existingSignedTree.IsGenesis() {
+		chainNodes, err = existingTree.Dag.NodesForPath([]string{chaintree.ChainLabel})
+	} else {
+		chainNodes, err = existingTree.Dag.NodesForPath([]string{chaintree.ChainLabel, chaintree.ChainEndLabel})
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error getting chain nodes: %v", err)
+	}
+
+	// subtract 1 to only include tip node once
+	nodes := make([]*cbornode.Node, len(treeNodes)+len(chainNodes)-1)
+	i := 0
+	for _, node := range treeNodes {
+		nodes[i] = node
+		i++
+	}
+	for _, node := range chainNodes {
+		if node.Cid().Equals(existingTree.Dag.Tip) {
+			continue
+		}
+		nodes[i] = node
+		i++
+	}
+
+	return nodes, nil
+}
+
+func nodesToBytes(nodes []*cbornode.Node) [][]byte {
+	returnBytes := make([][]byte, len(nodes))
+	for i, n := range nodes {
+		returnBytes[i] = n.RawData()
+	}
+	return returnBytes
 }
