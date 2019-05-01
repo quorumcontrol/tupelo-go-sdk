@@ -36,7 +36,7 @@ make vendor
 docker-compose up --build --remove-orphans --force-recreate
 ```
 
-Then, in the Tupelo Go client repository, execute the following command: `make integration-test`.
+Then, in the Tupelo Go SDK repository, execute the following command: `make integration-test`.
 
 ## Message Serialization
 Before a message gets sent over the wire, it gets serialized to the
