@@ -1,4 +1,4 @@
-module github.com/quorumcontrol/tupelo-go-client
+module github.com/quorumcontrol/tupelo-go-sdk
 
 go 1.12
 

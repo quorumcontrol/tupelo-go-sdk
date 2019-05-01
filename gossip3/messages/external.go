@@ -8,7 +8,7 @@ import (
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/quorumcontrol/tupelo-go-client/tracing"
+	"github.com/quorumcontrol/tupelo-go-sdk/tracing"
 )
 
 func init() {

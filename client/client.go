@@ -20,11 +20,11 @@ import (
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/storage"
-	"github.com/quorumcontrol/tupelo-go-client/consensus"
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/middleware"
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/remote"
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/types"
+	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/remote"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
 )
 
 // TransactionBroadcastTopic is the topic from which clients

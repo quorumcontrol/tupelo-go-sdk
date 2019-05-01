@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
-	"github.com/quorumcontrol/tupelo-go-client/bls"
-	"github.com/quorumcontrol/tupelo-go-client/consensus"
-	"github.com/quorumcontrol/tupelo-go-client/p2p"
+	"github.com/quorumcontrol/tupelo-go-sdk/bls"
+	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
+	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 )
 
 type Signer struct {

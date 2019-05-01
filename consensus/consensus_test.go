@@ -5,8 +5,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/quorumcontrol/chaintree/chaintree"
-	"github.com/quorumcontrol/tupelo-go-client/bls"
-	extmsgs "github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
+	"github.com/quorumcontrol/tupelo-go-sdk/bls"
+	extmsgs "github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 	"github.com/stretchr/testify/assert"
 )
 

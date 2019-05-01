@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tinylib/msgp/msgp"
