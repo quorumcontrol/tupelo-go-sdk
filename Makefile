@@ -38,10 +38,10 @@ ci-test: $(gosources) $(generated) go.mod go.sum $(FIRSTGOPATH)/bin/gotestsum
 integration-test: docker-image
 	docker run -e TUPELO_BOOTSTRAP_NODES=/ip4/172.16.238.10/tcp/34001/ipfs/\
 16Uiu2HAm3TGSEKEjagcCojSJeaT5rypaeJMKejijvYSnAjviWwV5 --net tupelo_default \
-quorumcontrol/tupelo-go-client go test -mod=vendor -tags=integration -timeout=2m ./...
+quorumcontrol/tupelo-go-sdk go test -mod=vendor -tags=integration -timeout=2m ./...
 
 docker-image: vendor $(gosources) $(generated) Dockerfile .dockerignore
-	docker build -t quorumcontrol/tupelo-go-client:$(TAG) .
+	docker build -t quorumcontrol/tupelo-go-sdk:$(TAG) .
 
 $(FIRSTGOPATH)/bin/golangci-lint:
 	./scripts/download-golangci-lint.sh

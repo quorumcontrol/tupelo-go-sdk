@@ -5,7 +5,7 @@ package remote
 import (
 	"fmt"
 
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 )
 
 type WireDelivery struct {

@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/middleware"
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/types"
-	"github.com/quorumcontrol/tupelo-go-client/p2p"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
+	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 )
 
 type actorRegistry map[string]*actor.PID

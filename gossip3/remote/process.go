@@ -6,8 +6,8 @@ import (
 	"reflect"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
-	"github.com/quorumcontrol/tupelo-go-client/tracing"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
+	"github.com/quorumcontrol/tupelo-go-sdk/tracing"
 )
 
 type process struct {

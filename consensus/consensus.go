@@ -14,8 +14,8 @@ import (
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/chaintree/typecaster"
-	"github.com/quorumcontrol/tupelo-go-client/bls"
-	extmsgs "github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
+	"github.com/quorumcontrol/tupelo-go-sdk/bls"
+	extmsgs "github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 )
 
 func init() {

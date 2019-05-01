@@ -12,9 +12,9 @@ import (
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/ethereum/go-ethereum/crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/middleware"
-	"github.com/quorumcontrol/tupelo-go-client/p2p"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
+	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

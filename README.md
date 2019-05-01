@@ -1,12 +1,12 @@
-[![CircleCI](https://circleci.com/gh/quorumcontrol/tupelo-go-client.svg?style=svg&circle-token=7e9e6a1638c33dcb8899cc9a2aed9936cba60aaa)](https://circleci.com/gh/quorumcontrol/tupelo-go-client)
+[![CircleCI](https://circleci.com/gh/quorumcontrol/tupelo-go-sdk.svg?style=svg&circle-token=7e9e6a1638c33dcb8899cc9a2aed9936cba60aaa)](https://circleci.com/gh/quorumcontrol/tupelo-go-sdk)
 
-# Tupelo Go Client
+# Tupelo Go SDK
 This is the SDK for developing Go applications using [Tupelo](https://quorumcontrol.com).
 
 ## Building
 Before building the project, you should have the following installed:
 
-* Go >= v1.11
+* Go >= v1.12
 * Docker
 * GNU Make
 
@@ -36,7 +36,7 @@ make vendor
 docker-compose up --build --remove-orphans --force-recreate
 ```
 
-Then, in the Tupelo Go client repository, execute the following command: `make integration-test`.
+Then, in the Tupelo Go SDK repository, execute the following command: `make integration-test`.
 
 ## Message Serialization
 Before a message gets sent over the wire, it gets serialized to the

@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/remote"
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/testhelpers"
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/types"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/remote"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/testhelpers"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
 	"github.com/stretchr/testify/require"
 )
 

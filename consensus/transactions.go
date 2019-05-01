@@ -13,7 +13,7 @@ import (
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/chaintree/typecaster"
-	extmsgs "github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
+	extmsgs "github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 )
 
 const (
