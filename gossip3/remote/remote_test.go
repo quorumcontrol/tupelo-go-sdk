@@ -7,11 +7,11 @@ import (
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/types"
-	"github.com/quorumcontrol/tupelo-go-client/p2p"
-	"github.com/quorumcontrol/tupelo-go-client/testnotarygroup"
-	"github.com/quorumcontrol/tupelo-go-client/tracing"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
+	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
+	"github.com/quorumcontrol/tupelo-go-sdk/testnotarygroup"
+	"github.com/quorumcontrol/tupelo-go-sdk/tracing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

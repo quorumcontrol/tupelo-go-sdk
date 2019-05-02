@@ -9,10 +9,10 @@ import (
 	"github.com/AsynkronIT/protoactor-go/plugin"
 	peer "github.com/libp2p/go-libp2p-peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/middleware"
-	"github.com/quorumcontrol/tupelo-go-client/p2p"
-	"github.com/quorumcontrol/tupelo-go-client/tracing"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
+	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
+	"github.com/quorumcontrol/tupelo-go-sdk/tracing"
 	"go.uber.org/zap"
 )
 

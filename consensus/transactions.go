@@ -14,7 +14,7 @@ import (
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/chaintree/typecaster"
 	"github.com/quorumcontrol/messages/transactions"
-	extmsgs "github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
+	extmsgs "github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 )
 
 const (
@@ -226,7 +226,7 @@ func EstablishTokenTransaction(chainTreeDID string, tree *dag.Dag, transaction *
 }
 
 func MintTokenTransaction(chainTreeDID string, tree *dag.Dag, transaction *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
-	payload := &MintTokenPayload{}
+	payload := &transactions.MintTokenPayload{}
 	err := typecaster.ToType(transaction.Payload, payload)
 	if err != nil {
 		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error typecasting payload: %v", err)}
@@ -248,7 +248,7 @@ func MintTokenTransaction(chainTreeDID string, tree *dag.Dag, transaction *trans
 }
 
 func SendTokenTransaction(chainTreeDID string, tree *dag.Dag, transaction *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
-	payload := &SendTokenPayload{}
+	payload := &transactions.SendTokenPayload{}
 	err := typecaster.ToType(transaction.Payload, payload)
 	if err != nil {
 		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error typecasting payload: %v", err)}
@@ -395,7 +395,7 @@ func getSendTokenFromReceive(senderDag *dag.Dag, tokenName string) (*TokenSend, 
 }
 
 func ReceiveTokenTransaction(_ string, tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedError chaintree.CodedError) {
-	payload := &ReceiveTokenPayload{}
+	payload := &transactions.ReceiveTokenPayload{}
 	err := typecaster.ToType(transaction.Payload, payload)
 	if err != nil {
 		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error typecasting payload: %v", err)}

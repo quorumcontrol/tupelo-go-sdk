@@ -12,11 +12,11 @@ import (
 	pnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/opentracing/opentracing-go"
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/middleware"
-	"github.com/quorumcontrol/tupelo-go-client/gossip3/types"
-	"github.com/quorumcontrol/tupelo-go-client/p2p"
-	"github.com/quorumcontrol/tupelo-go-client/tracing"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
+	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
+	"github.com/quorumcontrol/tupelo-go-sdk/tracing"
 	"github.com/tinylib/msgp/msgp"
 )
 

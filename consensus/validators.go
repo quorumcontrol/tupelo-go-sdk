@@ -8,7 +8,7 @@ import (
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/typecaster"
 
-	extmsgs "github.com/quorumcontrol/tupelo-go-client/gossip3/messages"
+	extmsgs "github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 )
 
 func getReceiveTokenPayloads(transactions []*chaintree.Transaction) ([]*ReceiveTokenPayload, error) {
