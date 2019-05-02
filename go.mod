@@ -4,6 +4,7 @@ go 1.12
 
 require (
 	github.com/AsynkronIT/protoactor-go v0.0.0-20190318154652-aa1aa20c2fa0
+	github.com/Workiva/go-datastructures v1.0.50
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/elastic/go-sysinfo v0.0.0-20190107121835-59ef8c0eae46 // indirect
 	github.com/ethereum/go-ethereum v1.8.25
