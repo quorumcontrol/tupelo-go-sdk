@@ -43,20 +43,20 @@ func (td *tupeloDiscoverer) findPeers(ctx context.Context) error {
 	}
 
 	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case peerInfo := <-peerChan:
-				td.handleNewPeerInfo(ctx, peerInfo)
-			}
+		for peerInfo := range peerChan {
+			td.handleNewPeerInfo(ctx, peerInfo)
 		}
 	}()
 	return nil
 }
 
 func (td *tupeloDiscoverer) handleNewPeerInfo(ctx context.Context, p pstore.PeerInfo) {
+	if p.ID == "" {
+		return // empty id
+	}
+
 	host := td.host.host
+
 	if host.Network().Connectedness(p.ID) == inet.Connected {
 		return // we are already connected
 	}
@@ -64,10 +64,6 @@ func (td *tupeloDiscoverer) handleNewPeerInfo(ctx context.Context, p pstore.Peer
 	connected := host.Network().Peers()
 	if len(connected) > maxConnected {
 		return // we already are connected to more than we need
-	}
-
-	if p.ID == "" {
-		return // empty id
 	}
 
 	log.Debugf("new peer: %s", p.ID)
