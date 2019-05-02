@@ -25,5 +25,5 @@ func TestVerKeysOf(t *testing.T) {
 
 	resp, err := ng.VerKeysOf(arry)
 	require.Nil(t, err)
-	require.ElementsMatch(t, resp, [][]byte{ts.VerKeys[0].Bytes(), ts.VerKeys[3].Bytes()})
+	require.ElementsMatch(t, resp, [][]byte{ng.SignerAtIndex(0).VerKey.Bytes(), ng.SignerAtIndex(3).VerKey.Bytes()})
 }
