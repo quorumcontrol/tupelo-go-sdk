@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -35,7 +36,7 @@ func treeMapToNodes(t testing.TB, tree map[string]interface{}) []*cbornode.Node 
 			cids := make([]cid.Cid, len(v))
 			for i, m := range v {
 				nodes = append(nodes, treeMapToNodes(t, m)...)
-				cids[i] = nodes[len(nodes) - 1].Cid()
+				cids[i] = nodes[len(nodes)-1].Cid()
 			}
 			wrappable[key] = cids
 		default:
@@ -193,35 +194,48 @@ func TestTreeLedger_sumTokenTransactions(t *testing.T) {
 }
 
 func TestTreeLedger_Balance(t *testing.T) {
-	testTreeNodes := map[string]interface{}{
-		"_tupelo": map[string]interface{}{
-			"tokens": map[string]interface{}{
-				"test-token": map[string]interface{}{
-					TokenBalanceLabel: uint64(32),
-					TokenMintLabel:    []map[string]interface{}{
-						{"amount": 1},
-						{"amount": 2},
-						{"amount": 3},
-					},
-					TokenSendLabel:    []map[string]interface{}{
-						{"amount": 4},
-						{"amount": 20},
-					},
-					TokenReceiveLabel: []map[string]interface{}{
-						{"amount": 50},
+	testCases := []struct {
+		name            string
+		token           string
+		expectedBalance uint64
+		expectedErr     error
+	}{
+		{"existing token", "test-token", 32, nil},
+		{"non-existent token", "non-existent", 0, fmt.Errorf(
+			"error resolving token balance: path elements remaining: [non-existent balance]")},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testTreeNodes := map[string]interface{}{
+				"_tupelo": map[string]interface{}{
+					"tokens": map[string]interface{}{
+						"test-token": map[string]interface{}{
+							TokenBalanceLabel: uint64(32),
+							TokenMintLabel: []map[string]interface{}{
+								{"amount": 1},
+								{"amount": 2},
+								{"amount": 3},
+							},
+							TokenSendLabel: []map[string]interface{}{
+								{"amount": 4},
+								{"amount": 20},
+							},
+							TokenReceiveLabel: []map[string]interface{}{
+								{"amount": 50},
+							},
+						},
 					},
 				},
-			},
-		},
+			}
+			testTree := NewTestTree(t, testTreeNodes)
+			ledger := NewTreeLedger(testTree, tc.token)
+
+			balance, err := ledger.Balance()
+
+			assert.Equal(t, tc.expectedErr, err)
+			assert.Equal(t, tc.expectedBalance, balance)
+		})
 	}
-	testTree := NewTestTree(t, testTreeNodes)
-
-	ledger := NewTreeLedger(testTree, "test-token")
-
-	balance, err := ledger.Balance()
-	require.Nil(t, err)
-
-	assert.Equal(t, uint64(32), balance)
 }
 
 func TestTreeLedger_TokenExists(t *testing.T) {
@@ -360,16 +374,16 @@ func TestTreeLedger_MintToken(t *testing.T) {
 				"test-token": map[string]interface{}{
 					MonetaryPolicyLabel: TokenMonetaryPolicy{Maximum: uint64(100)},
 					TokenBalanceLabel:   uint64(10),
-					TokenMintLabel:      []map[string]interface{}{
+					TokenMintLabel: []map[string]interface{}{
 						{"amount": 1},
 						{"amount": 2},
 						{"amount": 3},
 					},
-					TokenSendLabel:      []map[string]interface{}{
+					TokenSendLabel: []map[string]interface{}{
 						{"amount": 4},
 						{"amount": 2},
 					},
-					TokenReceiveLabel:   []map[string]interface{}{
+					TokenReceiveLabel: []map[string]interface{}{
 						{"amount": 10},
 					},
 				},
@@ -397,12 +411,12 @@ func TestTreeLedger_SendToken(t *testing.T) {
 			"tokens": map[string]interface{}{
 				"test-token": map[string]interface{}{
 					TokenBalanceLabel: uint64(10),
-					TokenMintLabel:    []map[string]interface{}{
+					TokenMintLabel: []map[string]interface{}{
 						{"amount": 1},
 						{"amount": 2},
 						{"amount": 3},
 					},
-					TokenSendLabel:    []map[string]interface{}{
+					TokenSendLabel: []map[string]interface{}{
 						{"amount": 4},
 						{"amount": 2},
 					},
@@ -442,10 +456,10 @@ func TestTreeLedger_ReceiveToken(t *testing.T) {
 	recipientTree, err := recipientLedger.ReceiveToken("test-send-token-2", uint64(5))
 	require.Nil(t, err)
 
-    recipientLedger = NewTreeLedger(recipientTree, "test-token")
+	recipientLedger = NewTreeLedger(recipientTree, "test-token")
 
-    balance, err := recipientLedger.Balance()
-    require.Nil(t, err)
+	balance, err := recipientLedger.Balance()
+	require.Nil(t, err)
 
-    assert.Equal(t, uint64(5), balance)
+	assert.Equal(t, uint64(5), balance)
 }

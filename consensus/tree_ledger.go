@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipld-cbor"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/typecaster"
@@ -12,7 +12,7 @@ import (
 
 const (
 	MonetaryPolicyLabel = "monetaryPolicy"
-	TokenBalanceLabel = "balance"
+	TokenBalanceLabel   = "balance"
 )
 
 var transactionTypes = map[string][]string{
@@ -31,7 +31,7 @@ type TokenLedger interface {
 
 type TreeLedger struct {
 	tokenName string
-	tree *dag.Dag
+	tree      *dag.Dag
 }
 
 var _ TokenLedger = &TreeLedger{}
@@ -47,7 +47,7 @@ type Token struct {
 func NewTreeLedger(tree *dag.Dag, tokenName string) *TreeLedger {
 	return &TreeLedger{
 		tokenName: tokenName,
-		tree: tree,
+		tree:      tree,
 	}
 }
 
@@ -161,16 +161,12 @@ func (l *TreeLedger) Balance() (uint64, error) {
 	}
 
 	if len(remaining) > 0 {
-		return 0, nil
+		return 0, fmt.Errorf("error resolving token balance: path elements remaining: %v", remaining)
 	}
 
 	balance, ok := balanceObj.(uint64)
 	if !ok {
 		return 0, fmt.Errorf("error resolving token balance; node type (%T) is not a uint64", balanceObj)
-	}
-
-	if len(remaining) > 0 {
-		return 0, fmt.Errorf("error resolving token balance: path elements remaining: %v", remaining)
 	}
 
 	return balance, nil
@@ -415,7 +411,7 @@ func (l *TreeLedger) ReceiveToken(sendTokenTxId string, amount uint64) (*dag.Dag
 
 	newReceive, err := l.tree.CreateNode(TokenReceive{
 		SendTokenTransactionId: sendTokenTxId,
-		Amount: amount,
+		Amount:                 amount,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error creating token receive node: %v", err)
