@@ -3,19 +3,20 @@ package consensus
 import (
 	"fmt"
 
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/typecaster"
+	"github.com/quorumcontrol/messages/transactions"
 
 	extmsgs "github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 )
 
-func getReceiveTokenPayloads(transactions []*chaintree.Transaction) ([]*ReceiveTokenPayload, error) {
-	receiveTokens := make([]*ReceiveTokenPayload, 0)
-	for _, t := range transactions {
-		if t.Type == TransactionTypeReceiveToken {
-			rt := &ReceiveTokenPayload{}
+func getReceiveTokenPayloads(txns []*transactions.Transaction) ([]*transactions.ReceiveTokenPayload, error) {
+	receiveTokens := make([]*transactions.ReceiveTokenPayload, 0)
+	for _, t := range txns {
+		if t.Type == transactions.Transaction_RECEIVETOKEN {
+			rt := &transactions.ReceiveTokenPayload{}
 			err := typecaster.ToType(t.Payload, rt)
 			if err != nil {
 				return nil, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error typecasting payload: %v", err)}

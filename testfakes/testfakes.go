@@ -11,7 +11,7 @@ func SetOwnershipTransaction(keyAddr string) *transactions.Transaction {
 	}
 
 	return &transactions.Transaction{
-		Type:    transactions.TransactionType_SetOwnership,
+		Type:    transactions.Transaction_SETOWNERSHIP,
 		Payload: &transactions.Transaction_SetOwnershipPayload{SetOwnershipPayload: payload},
 	}
 }
@@ -23,7 +23,7 @@ func SetDataTransaction(path, value string) *transactions.Transaction {
 	}
 
 	return &transactions.Transaction{
-		Type:    transactions.TransactionType_SetData,
+		Type:    transactions.Transaction_SETDATA,
 		Payload: &transactions.Transaction_SetDataPayload{SetDataPayload: payload},
 	}
 }
@@ -37,7 +37,7 @@ func EstablishTokenTransaction(name string, max uint64) *transactions.Transactio
 	}
 
 	return &transactions.Transaction{
-		Type:    transactions.TransactionType_EstablishToken,
+		Type:    transactions.Transaction_ESTABLISHTOKEN,
 		Payload: &transactions.Transaction_EstablishTokenPayload{EstablishTokenPayload: payload},
 	}
 }
@@ -49,13 +49,13 @@ func MintTokenTransaction(name string, amount uint64) *transactions.Transaction 
 	}
 
 	return &transactions.Transaction{
-		Type:    transactions.TransactionType_MintToken,
+		Type:    transactions.Transaction_MINTTOKEN,
 		Payload: &transactions.Transaction_MintTokenPayload{MintTokenPayload: payload},
 	}
 }
 
-func NewValidUnsignedTransactionBlock(txn *transactions.Transaction) *chaintree.BlockWithHeaders {
-	return &chaintree.BlockWithHeaders{
+func NewValidUnsignedTransactionBlock(txn *transactions.Transaction) chaintree.BlockWithHeaders {
+	return chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  nil,
 			Height:       0,

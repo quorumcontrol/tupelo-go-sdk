@@ -22,14 +22,14 @@ const (
 	TransactionTypeStake          = "STAKE"
 )
 
-var DefaultTransactors = map[transactions.TransactionType]chaintree.TransactorFunc{
-	transactions.TransactionType_EstablishToken: EstablishTokenTransaction,
-	transactions.TransactionType_MintToken:      MintTokenTransaction,
-	transactions.TransactionType_SendToken:      SendTokenTransaction,
-	transactions.TransactionType_ReceiveToken:   ReceiveTokenTransaction,
-	transactions.TransactionType_SetData:        SetDataTransaction,
-	transactions.TransactionType_SetOwnership:   SetOwnershipTransaction,
-	transactions.TransactionType_Stake:          StakeTransaction,
+var DefaultTransactors = map[transactions.Transaction_Type]chaintree.TransactorFunc{
+	transactions.Transaction_ESTABLISHTOKEN: EstablishTokenTransaction,
+	transactions.Transaction_MINTTOKEN:      MintTokenTransaction,
+	transactions.Transaction_SENDTOKEN:      SendTokenTransaction,
+	transactions.Transaction_RECEIVETOKEN:   ReceiveTokenTransaction,
+	transactions.Transaction_SETDATA:        SetDataTransaction,
+	transactions.Transaction_SETOWNERSHIP:   SetOwnershipTransaction,
+	transactions.Transaction_STAKE:          StakeTransaction,
 }
 
 type SignedChainTree struct {

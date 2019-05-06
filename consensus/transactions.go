@@ -14,7 +14,6 @@ import (
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/chaintree/typecaster"
 	"github.com/quorumcontrol/messages/transactions"
-	extmsgs "github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 )
 
 const (
@@ -248,8 +247,14 @@ func MintTokenTransaction(chainTreeDID string, tree *dag.Dag, transaction *trans
 }
 
 func SendTokenTransaction(chainTreeDID string, tree *dag.Dag, transaction *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
-	payload := &transactions.SendTokenPayload{}
-	err := typecaster.ToType(transaction.Payload, payload)
+	payloadWrapper := &transactions.Transaction_SendTokenPayload{}
+	err := typecaster.ToType(transaction.Payload, payloadWrapper)
+	if err != nil {
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error casting payload: %v", err)}
+	}
+
+	payload := payloadWrapper.SendTokenPayload
+	err = typecaster.ToType(transaction.Payload, payload)
 	if err != nil {
 		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error typecasting payload: %v", err)}
 	}
@@ -267,13 +272,6 @@ func SendTokenTransaction(chainTreeDID string, tree *dag.Dag, transaction *trans
 	}
 
 	return newTree, true, nil
-}
-
-type ReceiveTokenPayload struct {
-	SendTokenTransactionId string
-	Tip                    []byte
-	Signature              extmsgs.Signature
-	Leaves                 [][]byte
 }
 
 // Returns the first node in tree linked to by a value of parentNode
@@ -294,7 +292,7 @@ func findFirstLinkedNode(tree *dag.Dag, parentNode map[string]interface{}) (key 
 	return "", nil, fmt.Errorf("no linked nodes were found in the DAG")
 }
 
-func getSenderDagFromReceive(payload *ReceiveTokenPayload) (*dag.Dag, chaintree.CodedError) {
+func getSenderDagFromReceive(payload *transactions.ReceiveTokenPayload) (*dag.Dag, chaintree.CodedError) {
 	tipCid, err := cid.Cast(payload.Tip)
 	if err != nil {
 		return nil, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error casting tip to CID: %v", err)}
@@ -394,7 +392,7 @@ func getSendTokenFromReceive(senderDag *dag.Dag, tokenName string) (*TokenSend, 
 	return &tokenSend, nil
 }
 
-func ReceiveTokenTransaction(_ string, tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedError chaintree.CodedError) {
+func ReceiveTokenTransaction(_ string, tree *dag.Dag, transaction *transactions.Transaction) (newTree *dag.Dag, valid bool, codedError chaintree.CodedError) {
 	payload := &transactions.ReceiveTokenPayload{}
 	err := typecaster.ToType(transaction.Payload, payload)
 	if err != nil {
