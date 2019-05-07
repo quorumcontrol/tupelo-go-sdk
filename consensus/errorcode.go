@@ -5,6 +5,7 @@ import "fmt"
 const (
 	ErrUnknown    = iota
 	ErrInvalidTip = iota
+	ErrInvalidSig = iota
 )
 
 type ErrorCode struct {

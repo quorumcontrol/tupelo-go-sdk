@@ -22,6 +22,7 @@ import (
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
+	"github.com/quorumcontrol/messages/transactions"
 	"github.com/quorumcontrol/storage"
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
@@ -30,6 +31,7 @@ import (
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/testhelpers"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
+	"github.com/quorumcontrol/tupelo-go-sdk/testfakes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -172,43 +174,23 @@ func TestPlayTransactions(t *testing.T) {
 		remoteTip = chain.Tip()
 	}
 
-	resp, err := client.PlayTransactions(chain, treeKey, &remoteTip, []*chaintree.Transaction{
-		{
-			Type: "SET_DATA",
-			Payload: map[string]string{
-				"path":  "down/in/the/thing",
-				"value": "sometestvalue",
-			},
-		},
-	})
+	txn := testfakes.SetDataTransaction("down/in/the/thing", "sometestvalue")
+
+	resp, err := client.PlayTransactions(chain, treeKey, &remoteTip, []*transactions.Transaction{txn})
 	require.Nil(t, err)
 	assert.Equal(t, resp.Tip.Bytes(), chain.Tip().Bytes())
 
 	t.Run("works on 2nd set", func(t *testing.T) {
 		remoteTip := chain.Tip()
-		resp, err := client.PlayTransactions(chain, treeKey, &remoteTip, []*chaintree.Transaction{
-			{
-				Type: "SET_DATA",
-				Payload: map[string]string{
-					"path":  "down/in/the/thing",
-					"value": "sometestvalue",
-				},
-			},
-		})
+		txn2 := testfakes.SetDataTransaction("down/in/the/thing", "sometestvalue")
+		resp, err := client.PlayTransactions(chain, treeKey, &remoteTip, []*transactions.Transaction{txn2})
 		require.Nil(t, err)
 		assert.Equal(t, resp.Tip.Bytes(), chain.Tip().Bytes())
 
 		// and works a third time
 		remoteTip = chain.Tip()
-		resp, err = client.PlayTransactions(chain, treeKey, &remoteTip, []*chaintree.Transaction{
-			{
-				Type: "SET_DATA",
-				Payload: map[string]string{
-					"path":  "down/in/the/thing",
-					"value": "sometestvalue",
-				},
-			},
-		})
+		txn3 := testfakes.SetDataTransaction("down/in/the/thing", "sometestvalue")
+		resp, err = client.PlayTransactions(chain, treeKey, &remoteTip, []*transactions.Transaction{txn3})
 		require.Nil(t, err)
 		assert.Equal(t, resp.Tip.Bytes(), chain.Tip().Bytes())
 	})
@@ -243,15 +225,9 @@ func TestNonNilPreviousTipOnFirstTransaction(t *testing.T) {
 	   ----------------------------------------------------------------------- */
 
 	// first valid transaction to get an otherwise-valid tip
-	_, _ = client.PlayTransactions(chain1, treeKey, &remoteTip, []*chaintree.Transaction{
-		{
-			Type: "SET_DATA",
-			Payload: map[string]string{
-				"path":  "down/in/the/thing",
-				"value": "sometestvalue",
-			},
-		},
-	})
+	txn := testfakes.SetDataTransaction("down/in/the/thing", "sometestvalue")
+
+	_, _ = client.PlayTransactions(chain1, treeKey, &remoteTip, []*transactions.Transaction{txn})
 
 	// new chaintree to invalidate previous tip
 	treeKey, err = crypto.GenerateKey()
@@ -263,18 +239,12 @@ func TestNonNilPreviousTipOnFirstTransaction(t *testing.T) {
 	defer client2.Stop()
 
 	remoteTip = chain1.Tip()
-	transaction := &chaintree.Transaction{
-		Type: "SET_DATA",
-		Payload: map[string]string{
-			"path":  "down/in/the/thing",
-			"value": "sometestvalue",
-		},
-	}
+	txn2 := testfakes.SetDataTransaction("down/in/the/thing", "sometestvalue")
 	unsignedBlock := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			Height:       0,
 			PreviousTip:  &remoteTip,
-			Transactions: []*chaintree.Transaction{transaction},
+			Transactions: []*transactions.Transaction{txn2},
 		},
 	}
 	blockWithHeaders, err := consensus.SignBlock(unsignedBlock, treeKey)
@@ -317,19 +287,12 @@ func transactLocal(t testing.TB, tree *consensus.SignedChainTree, treeKey *ecdsa
 		pt = &tip
 	}
 
+	txn := testfakes.SetDataTransaction(path, value)
 	unsignedBlock := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: pt,
-			Height:      height,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: "SET_DATA",
-					Payload: map[string]string{
-						"path":  path,
-						"value": value,
-					},
-				},
-			},
+			PreviousTip:  pt,
+			Height:       height,
+			Transactions: []*transactions.Transaction{txn},
 		},
 	}
 
@@ -511,27 +474,13 @@ func TestNonOwnerTransactions(t *testing.T) {
 	require.Nil(t, err)
 
 	// transaction with non-owner key should fail
-	_, err = client.PlayTransactions(chain, treeKey2, nil, []*chaintree.Transaction{
-		{
-			Type: "SET_DATA",
-			Payload: map[string]string{
-				"path":  "down/in/the/thing",
-				"value": "sometestvalue",
-			},
-		},
-	})
+	txn := testfakes.SetDataTransaction("down/in/the/thing", "sometestvalue")
+	_, err = client.PlayTransactions(chain, treeKey2, nil, []*transactions.Transaction{txn})
 	require.NotNil(t, err)
 
 	// 2nd transaction with non-owner key should fail
+	txn2 := testfakes.SetDataTransaction("down/in/the/thing", "someothertestvalue")
 	remoteTip := chain.Tip()
-	_, err = client.PlayTransactions(chain, treeKey2, &remoteTip, []*chaintree.Transaction{
-		{
-			Type: "SET_DATA",
-			Payload: map[string]string{
-				"path":  "down/in/the/other/thing",
-				"value": "someothertestvalue",
-			},
-		},
-	})
+	_, err = client.PlayTransactions(chain, treeKey2, &remoteTip, []*transactions.Transaction{txn2})
 	require.NotNil(t, err)
 }

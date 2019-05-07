@@ -2,6 +2,7 @@ package testfakes
 
 import (
 	"github.com/quorumcontrol/chaintree/chaintree"
+	"github.com/quorumcontrol/messages/signatures"
 	"github.com/quorumcontrol/messages/transactions"
 )
 
@@ -51,6 +52,34 @@ func MintTokenTransaction(name string, amount uint64) *transactions.Transaction 
 	return &transactions.Transaction{
 		Type:    transactions.Transaction_MINTTOKEN,
 		Payload: &transactions.Transaction_MintTokenPayload{MintTokenPayload: payload},
+	}
+}
+
+func SendTokenTransaction(id, name string, amount uint64, destination string) *transactions.Transaction {
+	payload := &transactions.SendTokenPayload{
+		Id:          id,
+		Name:        name,
+		Amount:      amount,
+		Destination: destination,
+	}
+
+	return &transactions.Transaction{
+		Type:    transactions.Transaction_SENDTOKEN,
+		Payload: &transactions.Transaction_SendTokenPayload{SendTokenPayload: payload},
+	}
+}
+
+func ReceiveTokenTransaction(sendTid string, tip []byte, sig *signatures.Signature, leaves [][]byte) *transactions.Transaction {
+	payload := &transactions.ReceiveTokenPayload{
+		SendTokenTransactionId: sendTid,
+		Tip:       tip,
+		Signature: sig,
+		Leaves:    leaves,
+	}
+
+	return &transactions.Transaction{
+		Type:    transactions.Transaction_RECEIVETOKEN,
+		Payload: &transactions.Transaction_ReceiveTokenPayload{ReceiveTokenPayload: payload},
 	}
 }
 

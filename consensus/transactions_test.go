@@ -11,12 +11,11 @@ import (
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/messages/transactions"
 	"github.com/quorumcontrol/storage"
-	"github.com/quorumcontrol/tupelo-go-client/testfakes"
+	"github.com/quorumcontrol/tupelo-go-sdk/conversion"
+	"github.com/quorumcontrol/tupelo-go-sdk/testfakes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/quorumcontrol/chaintree/chaintree"
-	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/typecaster"
 
 	extmsgs "github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
@@ -39,7 +38,7 @@ func TestEstablishTokenTransactionWithMaximum(t *testing.T) {
 	testTree, err := chaintree.NewChainTree(emptyTree, nil, DefaultTransactors)
 	assert.Nil(t, err)
 
-	_, err = testTree.ProcessBlock(blockWithHeaders)
+	_, err = testTree.ProcessBlock(&blockWithHeaders)
 	assert.Nil(t, err)
 
 	maximum, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "monetaryPolicy", "maximum"})
@@ -76,12 +75,12 @@ func TestMintToken(t *testing.T) {
 	testTree, err := chaintree.NewChainTree(emptyTree, nil, DefaultTransactors)
 	assert.Nil(t, err)
 
-	_, err = testTree.ProcessBlock(blockWithHeaders)
+	_, err = testTree.ProcessBlock(&blockWithHeaders)
 	assert.Nil(t, err)
 
 	mintTxn := testfakes.MintTokenTransaction(tokenName, 40)
 	mintBlockWithHeaders := testfakes.NewValidUnsignedTransactionBlock(mintTxn)
-	_, err = testTree.ProcessBlock(mintBlockWithHeaders)
+	_, err = testTree.ProcessBlock(&mintBlockWithHeaders)
 	assert.Nil(t, err)
 
 	mints, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "mints"})
@@ -92,7 +91,7 @@ func TestMintToken(t *testing.T) {
 
 	mintTxn2 := testfakes.EstablishTokenTransaction(tokenName, 1)
 	mintBlockWithHeaders2 := testfakes.NewValidUnsignedTransactionBlock(mintTxn2)
-	_, err = testTree.ProcessBlock(mintBlockWithHeaders2)
+	_, err = testTree.ProcessBlock(&mintBlockWithHeaders2)
 	assert.Nil(t, err)
 
 	mints, _, err = testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "mints"})
@@ -103,7 +102,7 @@ func TestMintToken(t *testing.T) {
 
 	mintTxn3 := testfakes.MintTokenTransaction(tokenName, 100)
 	mintBlockWithHeaders3 := testfakes.NewValidUnsignedTransactionBlock(mintTxn3)
-	_, err = testTree.ProcessBlock(mintBlockWithHeaders3)
+	_, err = testTree.ProcessBlock(&mintBlockWithHeaders3)
 	assert.NotNil(t, err)
 
 	mints, _, err = testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "mints"})
@@ -119,9 +118,12 @@ func TestEstablishTokenTransactionWithoutMonetaryPolicy(t *testing.T) {
 	treeDID := AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
 	emptyTree := NewEmptyTree(treeDID, store)
 
+	tokenName := "testtoken"
+	tokenFullName := strings.Join([]string{treeDID, tokenName}, ":")
+
 	payload := &transactions.EstablishTokenPayload{Name: tokenName}
 	txn := &transactions.Transaction{
-		Type:    transactions.TransactionType_EstablishToken,
+		Type:    transactions.Transaction_ESTABLISHTOKEN,
 		Payload: &transactions.Transaction_EstablishTokenPayload{EstablishTokenPayload: payload},
 	}
 	blockWithHeaders := testfakes.NewValidUnsignedTransactionBlock(txn)
@@ -129,7 +131,7 @@ func TestEstablishTokenTransactionWithoutMonetaryPolicy(t *testing.T) {
 	testTree, err := chaintree.NewChainTree(emptyTree, nil, DefaultTransactors)
 	assert.Nil(t, err)
 
-	_, err = testTree.ProcessBlock(blockWithHeaders)
+	_, err = testTree.ProcessBlock(&blockWithHeaders)
 	assert.Nil(t, err)
 
 	maximum, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "monetaryPolicy", "maximum"})
@@ -163,7 +165,7 @@ func TestSetData(t *testing.T) {
 	testTree, err := chaintree.NewChainTree(emptyTree, nil, DefaultTransactors)
 	require.Nil(t, err)
 
-	blockWithHeaders, err := SignBlock(unsignedBlock, treeKey)
+	blockWithHeaders, err := SignBlock(&unsignedBlock, treeKey)
 	require.Nil(t, err)
 
 	_, err = testTree.ProcessBlock(blockWithHeaders)
@@ -207,7 +209,7 @@ func TestSetData(t *testing.T) {
 	value = "is also set"
 
 	txn = testfakes.SetDataTransaction(path, value)
-	unsignedBlock = &chaintree.BlockWithHeaders{
+	unsignedBlock = chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			Height:       1,
 			PreviousTip:  &testTree.Dag.Tip,
@@ -215,7 +217,7 @@ func TestSetData(t *testing.T) {
 		},
 	}
 
-	blockWithHeaders, err = SignBlock(unsignedBlock, treeKey)
+	blockWithHeaders, err = SignBlock(&unsignedBlock, treeKey)
 	require.Nil(t, err)
 
 	_, err = testTree.ProcessBlock(blockWithHeaders)
@@ -251,7 +253,7 @@ func TestSetOwnership(t *testing.T) {
 	testTree, err := chaintree.NewChainTree(emptyTree, nil, DefaultTransactors)
 	require.Nil(t, err)
 
-	blockWithHeaders, err := SignBlock(unsignedBlock, treeKey)
+	blockWithHeaders, err := SignBlock(&unsignedBlock, treeKey)
 	require.Nil(t, err)
 
 	_, err = testTree.ProcessBlock(blockWithHeaders)
@@ -266,7 +268,7 @@ func TestSetOwnership(t *testing.T) {
 
 	txn = testfakes.SetOwnershipTransaction(keyAddr)
 	unsignedBlock = testfakes.NewValidUnsignedTransactionBlock(txn)
-	blockWithHeaders, err = SignBlock(unsignedBlock, treeKey)
+	blockWithHeaders, err = SignBlock(&unsignedBlock, treeKey)
 	require.Nil(t, err)
 
 	_, err = testTree.ProcessBlock(blockWithHeaders)
@@ -291,25 +293,14 @@ func TestSendToken(t *testing.T) {
 
 	maximumAmount := uint64(50)
 	height := uint64(0)
+
+	establishTxn := testfakes.EstablishTokenTransaction(tokenName, 0)
+	mintTxn := testfakes.MintTokenTransaction(tokenName, maximumAmount)
 	blockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: nil,
-			Height:      height,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeEstablishToken,
-					Payload: map[string]interface{}{
-						"name": tokenName,
-					},
-				},
-				{
-					Type: TransactionTypeMintToken,
-					Payload: map[string]interface{}{
-						"name":   tokenName,
-						"amount": maximumAmount,
-					},
-				},
-			},
+			PreviousTip:  nil,
+			Height:       height,
+			Transactions: []*transactions.Transaction{establishTxn, mintTxn},
 		},
 	}
 
@@ -324,21 +315,13 @@ func TestSendToken(t *testing.T) {
 	assert.Nil(t, err)
 	targetTreeDID := AddrToDid(crypto.PubkeyToAddress(targetKey.PublicKey).String())
 
+	txn := testfakes.SendTokenTransaction("1234", tokenName, 30, targetTreeDID)
+
 	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: &testTree.Dag.Tip,
-			Height:      height,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeSendToken,
-					Payload: map[string]interface{}{
-						"id":          "1234",
-						"name":        tokenName,
-						"amount":      30,
-						"destination": targetTreeDID,
-					},
-				},
-			},
+			PreviousTip:  &testTree.Dag.Tip,
+			Height:       height,
+			Transactions: []*transactions.Transaction{txn},
 		},
 	}
 
@@ -356,21 +339,12 @@ func TestSendToken(t *testing.T) {
 	lastSendAmount := sendsMap["amount"].(uint64)
 	assert.Equal(t, sendsMap["destination"], targetTreeDID)
 
+	overSpendTxn := testfakes.SendTokenTransaction("1234", tokenName, (maximumAmount-lastSendAmount)+1, targetTreeDID)
 	overSpendBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: &testTree.Dag.Tip,
-			Height:      height,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeSendToken,
-					Payload: map[string]interface{}{
-						"id":          "1234",
-						"name":        tokenName,
-						"amount":      (maximumAmount - lastSendAmount) + 1,
-						"destination": targetTreeDID,
-					},
-				},
-			},
+			PreviousTip:  &testTree.Dag.Tip,
+			Height:       height,
+			Transactions: []*transactions.Transaction{overSpendTxn},
 		},
 	}
 
@@ -390,25 +364,13 @@ func TestReceiveToken(t *testing.T) {
 
 	maximumAmount := uint64(50)
 	senderHeight := uint64(0)
+	establishTxn := testfakes.EstablishTokenTransaction(tokenName1, 0)
+	mintTxn := testfakes.MintTokenTransaction(tokenName1, maximumAmount)
 	blockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: nil,
-			Height:      senderHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeEstablishToken,
-					Payload: map[string]interface{}{
-						"name": tokenName1,
-					},
-				},
-				{
-					Type: TransactionTypeMintToken,
-					Payload: map[string]interface{}{
-						"name":   tokenName1,
-						"amount": maximumAmount,
-					},
-				},
-			},
+			PreviousTip:  nil,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{establishTxn, mintTxn},
 		},
 	}
 
@@ -424,25 +386,14 @@ func TestReceiveToken(t *testing.T) {
 	tokenName2 := "testtoken2"
 	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
 
+	establishTxn2 := testfakes.EstablishTokenTransaction(tokenName2, 0)
+	mintTxn2 := testfakes.MintTokenTransaction(tokenName2, maximumAmount/2)
+
 	blockWithHeaders = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: &senderChainTree.Dag.Tip,
-			Height:      senderHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeEstablishToken,
-					Payload: map[string]interface{}{
-						"name": tokenName2,
-					},
-				},
-				{
-					Type: TransactionTypeMintToken,
-					Payload: map[string]interface{}{
-						"name":   tokenName2,
-						"amount": maximumAmount / 2,
-					},
-				},
-			},
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{establishTxn2, mintTxn2},
 		},
 	}
 
@@ -454,21 +405,12 @@ func TestReceiveToken(t *testing.T) {
 	require.Nil(t, err)
 	recipientTreeDID := AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
 
+	sendTxn := testfakes.SendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
 	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: &senderChainTree.Dag.Tip,
-			Height:      senderHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeSendToken,
-					Payload: map[string]interface{}{
-						"id":          "1234",
-						"name":        tokenName2,
-						"amount":      20,
-						"destination": recipientTreeDID,
-					},
-				},
-			},
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{sendTxn},
 		},
 	}
 
@@ -497,21 +439,14 @@ func TestReceiveToken(t *testing.T) {
 		leaves = append(leaves, ln.RawData())
 	}
 
+	internalSignature, err := conversion.ToInternalSignature(signature)
+	require.Nil(t, err)
+	receiveTxn := testfakes.ReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: nil,
-			Height:      recipientHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeReceiveToken,
-					Payload: map[string]interface{}{
-						"sendTokenTransactionId": "1234",
-						"tip":       senderChainTree.Dag.Tip.Bytes(),
-						"signature": signature,
-						"leaves":    leaves,
-					},
-				},
-			},
+			PreviousTip:  nil,
+			Height:       recipientHeight,
+			Transactions: []*transactions.Transaction{receiveTxn},
 		},
 	}
 
@@ -551,25 +486,13 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 
 	maximumAmount := uint64(50)
 	senderHeight := uint64(0)
+	establishTxn := testfakes.EstablishTokenTransaction(tokenName1, 0)
+	mintTxn := testfakes.MintTokenTransaction(tokenName1, maximumAmount)
 	blockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: nil,
-			Height:      senderHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeEstablishToken,
-					Payload: map[string]interface{}{
-						"name": tokenName1,
-					},
-				},
-				{
-					Type: TransactionTypeMintToken,
-					Payload: map[string]interface{}{
-						"name":   tokenName1,
-						"amount": maximumAmount,
-					},
-				},
-			},
+			PreviousTip:  nil,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{establishTxn, mintTxn},
 		},
 	}
 
@@ -585,25 +508,13 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 	tokenName2 := "testtoken2"
 	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
 
+	establishTxn2 := testfakes.EstablishTokenTransaction(tokenName2, 0)
+	mintTxn2 := testfakes.MintTokenTransaction(tokenName2, maximumAmount/2)
 	blockWithHeaders = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: &senderChainTree.Dag.Tip,
-			Height:      senderHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeEstablishToken,
-					Payload: map[string]interface{}{
-						"name": tokenName2,
-					},
-				},
-				{
-					Type: TransactionTypeMintToken,
-					Payload: map[string]interface{}{
-						"name":   tokenName2,
-						"amount": maximumAmount / 2,
-					},
-				},
-			},
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{establishTxn2, mintTxn2},
 		},
 	}
 
@@ -615,21 +526,12 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 	require.Nil(t, err)
 	recipientTreeDID := AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
 
+	sendTxn := testfakes.SendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
 	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: &senderChainTree.Dag.Tip,
-			Height:      senderHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeSendToken,
-					Payload: map[string]interface{}{
-						"id":          "1234",
-						"name":        tokenName2,
-						"amount":      20,
-						"destination": recipientTreeDID,
-					},
-				},
-			},
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{sendTxn},
 		},
 	}
 
@@ -661,21 +563,15 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 	otherChainTree, err := chaintree.NewChainTree(emptyTree, nil, DefaultTransactors)
 	require.Nil(t, err)
 
+	internalSignature, err := conversion.ToInternalSignature(signature)
+	require.Nil(t, err)
+
+	receiveTxn := testfakes.ReceiveTokenTransaction("1234", otherChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: nil,
-			Height:      recipientHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeReceiveToken,
-					Payload: map[string]interface{}{
-						"sendTokenTransactionId": "1234",
-						"tip":       otherChainTree.Dag.Tip.Bytes(),
-						"signature": signature,
-						"leaves":    leaves,
-					},
-				},
-			},
+			PreviousTip:  nil,
+			Height:       recipientHeight,
+			Transactions: []*transactions.Transaction{receiveTxn},
 		},
 	}
 
@@ -700,25 +596,13 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 
 	maximumAmount := uint64(50)
 	senderHeight := uint64(0)
+	establishTxn := testfakes.EstablishTokenTransaction(tokenName1, 0)
+	mintTxn := testfakes.MintTokenTransaction(tokenName1, maximumAmount)
 	blockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: nil,
-			Height:      senderHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeEstablishToken,
-					Payload: map[string]interface{}{
-						"name": tokenName1,
-					},
-				},
-				{
-					Type: TransactionTypeMintToken,
-					Payload: map[string]interface{}{
-						"name":   tokenName1,
-						"amount": maximumAmount,
-					},
-				},
-			},
+			PreviousTip:  nil,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{establishTxn, mintTxn},
 		},
 	}
 
@@ -734,25 +618,13 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 	tokenName2 := "testtoken2"
 	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
 
+	establishTxn2 := testfakes.EstablishTokenTransaction(tokenName2, 0)
+	mintTxn2 := testfakes.MintTokenTransaction(tokenName2, maximumAmount/2)
 	blockWithHeaders = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: &senderChainTree.Dag.Tip,
-			Height:      senderHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeEstablishToken,
-					Payload: map[string]interface{}{
-						"name": tokenName2,
-					},
-				},
-				{
-					Type: TransactionTypeMintToken,
-					Payload: map[string]interface{}{
-						"name":   tokenName2,
-						"amount": maximumAmount / 2,
-					},
-				},
-			},
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{establishTxn2, mintTxn2},
 		},
 	}
 
@@ -764,21 +636,12 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 	require.Nil(t, err)
 	recipientTreeDID := AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
 
+	sendTxn := testfakes.SendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
 	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: &senderChainTree.Dag.Tip,
-			Height:      senderHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeSendToken,
-					Payload: map[string]interface{}{
-						"id":          "1234",
-						"name":        tokenName2,
-						"amount":      20,
-						"destination": recipientTreeDID,
-					},
-				},
-			},
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{sendTxn},
 		},
 	}
 
@@ -808,21 +671,15 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 		leaves = append(leaves, ln.RawData())
 	}
 
+	internalSignature, err := conversion.ToInternalSignature(signature)
+	require.Nil(t, err)
+
+	receiveTxn := testfakes.ReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: nil,
-			Height:      recipientHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeReceiveToken,
-					Payload: map[string]interface{}{
-						"sendTokenTransactionId": "1234",
-						"tip":       senderChainTree.Dag.Tip.Bytes(),
-						"signature": signature,
-						"leaves":    leaves,
-					},
-				},
-			},
+			PreviousTip:  nil,
+			Height:       recipientHeight,
+			Transactions: []*transactions.Transaction{receiveTxn},
 		},
 	}
 
@@ -837,21 +694,12 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 
 	// now attempt to receive a new, otherwise valid send w/ the same transaction id (which should fail)
 
+	sendTxn2 := testfakes.SendTokenTransaction("1234", tokenName2, 2, recipientTreeDID)
 	sendBlockWithHeaders = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: &senderChainTree.Dag.Tip,
-			Height:      senderHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeSendToken,
-					Payload: map[string]interface{}{
-						"id":          "1234",
-						"name":        tokenName2,
-						"amount":      2,
-						"destination": recipientTreeDID,
-					},
-				},
-			},
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{sendTxn2},
 		},
 	}
 
@@ -878,21 +726,15 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 		leaves = append(leaves, ln.RawData())
 	}
 
+	internalSignature, err = conversion.ToInternalSignature(signature)
+	require.Nil(t, err)
+
+	receiveTxn = testfakes.ReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
 	receiveBlockWithHeaders = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: &recipientChainTree.ChainTree.Dag.Tip,
-			Height:      recipientHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeReceiveToken,
-					Payload: map[string]interface{}{
-						"sendTokenTransactionId": "1234",
-						"tip":       senderChainTree.Dag.Tip.Bytes(),
-						"signature": signature,
-						"leaves":    leaves,
-					},
-				},
-			},
+			PreviousTip:  &recipientChainTree.ChainTree.Dag.Tip,
+			Height:       recipientHeight,
+			Transactions: []*transactions.Transaction{receiveTxn},
 		},
 	}
 
@@ -913,25 +755,13 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 
 	maximumAmount := uint64(50)
 	senderHeight := uint64(0)
+	establishTxn := testfakes.EstablishTokenTransaction(tokenName1, 0)
+	mintTxn := testfakes.MintTokenTransaction(tokenName1, maximumAmount)
 	blockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: nil,
-			Height:      senderHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeEstablishToken,
-					Payload: map[string]interface{}{
-						"name": tokenName1,
-					},
-				},
-				{
-					Type: TransactionTypeMintToken,
-					Payload: map[string]interface{}{
-						"name":   tokenName1,
-						"amount": maximumAmount,
-					},
-				},
-			},
+			PreviousTip:  nil,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{establishTxn, mintTxn},
 		},
 	}
 
@@ -947,25 +777,13 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 	tokenName2 := "testtoken2"
 	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
 
+	establishTxn2 := testfakes.EstablishTokenTransaction(tokenName2, 0)
+	mintTxn2 := testfakes.MintTokenTransaction(tokenName2, maximumAmount/2)
 	blockWithHeaders = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: &senderChainTree.Dag.Tip,
-			Height:      senderHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeEstablishToken,
-					Payload: map[string]interface{}{
-						"name": tokenName2,
-					},
-				},
-				{
-					Type: TransactionTypeMintToken,
-					Payload: map[string]interface{}{
-						"name":   tokenName2,
-						"amount": maximumAmount / 2,
-					},
-				},
-			},
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{establishTxn2, mintTxn2},
 		},
 	}
 
@@ -977,21 +795,12 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 	require.Nil(t, err)
 	recipientTreeDID := AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
 
+	sendTxn := testfakes.SendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
 	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: &senderChainTree.Dag.Tip,
-			Height:      senderHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeSendToken,
-					Payload: map[string]interface{}{
-						"id":          "1234",
-						"name":        tokenName2,
-						"amount":      20,
-						"destination": recipientTreeDID,
-					},
-				},
-			},
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{sendTxn},
 		},
 	}
 
@@ -1029,21 +838,15 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 
 	recipientHeight := uint64(0)
 
+	internalSignature, err := conversion.ToInternalSignature(signature)
+	require.Nil(t, err)
+
+	receiveTxn := testfakes.ReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: nil,
-			Height:      recipientHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeReceiveToken,
-					Payload: map[string]interface{}{
-						"sendTokenTransactionId": "1234",
-						"tip":       senderChainTree.Dag.Tip.Bytes(),
-						"signature": signature,
-						"leaves":    leaves,
-					},
-				},
-			},
+			PreviousTip:  nil,
+			Height:       recipientHeight,
+			Transactions: []*transactions.Transaction{receiveTxn},
 		},
 	}
 
@@ -1074,25 +877,14 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 
 	maximumAmount := uint64(50)
 	senderHeight := uint64(0)
+
+	establishTxn := testfakes.EstablishTokenTransaction(tokenName1, 0)
+	mintTxn := testfakes.MintTokenTransaction(tokenName1, maximumAmount)
 	blockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: nil,
-			Height:      senderHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeEstablishToken,
-					Payload: map[string]interface{}{
-						"name": tokenName1,
-					},
-				},
-				{
-					Type: TransactionTypeMintToken,
-					Payload: map[string]interface{}{
-						"name":   tokenName1,
-						"amount": maximumAmount,
-					},
-				},
-			},
+			PreviousTip:  nil,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{establishTxn, mintTxn},
 		},
 	}
 
@@ -1108,25 +900,13 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 	tokenName2 := "testtoken2"
 	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
 
+	establishTxn2 := testfakes.EstablishTokenTransaction(tokenName2, 0)
+	mintTxn2 := testfakes.MintTokenTransaction(tokenName2, maximumAmount/2)
 	blockWithHeaders = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: &senderChainTree.Dag.Tip,
-			Height:      senderHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeEstablishToken,
-					Payload: map[string]interface{}{
-						"name": tokenName2,
-					},
-				},
-				{
-					Type: TransactionTypeMintToken,
-					Payload: map[string]interface{}{
-						"name":   tokenName2,
-						"amount": maximumAmount / 2,
-					},
-				},
-			},
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{establishTxn2, mintTxn2},
 		},
 	}
 
@@ -1138,21 +918,12 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 	require.Nil(t, err)
 	otherTreeDID := AddrToDid(crypto.PubkeyToAddress(otherKey.PublicKey).String())
 
+	sendTxn := testfakes.SendTokenTransaction("1234", tokenName2, 20, otherTreeDID)
 	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: &senderChainTree.Dag.Tip,
-			Height:      senderHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeSendToken,
-					Payload: map[string]interface{}{
-						"id":          "1234",
-						"name":        tokenName2,
-						"amount":      20,
-						"destination": otherTreeDID,
-					},
-				},
-			},
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{sendTxn},
 		},
 	}
 
@@ -1181,21 +952,15 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 
 	recipientHeight := uint64(0)
 
+	internalSignature, err := conversion.ToInternalSignature(signature)
+	require.Nil(t, err)
+
+	receiveTxn := testfakes.ReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: nil,
-			Height:      recipientHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeReceiveToken,
-					Payload: map[string]interface{}{
-						"sendTokenTransactionId": "1234",
-						"tip":       senderChainTree.Dag.Tip.Bytes(),
-						"signature": signature,
-						"leaves":    leaves,
-					},
-				},
-			},
+			PreviousTip:  nil,
+			Height:       recipientHeight,
+			Transactions: []*transactions.Transaction{receiveTxn},
 		},
 	}
 
@@ -1222,25 +987,13 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 
 	maximumAmount := uint64(50)
 	senderHeight := uint64(0)
+	establishTxn := testfakes.EstablishTokenTransaction(tokenName1, 0)
+	mintTxn := testfakes.MintTokenTransaction(tokenName1, maximumAmount)
 	blockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: nil,
-			Height:      senderHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeEstablishToken,
-					Payload: map[string]interface{}{
-						"name": tokenName1,
-					},
-				},
-				{
-					Type: TransactionTypeMintToken,
-					Payload: map[string]interface{}{
-						"name":   tokenName1,
-						"amount": maximumAmount,
-					},
-				},
-			},
+			PreviousTip:  nil,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{establishTxn, mintTxn},
 		},
 	}
 
@@ -1256,25 +1009,13 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 	tokenName2 := "testtoken2"
 	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
 
+	establishTxn2 := testfakes.EstablishTokenTransaction(tokenName2, 0)
+	mintTxn2 := testfakes.MintTokenTransaction(tokenName2, maximumAmount/2)
 	blockWithHeaders = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: &senderChainTree.Dag.Tip,
-			Height:      senderHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeEstablishToken,
-					Payload: map[string]interface{}{
-						"name": tokenName2,
-					},
-				},
-				{
-					Type: TransactionTypeMintToken,
-					Payload: map[string]interface{}{
-						"name":   tokenName2,
-						"amount": maximumAmount / 2,
-					},
-				},
-			},
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{establishTxn2, mintTxn2},
 		},
 	}
 
@@ -1286,21 +1027,12 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 	require.Nil(t, err)
 	recipientTreeDID := AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
 
+	sendTxn := testfakes.SendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
 	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: &senderChainTree.Dag.Tip,
-			Height:      senderHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeSendToken,
-					Payload: map[string]interface{}{
-						"id":          "1234",
-						"name":        tokenName2,
-						"amount":      20,
-						"destination": recipientTreeDID,
-					},
-				},
-			},
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{sendTxn},
 		},
 	}
 
@@ -1338,21 +1070,15 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 
 	recipientHeight := uint64(0)
 
+	internalSignature, err := conversion.ToInternalSignature(signature)
+	require.Nil(t, err)
+
+	receiveTxn := testfakes.ReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: nil,
-			Height:      recipientHeight,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: TransactionTypeReceiveToken,
-					Payload: map[string]interface{}{
-						"sendTokenTransactionId": "1234",
-						"tip":       senderChainTree.Dag.Tip.Bytes(),
-						"signature": signature,
-						"leaves":    leaves,
-					},
-				},
-			},
+			PreviousTip:  nil,
+			Height:       recipientHeight,
+			Transactions: []*transactions.Transaction{receiveTxn},
 		},
 	}
 

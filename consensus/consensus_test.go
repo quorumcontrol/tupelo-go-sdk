@@ -17,7 +17,7 @@ func TestIsBlockSignedBy(t *testing.T) {
 	txn := testfakes.SetDataTransaction("down/in/the/thing", "hi")
 	blockWithHeaders := testfakes.NewValidUnsignedTransactionBlock(txn)
 
-	signed, err := SignBlock(blockWithHeaders, key)
+	signed, err := SignBlock(&blockWithHeaders, key)
 
 	assert.Nil(t, err)
 

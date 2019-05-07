@@ -12,16 +12,6 @@ import (
 	"github.com/quorumcontrol/storage"
 )
 
-const (
-	TransactionTypeEstablishToken = "ESTABLISH_TOKEN"
-	TransactionTypeMintToken      = "MINT_TOKEN"
-	TransactionTypeSendToken      = "SEND_TOKEN"
-	TransactionTypeReceiveToken   = "RECEIVE_TOKEN"
-	TransactionTypeSetData        = "SET_DATA"
-	TransactionTypeSetOwnership   = "SET_OWNERSHIP"
-	TransactionTypeStake          = "STAKE"
-)
-
 var DefaultTransactors = map[transactions.Transaction_Type]chaintree.TransactorFunc{
 	transactions.Transaction_ESTABLISHTOKEN: EstablishTokenTransaction,
 	transactions.Transaction_MINTTOKEN:      MintTokenTransaction,

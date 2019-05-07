@@ -6,7 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/storage"
-	"github.com/quorumcontrol/tupelo-go-client/testfakes"
+	"github.com/quorumcontrol/tupelo-go-sdk/testfakes"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,7 +23,7 @@ func TestSignedChainTree_IsGenesis(t *testing.T) {
 	txn := testfakes.SetDataTransaction("test", "value")
 	unsignedBlock := testfakes.NewValidUnsignedTransactionBlock(txn)
 
-	blockWithHeaders, err := SignBlock(unsignedBlock, key)
+	blockWithHeaders, err := SignBlock(&unsignedBlock, key)
 	require.Nil(t, err)
 
 	isValid, err := newTree.ChainTree.ProcessBlock(blockWithHeaders)
