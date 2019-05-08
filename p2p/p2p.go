@@ -9,12 +9,15 @@ import (
 	"os"
 	"time"
 
+	btcec "github.com/btcsuite/btcd/btcec"
+
 	ds "github.com/ipfs/go-datastore"
 	dsync "github.com/ipfs/go-datastore/sync"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p"
 	circuit "github.com/libp2p/go-libp2p-circuit"
 	libp2pcrypto "github.com/libp2p/go-libp2p-crypto"
+	host "github.com/libp2p/go-libp2p-host"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	metrics "github.com/libp2p/go-libp2p-metrics"
 	net "github.com/libp2p/go-libp2p-net"
@@ -23,8 +26,9 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	swarm "github.com/libp2p/go-libp2p-swarm"
 	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
+	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	ma "github.com/multiformats/go-multiaddr"
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 )
 
 var log = logging.Logger("libp2play")
@@ -75,6 +79,37 @@ func NewRelayLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port 
 
 func NewLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port int) (*LibP2PHost, error) {
 	return newLibP2PHost(ctx, privateKey, port, false)
+}
+
+func Wrap(ctx context.Context, routedHost *routedhost.RoutedHost, dht *dht.IpfsDHT) (*LibP2PHost, error) {
+	pub, err := pubFromHost(ctx, routedHost)
+	if err != nil {
+		return nil, fmt.Errorf("error creating pubsub: %v", err)
+	}
+
+	key, err := routedHost.ID().ExtractPublicKey()
+	if err != nil {
+		return nil, fmt.Errorf("error extracting key from host: %v", err)
+	}
+
+	bits, err := key.Raw()
+	if err != nil {
+		return nil, fmt.Errorf("error getting raw: %v", err)
+	}
+
+	k, err := btcec.ParsePubKey(bits, btcec.S256())
+	if err != nil {
+		return nil, fmt.Errorf("error extracting public key: %v", err)
+	}
+
+	return &LibP2PHost{
+		host:      routedHost,
+		routing:   dht,
+		publicKey: (*ecdsa.PublicKey)(k),
+		// Reporter:  reporter,
+		pubsub:    pub,
+		parentCtx: ctx,
+	}, nil
 }
 
 func newLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port int, useRelay bool) (*LibP2PHost, error) {
@@ -131,9 +166,9 @@ func newLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port int, 
 	// Make the routed host
 	routedHost := rhost.Wrap(basicHost, dht)
 
-	pub, err := pubsub.NewGossipSub(ctx, routedHost, pubsub.WithStrictSignatureVerification(false), pubsub.WithMessageSigning(false))
+	pub, err := pubFromHost(ctx, routedHost)
 	if err != nil {
-		return nil, fmt.Errorf("error creating new gossip sub: %v", err)
+		return nil, fmt.Errorf("error creating pubsub: %v", err)
 	}
 
 	return &LibP2PHost{
@@ -293,4 +328,8 @@ func (h *LibP2PHost) Publish(topic string, data []byte) error {
 
 func PeerIDFromPublicKey(publicKey *ecdsa.PublicKey) (peer.ID, error) {
 	return peer.IDFromPublicKey(p2pPublicKeyFromEcdsaPublic(publicKey))
+}
+
+func pubFromHost(ctx context.Context, routedHost host.Host) (*pubsub.PubSub, error) {
+	return pubsub.NewGossipSub(ctx, routedHost, pubsub.WithStrictSignatureVerification(false), pubsub.WithMessageSigning(false))
 }

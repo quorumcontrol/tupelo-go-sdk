@@ -2,12 +2,18 @@ package p2p
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
+	ds "github.com/ipfs/go-datastore"
+	dsync "github.com/ipfs/go-datastore/sync"
+	"github.com/libp2p/go-libp2p"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -46,6 +52,35 @@ func TestP2pBroadcastIp(t *testing.T) {
 		}
 	}
 	require.True(t, found)
+}
+
+func TestWrap(t *testing.T) {
+	NodeTests(t, func(ctx context.Context, t *testing.T) Node {
+		key, err := crypto.GenerateKey()
+		require.Nil(t, err)
+
+		priv, err := p2pPrivateFromEcdsaPrivate(key)
+		require.Nil(t, err)
+
+		opts := []libp2p.Option{
+			libp2p.ListenAddrStrings(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", 0)),
+			libp2p.Identity(priv),
+			libp2p.DefaultTransports,
+			libp2p.DefaultMuxers,
+			libp2p.DefaultSecurity,
+			libp2p.NATPortMap(),
+		}
+
+		basicHost, err := libp2p.New(ctx, opts...)
+		require.Nil(t, err)
+		dstore := dsync.MutexWrap(ds.NewMapDatastore())
+		dht := dht.NewDHT(ctx, basicHost, dstore)
+		routedHost := rhost.Wrap(basicHost, dht)
+
+		node, err := Wrap(ctx, routedHost, dht)
+		require.Nil(t, err)
+		return node
+	})
 }
 
 func TestUnmarshal31ByteKey(t *testing.T) {
