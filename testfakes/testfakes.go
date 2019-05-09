@@ -2,7 +2,6 @@ package testfakes
 
 import (
 	"github.com/golang/protobuf/ptypes"
-	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/messages/signatures"
 	"github.com/quorumcontrol/messages/transactions"
 )
@@ -111,15 +110,5 @@ func ReceiveTokenTransaction(sendTid string, tip []byte, sig *signatures.Signatu
 	return &transactions.Transaction{
 		Type:    transactions.Transaction_RECEIVETOKEN,
 		Payload: payloadWrapper,
-	}
-}
-
-func NewValidUnsignedTransactionBlock(txn *transactions.Transaction) chaintree.BlockWithHeaders {
-	return chaintree.BlockWithHeaders{
-		Block: chaintree.Block{
-			PreviousTip:  nil,
-			Height:       0,
-			Transactions: []*transactions.Transaction{txn},
-		},
 	}
 }

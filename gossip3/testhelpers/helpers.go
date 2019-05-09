@@ -9,6 +9,7 @@ import (
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
+	"github.com/quorumcontrol/messages/transactions"
 	"github.com/quorumcontrol/storage"
 	"github.com/stretchr/testify/require"
 
@@ -32,7 +33,13 @@ func NewValidTransactionWithPathAndValue(t testing.TB, treeKey *ecdsa.PrivateKey
 	sw := safewrap.SafeWrap{}
 
 	txn := testfakes.SetDataTransaction(path, value)
-	unsignedBlock := testfakes.NewValidUnsignedTransactionBlock(txn)
+	unsignedBlock := chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       0,
+			Transactions: []*transactions.Transaction{txn},
+		},
+	}
 
 	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(treeKey.PublicKey).String())
 

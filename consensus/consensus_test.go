@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/quorumcontrol/chaintree/chaintree"
+	"github.com/quorumcontrol/messages/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 	extmsgs "github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 	"github.com/quorumcontrol/tupelo-go-sdk/testfakes"
@@ -15,7 +17,13 @@ func TestIsBlockSignedBy(t *testing.T) {
 	assert.Nil(t, err)
 
 	txn := testfakes.SetDataTransaction("down/in/the/thing", "hi")
-	blockWithHeaders := testfakes.NewValidUnsignedTransactionBlock(txn)
+	blockWithHeaders := chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       0,
+			Transactions: []*transactions.Transaction{txn},
+		},
+	}
 
 	signed, err := SignBlock(&blockWithHeaders, key)
 

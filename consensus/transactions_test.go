@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/golang/protobuf/ptypes"
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/chaintree"
@@ -33,7 +34,13 @@ func TestEstablishTokenTransactionWithMaximum(t *testing.T) {
 	tokenFullName := strings.Join([]string{treeDID, tokenName}, ":")
 
 	txn := testfakes.EstablishTokenTransaction(tokenName, 42)
-	blockWithHeaders := testfakes.NewValidUnsignedTransactionBlock(txn)
+	blockWithHeaders := chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       0,
+			Transactions: []*transactions.Transaction{txn},
+		},
+	}
 
 	testTree, err := chaintree.NewChainTree(emptyTree, nil, DefaultTransactors)
 	assert.Nil(t, err)
@@ -70,7 +77,13 @@ func TestMintToken(t *testing.T) {
 	tokenFullName := strings.Join([]string{treeDID, tokenName}, ":")
 
 	txn := testfakes.EstablishTokenTransaction(tokenName, 42)
-	blockWithHeaders := testfakes.NewValidUnsignedTransactionBlock(txn)
+	blockWithHeaders := chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       0,
+			Transactions: []*transactions.Transaction{txn},
+		},
+	}
 
 	testTree, err := chaintree.NewChainTree(emptyTree, nil, DefaultTransactors)
 	assert.Nil(t, err)
@@ -79,7 +92,13 @@ func TestMintToken(t *testing.T) {
 	assert.Nil(t, err)
 
 	mintTxn := testfakes.MintTokenTransaction(tokenName, 40)
-	mintBlockWithHeaders := testfakes.NewValidUnsignedTransactionBlock(mintTxn)
+	mintBlockWithHeaders := chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  &testTree.Dag.Tip,
+			Height:       1,
+			Transactions: []*transactions.Transaction{mintTxn},
+		},
+	}
 	_, err = testTree.ProcessBlock(&mintBlockWithHeaders)
 	assert.Nil(t, err)
 
@@ -89,8 +108,14 @@ func TestMintToken(t *testing.T) {
 
 	// a 2nd mint succeeds when it's within the bounds of the maximum
 
-	mintTxn2 := testfakes.EstablishTokenTransaction(tokenName, 1)
-	mintBlockWithHeaders2 := testfakes.NewValidUnsignedTransactionBlock(mintTxn2)
+	mintTxn2 := testfakes.MintTokenTransaction(tokenName, 1)
+	mintBlockWithHeaders2 := chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  &testTree.Dag.Tip,
+			Height:       2,
+			Transactions: []*transactions.Transaction{mintTxn2},
+		},
+	}
 	_, err = testTree.ProcessBlock(&mintBlockWithHeaders2)
 	assert.Nil(t, err)
 
@@ -101,7 +126,13 @@ func TestMintToken(t *testing.T) {
 	// a third mint fails if it exceeds the max
 
 	mintTxn3 := testfakes.MintTokenTransaction(tokenName, 100)
-	mintBlockWithHeaders3 := testfakes.NewValidUnsignedTransactionBlock(mintTxn3)
+	mintBlockWithHeaders3 := chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  &testTree.Dag.Tip,
+			Height:       0,
+			Transactions: []*transactions.Transaction{mintTxn3},
+		},
+	}
 	_, err = testTree.ProcessBlock(&mintBlockWithHeaders3)
 	assert.NotNil(t, err)
 
@@ -122,11 +153,21 @@ func TestEstablishTokenTransactionWithoutMonetaryPolicy(t *testing.T) {
 	tokenFullName := strings.Join([]string{treeDID, tokenName}, ":")
 
 	payload := &transactions.EstablishTokenPayload{Name: tokenName}
+	payloadWrapper, err := ptypes.MarshalAny(payload)
+	assert.Nil(t, err)
+
 	txn := &transactions.Transaction{
 		Type:    transactions.Transaction_ESTABLISHTOKEN,
-		Payload: &transactions.Transaction_EstablishTokenPayload{EstablishTokenPayload: payload},
+		Payload: payloadWrapper,
 	}
-	blockWithHeaders := testfakes.NewValidUnsignedTransactionBlock(txn)
+
+	blockWithHeaders := chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       0,
+			Transactions: []*transactions.Transaction{txn},
+		},
+	}
 
 	testTree, err := chaintree.NewChainTree(emptyTree, nil, DefaultTransactors)
 	assert.Nil(t, err)
@@ -161,7 +202,13 @@ func TestSetData(t *testing.T) {
 	value := "is now set"
 
 	txn := testfakes.SetDataTransaction(path, value)
-	unsignedBlock := testfakes.NewValidUnsignedTransactionBlock(txn)
+	unsignedBlock := chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       0,
+			Transactions: []*transactions.Transaction{txn},
+		},
+	}
 	testTree, err := chaintree.NewChainTree(emptyTree, nil, DefaultTransactors)
 	require.Nil(t, err)
 
@@ -249,7 +296,13 @@ func TestSetOwnership(t *testing.T) {
 	value := "is now set"
 
 	txn := testfakes.SetDataTransaction(path, value)
-	unsignedBlock := testfakes.NewValidUnsignedTransactionBlock(txn)
+	unsignedBlock := chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       0,
+			Transactions: []*transactions.Transaction{txn},
+		},
+	}
 	testTree, err := chaintree.NewChainTree(emptyTree, nil, DefaultTransactors)
 	require.Nil(t, err)
 
@@ -267,7 +320,13 @@ func TestSetOwnership(t *testing.T) {
 	require.Equal(t, value, resp)
 
 	txn = testfakes.SetOwnershipTransaction(keyAddr)
-	unsignedBlock = testfakes.NewValidUnsignedTransactionBlock(txn)
+	unsignedBlock = chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       0,
+			Transactions: []*transactions.Transaction{txn},
+		},
+	}
 	blockWithHeaders, err = SignBlock(&unsignedBlock, treeKey)
 	require.Nil(t, err)
 
