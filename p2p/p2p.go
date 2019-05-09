@@ -331,5 +331,5 @@ func PeerIDFromPublicKey(publicKey *ecdsa.PublicKey) (peer.ID, error) {
 }
 
 func pubFromHost(ctx context.Context, routedHost host.Host) (*pubsub.PubSub, error) {
-	return pubsub.NewGossipSub(ctx, routedHost, pubsub.WithStrictSignatureVerification(false), pubsub.WithMessageSigning(false))
+	return pubsub.NewFloodSub(ctx, routedHost, pubsub.WithStrictSignatureVerification(false), pubsub.WithMessageSigning(false))
 }
