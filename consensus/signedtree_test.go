@@ -8,7 +8,7 @@ import (
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/messages/transactions"
 	"github.com/quorumcontrol/storage"
-	"github.com/quorumcontrol/tupelo-go-sdk/testfakes"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,7 +22,9 @@ func TestSignedChainTree_IsGenesis(t *testing.T) {
 
 	require.True(t, newTree.IsGenesis())
 
-	txn := testfakes.SetDataTransaction("test", "value")
+	txn, err := chaintree.NewSetDataTransaction("test", "value")
+	assert.Nil(t, err)
+
 	unsignedBlock := chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  nil,

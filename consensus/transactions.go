@@ -82,14 +82,20 @@ func SetDataTransaction(_ string, tree *dag.Dag, txn *transactions.Transaction) 
 		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error decoding path: %v", err)}
 	}
 
+	var val interface{}
+	err = cbornode.DecodeInto(payload.Value, &val)
+	if err != nil {
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error decoding data value: %v", err)}
+	}
+
 	// SET_DATA always sets inside tree/data
 	dataPath, _ := DecodePath(TreePathForData)
 	path = append(dataPath, path...)
 
-	if complexType(payload.Value) {
-		newTree, err = tree.SetAsLink(path, payload.Value)
+	if complexType(val) {
+		newTree, err = tree.SetAsLink(path, val)
 	} else {
-		newTree, err = tree.Set(path, payload.Value)
+		newTree, err = tree.Set(path, val)
 	}
 	if err != nil {
 		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error setting: %v", err)}

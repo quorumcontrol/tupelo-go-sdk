@@ -8,7 +8,6 @@ import (
 	"github.com/quorumcontrol/messages/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 	extmsgs "github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
-	"github.com/quorumcontrol/tupelo-go-sdk/testfakes"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,7 +15,9 @@ func TestIsBlockSignedBy(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	assert.Nil(t, err)
 
-	txn := testfakes.SetDataTransaction("down/in/the/thing", "hi")
+	txn, err := chaintree.NewSetDataTransaction("down/in/the/thing", "hi")
+	assert.Nil(t, err)
+
 	blockWithHeaders := chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  nil,

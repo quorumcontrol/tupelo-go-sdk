@@ -13,7 +13,6 @@ import (
 	"github.com/quorumcontrol/messages/transactions"
 	"github.com/quorumcontrol/storage"
 	"github.com/quorumcontrol/tupelo-go-sdk/conversion"
-	"github.com/quorumcontrol/tupelo-go-sdk/testfakes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -33,7 +32,9 @@ func TestEstablishTokenTransactionWithMaximum(t *testing.T) {
 	tokenName := "testtoken"
 	tokenFullName := strings.Join([]string{treeDID, tokenName}, ":")
 
-	txn := testfakes.EstablishTokenTransaction(tokenName, 42)
+	txn, err := chaintree.NewEstablishTokenTransaction(tokenName, 42)
+	assert.Nil(t, err)
+
 	blockWithHeaders := chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  nil,
@@ -76,7 +77,9 @@ func TestMintToken(t *testing.T) {
 	tokenName := "testtoken"
 	tokenFullName := strings.Join([]string{treeDID, tokenName}, ":")
 
-	txn := testfakes.EstablishTokenTransaction(tokenName, 42)
+	txn, err := chaintree.NewEstablishTokenTransaction(tokenName, 42)
+	assert.Nil(t, err)
+
 	blockWithHeaders := chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  nil,
@@ -91,7 +94,9 @@ func TestMintToken(t *testing.T) {
 	_, err = testTree.ProcessBlock(&blockWithHeaders)
 	assert.Nil(t, err)
 
-	mintTxn := testfakes.MintTokenTransaction(tokenName, 40)
+	mintTxn, err := chaintree.NewMintTokenTransaction(tokenName, 40)
+	assert.Nil(t, err)
+
 	mintBlockWithHeaders := chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  &testTree.Dag.Tip,
@@ -108,7 +113,9 @@ func TestMintToken(t *testing.T) {
 
 	// a 2nd mint succeeds when it's within the bounds of the maximum
 
-	mintTxn2 := testfakes.MintTokenTransaction(tokenName, 1)
+	mintTxn2, err := chaintree.NewMintTokenTransaction(tokenName, 1)
+	assert.Nil(t, err)
+
 	mintBlockWithHeaders2 := chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  &testTree.Dag.Tip,
@@ -125,7 +132,9 @@ func TestMintToken(t *testing.T) {
 
 	// a third mint fails if it exceeds the max
 
-	mintTxn3 := testfakes.MintTokenTransaction(tokenName, 100)
+	mintTxn3, err := chaintree.NewMintTokenTransaction(tokenName, 100)
+	assert.Nil(t, err)
+
 	mintBlockWithHeaders3 := chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  &testTree.Dag.Tip,
@@ -201,7 +210,9 @@ func TestSetData(t *testing.T) {
 	path := "some/data"
 	value := "is now set"
 
-	txn := testfakes.SetDataTransaction(path, value)
+	txn, err := chaintree.NewSetDataTransaction(path, value)
+	assert.Nil(t, err)
+
 	unsignedBlock := chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  nil,
@@ -255,7 +266,9 @@ func TestSetData(t *testing.T) {
 	path = "other/data"
 	value = "is also set"
 
-	txn = testfakes.SetDataTransaction(path, value)
+	txn, err = chaintree.NewSetDataTransaction(path, value)
+	assert.Nil(t, err)
+
 	unsignedBlock = chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			Height:       1,
@@ -288,14 +301,18 @@ func TestSetData(t *testing.T) {
 func TestSetOwnership(t *testing.T) {
 	treeKey, err := crypto.GenerateKey()
 	require.Nil(t, err)
+
 	keyAddr := crypto.PubkeyToAddress(treeKey.PublicKey).String()
+	keyAddrs := []string{keyAddr}
 	treeDID := AddrToDid(keyAddr)
 	nodeStore := nodestore.NewStorageBasedStore(storage.NewMemStorage())
 	emptyTree := NewEmptyTree(treeDID, nodeStore)
 	path := "some/data"
 	value := "is now set"
 
-	txn := testfakes.SetDataTransaction(path, value)
+	txn, err := chaintree.NewSetDataTransaction(path, value)
+	assert.Nil(t, err)
+
 	unsignedBlock := chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  nil,
@@ -319,11 +336,13 @@ func TestSetOwnership(t *testing.T) {
 	require.Len(t, remain, 0)
 	require.Equal(t, value, resp)
 
-	txn = testfakes.SetOwnershipTransaction(keyAddr)
+	txn, err = chaintree.NewSetOwnershipTransaction(keyAddrs)
+	assert.Nil(t, err)
+
 	unsignedBlock = chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip:  nil,
-			Height:       0,
+			PreviousTip:  &testTree.Dag.Tip,
+			Height:       1,
 			Transactions: []*transactions.Transaction{txn},
 		},
 	}
@@ -353,8 +372,12 @@ func TestSendToken(t *testing.T) {
 	maximumAmount := uint64(50)
 	height := uint64(0)
 
-	establishTxn := testfakes.EstablishTokenTransaction(tokenName, 0)
-	mintTxn := testfakes.MintTokenTransaction(tokenName, maximumAmount)
+	establishTxn, err := chaintree.NewEstablishTokenTransaction(tokenName, 0)
+	assert.Nil(t, err)
+
+	mintTxn, err := chaintree.NewMintTokenTransaction(tokenName, maximumAmount)
+	assert.Nil(t, err)
+
 	blockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  nil,
@@ -374,7 +397,8 @@ func TestSendToken(t *testing.T) {
 	assert.Nil(t, err)
 	targetTreeDID := AddrToDid(crypto.PubkeyToAddress(targetKey.PublicKey).String())
 
-	txn := testfakes.SendTokenTransaction("1234", tokenName, 30, targetTreeDID)
+	txn, err := chaintree.NewSendTokenTransaction("1234", tokenName, 30, targetTreeDID)
+	assert.Nil(t, err)
 
 	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
@@ -398,7 +422,9 @@ func TestSendToken(t *testing.T) {
 	lastSendAmount := sendsMap["amount"].(uint64)
 	assert.Equal(t, sendsMap["destination"], targetTreeDID)
 
-	overSpendTxn := testfakes.SendTokenTransaction("1234", tokenName, (maximumAmount-lastSendAmount)+1, targetTreeDID)
+	overSpendTxn, err := chaintree.NewSendTokenTransaction("1234", tokenName, (maximumAmount-lastSendAmount)+1, targetTreeDID)
+	assert.Nil(t, err)
+
 	overSpendBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  &testTree.Dag.Tip,
@@ -423,8 +449,12 @@ func TestReceiveToken(t *testing.T) {
 
 	maximumAmount := uint64(50)
 	senderHeight := uint64(0)
-	establishTxn := testfakes.EstablishTokenTransaction(tokenName1, 0)
-	mintTxn := testfakes.MintTokenTransaction(tokenName1, maximumAmount)
+	establishTxn, err := chaintree.NewEstablishTokenTransaction(tokenName1, 0)
+	assert.Nil(t, err)
+
+	mintTxn, err := chaintree.NewMintTokenTransaction(tokenName1, maximumAmount)
+	assert.Nil(t, err)
+
 	blockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  nil,
@@ -445,8 +475,11 @@ func TestReceiveToken(t *testing.T) {
 	tokenName2 := "testtoken2"
 	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
 
-	establishTxn2 := testfakes.EstablishTokenTransaction(tokenName2, 0)
-	mintTxn2 := testfakes.MintTokenTransaction(tokenName2, maximumAmount/2)
+	establishTxn2, err := chaintree.NewEstablishTokenTransaction(tokenName2, 0)
+	assert.Nil(t, err)
+
+	mintTxn2, err := chaintree.NewMintTokenTransaction(tokenName2, maximumAmount/2)
+	assert.Nil(t, err)
 
 	blockWithHeaders = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
@@ -464,7 +497,9 @@ func TestReceiveToken(t *testing.T) {
 	require.Nil(t, err)
 	recipientTreeDID := AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
 
-	sendTxn := testfakes.SendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
+	sendTxn, err := chaintree.NewSendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
+	assert.Nil(t, err)
+
 	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  &senderChainTree.Dag.Tip,
@@ -500,7 +535,9 @@ func TestReceiveToken(t *testing.T) {
 
 	internalSignature, err := conversion.ToInternalSignature(signature)
 	require.Nil(t, err)
-	receiveTxn := testfakes.ReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	assert.Nil(t, err)
+
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  nil,
@@ -545,8 +582,12 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 
 	maximumAmount := uint64(50)
 	senderHeight := uint64(0)
-	establishTxn := testfakes.EstablishTokenTransaction(tokenName1, 0)
-	mintTxn := testfakes.MintTokenTransaction(tokenName1, maximumAmount)
+	establishTxn, err := chaintree.NewEstablishTokenTransaction(tokenName1, 0)
+	assert.Nil(t, err)
+
+	mintTxn, err := chaintree.NewMintTokenTransaction(tokenName1, maximumAmount)
+	assert.Nil(t, err)
+
 	blockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  nil,
@@ -567,8 +608,12 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 	tokenName2 := "testtoken2"
 	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
 
-	establishTxn2 := testfakes.EstablishTokenTransaction(tokenName2, 0)
-	mintTxn2 := testfakes.MintTokenTransaction(tokenName2, maximumAmount/2)
+	establishTxn2, err := chaintree.NewEstablishTokenTransaction(tokenName2, 0)
+	assert.Nil(t, err)
+
+	mintTxn2, err := chaintree.NewMintTokenTransaction(tokenName2, maximumAmount/2)
+	assert.Nil(t, err)
+
 	blockWithHeaders = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  &senderChainTree.Dag.Tip,
@@ -585,7 +630,9 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 	require.Nil(t, err)
 	recipientTreeDID := AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
 
-	sendTxn := testfakes.SendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
+	sendTxn, err := chaintree.NewSendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
+	assert.Nil(t, err)
+
 	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  &senderChainTree.Dag.Tip,
@@ -625,7 +672,9 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 	internalSignature, err := conversion.ToInternalSignature(signature)
 	require.Nil(t, err)
 
-	receiveTxn := testfakes.ReceiveTokenTransaction("1234", otherChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", otherChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	assert.Nil(t, err)
+
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  nil,
@@ -655,8 +704,12 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 
 	maximumAmount := uint64(50)
 	senderHeight := uint64(0)
-	establishTxn := testfakes.EstablishTokenTransaction(tokenName1, 0)
-	mintTxn := testfakes.MintTokenTransaction(tokenName1, maximumAmount)
+	establishTxn, err := chaintree.NewEstablishTokenTransaction(tokenName1, 0)
+	assert.Nil(t, err)
+
+	mintTxn, err := chaintree.NewMintTokenTransaction(tokenName1, maximumAmount)
+	assert.Nil(t, err)
+
 	blockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  nil,
@@ -677,8 +730,12 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 	tokenName2 := "testtoken2"
 	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
 
-	establishTxn2 := testfakes.EstablishTokenTransaction(tokenName2, 0)
-	mintTxn2 := testfakes.MintTokenTransaction(tokenName2, maximumAmount/2)
+	establishTxn2, err := chaintree.NewEstablishTokenTransaction(tokenName2, 0)
+	assert.Nil(t, err)
+
+	mintTxn2, err := chaintree.NewMintTokenTransaction(tokenName2, maximumAmount/2)
+	assert.Nil(t, err)
+
 	blockWithHeaders = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  &senderChainTree.Dag.Tip,
@@ -695,7 +752,9 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 	require.Nil(t, err)
 	recipientTreeDID := AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
 
-	sendTxn := testfakes.SendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
+	sendTxn, err := chaintree.NewSendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
+	assert.Nil(t, err)
+
 	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  &senderChainTree.Dag.Tip,
@@ -733,7 +792,9 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 	internalSignature, err := conversion.ToInternalSignature(signature)
 	require.Nil(t, err)
 
-	receiveTxn := testfakes.ReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	assert.Nil(t, err)
+
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  nil,
@@ -753,7 +814,9 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 
 	// now attempt to receive a new, otherwise valid send w/ the same transaction id (which should fail)
 
-	sendTxn2 := testfakes.SendTokenTransaction("1234", tokenName2, 2, recipientTreeDID)
+	sendTxn2, err := chaintree.NewSendTokenTransaction("1234", tokenName2, 2, recipientTreeDID)
+	assert.Nil(t, err)
+
 	sendBlockWithHeaders = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  &senderChainTree.Dag.Tip,
@@ -788,7 +851,9 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 	internalSignature, err = conversion.ToInternalSignature(signature)
 	require.Nil(t, err)
 
-	receiveTxn = testfakes.ReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	receiveTxn, err = chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	assert.Nil(t, err)
+
 	receiveBlockWithHeaders = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  &recipientChainTree.ChainTree.Dag.Tip,
@@ -814,8 +879,12 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 
 	maximumAmount := uint64(50)
 	senderHeight := uint64(0)
-	establishTxn := testfakes.EstablishTokenTransaction(tokenName1, 0)
-	mintTxn := testfakes.MintTokenTransaction(tokenName1, maximumAmount)
+	establishTxn, err := chaintree.NewEstablishTokenTransaction(tokenName1, 0)
+	assert.Nil(t, err)
+
+	mintTxn, err := chaintree.NewMintTokenTransaction(tokenName1, maximumAmount)
+	assert.Nil(t, err)
+
 	blockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  nil,
@@ -836,8 +905,12 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 	tokenName2 := "testtoken2"
 	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
 
-	establishTxn2 := testfakes.EstablishTokenTransaction(tokenName2, 0)
-	mintTxn2 := testfakes.MintTokenTransaction(tokenName2, maximumAmount/2)
+	establishTxn2, err := chaintree.NewEstablishTokenTransaction(tokenName2, 0)
+	assert.Nil(t, err)
+
+	mintTxn2, err := chaintree.NewMintTokenTransaction(tokenName2, maximumAmount/2)
+	assert.Nil(t, err)
+
 	blockWithHeaders = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  &senderChainTree.Dag.Tip,
@@ -854,7 +927,9 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 	require.Nil(t, err)
 	recipientTreeDID := AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
 
-	sendTxn := testfakes.SendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
+	sendTxn, err := chaintree.NewSendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
+	assert.Nil(t, err)
+
 	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  &senderChainTree.Dag.Tip,
@@ -900,7 +975,9 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 	internalSignature, err := conversion.ToInternalSignature(signature)
 	require.Nil(t, err)
 
-	receiveTxn := testfakes.ReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	assert.Nil(t, err)
+
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  nil,
@@ -937,8 +1014,12 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 	maximumAmount := uint64(50)
 	senderHeight := uint64(0)
 
-	establishTxn := testfakes.EstablishTokenTransaction(tokenName1, 0)
-	mintTxn := testfakes.MintTokenTransaction(tokenName1, maximumAmount)
+	establishTxn, err := chaintree.NewEstablishTokenTransaction(tokenName1, 0)
+	assert.Nil(t, err)
+
+	mintTxn, err := chaintree.NewMintTokenTransaction(tokenName1, maximumAmount)
+	assert.Nil(t, err)
+
 	blockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  nil,
@@ -959,8 +1040,12 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 	tokenName2 := "testtoken2"
 	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
 
-	establishTxn2 := testfakes.EstablishTokenTransaction(tokenName2, 0)
-	mintTxn2 := testfakes.MintTokenTransaction(tokenName2, maximumAmount/2)
+	establishTxn2, err := chaintree.NewEstablishTokenTransaction(tokenName2, 0)
+	assert.Nil(t, err)
+
+	mintTxn2, err := chaintree.NewMintTokenTransaction(tokenName2, maximumAmount/2)
+	assert.Nil(t, err)
+
 	blockWithHeaders = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  &senderChainTree.Dag.Tip,
@@ -977,7 +1062,9 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 	require.Nil(t, err)
 	otherTreeDID := AddrToDid(crypto.PubkeyToAddress(otherKey.PublicKey).String())
 
-	sendTxn := testfakes.SendTokenTransaction("1234", tokenName2, 20, otherTreeDID)
+	sendTxn, err := chaintree.NewSendTokenTransaction("1234", tokenName2, 20, otherTreeDID)
+	assert.Nil(t, err)
+
 	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  &senderChainTree.Dag.Tip,
@@ -1014,7 +1101,9 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 	internalSignature, err := conversion.ToInternalSignature(signature)
 	require.Nil(t, err)
 
-	receiveTxn := testfakes.ReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	assert.Nil(t, err)
+
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  nil,
@@ -1046,8 +1135,12 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 
 	maximumAmount := uint64(50)
 	senderHeight := uint64(0)
-	establishTxn := testfakes.EstablishTokenTransaction(tokenName1, 0)
-	mintTxn := testfakes.MintTokenTransaction(tokenName1, maximumAmount)
+	establishTxn, err := chaintree.NewEstablishTokenTransaction(tokenName1, 0)
+	assert.Nil(t, err)
+
+	mintTxn, err := chaintree.NewMintTokenTransaction(tokenName1, maximumAmount)
+	assert.Nil(t, err)
+
 	blockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  nil,
@@ -1068,8 +1161,12 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 	tokenName2 := "testtoken2"
 	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
 
-	establishTxn2 := testfakes.EstablishTokenTransaction(tokenName2, 0)
-	mintTxn2 := testfakes.MintTokenTransaction(tokenName2, maximumAmount/2)
+	establishTxn2, err := chaintree.NewEstablishTokenTransaction(tokenName2, 0)
+	assert.Nil(t, err)
+
+	mintTxn2, err := chaintree.NewMintTokenTransaction(tokenName2, maximumAmount/2)
+	assert.Nil(t, err)
+
 	blockWithHeaders = &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  &senderChainTree.Dag.Tip,
@@ -1086,7 +1183,9 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 	require.Nil(t, err)
 	recipientTreeDID := AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
 
-	sendTxn := testfakes.SendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
+	sendTxn, err := chaintree.NewSendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
+	assert.Nil(t, err)
+
 	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  &senderChainTree.Dag.Tip,
@@ -1132,7 +1231,9 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 	internalSignature, err := conversion.ToInternalSignature(signature)
 	require.Nil(t, err)
 
-	receiveTxn := testfakes.ReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	assert.Nil(t, err)
+
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  nil,

@@ -15,7 +15,6 @@ import (
 
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
-	"github.com/quorumcontrol/tupelo-go-sdk/testfakes"
 )
 
 func NewValidTransaction(t testing.TB) messages.Transaction {
@@ -32,7 +31,9 @@ func NewValidTransactionWithKey(t testing.TB, treeKey *ecdsa.PrivateKey) message
 func NewValidTransactionWithPathAndValue(t testing.TB, treeKey *ecdsa.PrivateKey, path, value string) messages.Transaction {
 	sw := safewrap.SafeWrap{}
 
-	txn := testfakes.SetDataTransaction(path, value)
+	txn, err := chaintree.NewSetDataTransaction(path, value)
+	require.Nil(t, err)
+
 	unsignedBlock := chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  nil,

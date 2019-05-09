@@ -31,7 +31,6 @@ import (
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/testhelpers"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
-	"github.com/quorumcontrol/tupelo-go-sdk/testfakes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -174,7 +173,8 @@ func TestPlayTransactions(t *testing.T) {
 		remoteTip = chain.Tip()
 	}
 
-	txn := testfakes.SetDataTransaction("down/in/the/thing", "sometestvalue")
+	txn, err := chaintree.NewSetDataTransaction("down/in/the/thing", "sometestvalue")
+	require.Nil(t, err)
 
 	resp, err := client.PlayTransactions(chain, treeKey, &remoteTip, []*transactions.Transaction{txn})
 	require.Nil(t, err)
@@ -182,14 +182,16 @@ func TestPlayTransactions(t *testing.T) {
 
 	t.Run("works on 2nd set", func(t *testing.T) {
 		remoteTip := chain.Tip()
-		txn2 := testfakes.SetDataTransaction("down/in/the/thing", "sometestvalue")
+		txn2, err := chaintree.NewSetDataTransaction("down/in/the/thing", "sometestvalue")
+		require.Nil(t, err)
 		resp, err := client.PlayTransactions(chain, treeKey, &remoteTip, []*transactions.Transaction{txn2})
 		require.Nil(t, err)
 		assert.Equal(t, resp.Tip.Bytes(), chain.Tip().Bytes())
 
 		// and works a third time
 		remoteTip = chain.Tip()
-		txn3 := testfakes.SetDataTransaction("down/in/the/thing", "sometestvalue")
+		txn3, err := chaintree.NewSetDataTransaction("down/in/the/thing", "sometestvalue")
+		require.Nil(t, err)
 		resp, err = client.PlayTransactions(chain, treeKey, &remoteTip, []*transactions.Transaction{txn3})
 		require.Nil(t, err)
 		assert.Equal(t, resp.Tip.Bytes(), chain.Tip().Bytes())
@@ -225,7 +227,8 @@ func TestNonNilPreviousTipOnFirstTransaction(t *testing.T) {
 	   ----------------------------------------------------------------------- */
 
 	// first valid transaction to get an otherwise-valid tip
-	txn := testfakes.SetDataTransaction("down/in/the/thing", "sometestvalue")
+	txn, err := chaintree.NewSetDataTransaction("down/in/the/thing", "sometestvalue")
+	require.Nil(t, err)
 
 	_, _ = client.PlayTransactions(chain1, treeKey, &remoteTip, []*transactions.Transaction{txn})
 
@@ -239,7 +242,8 @@ func TestNonNilPreviousTipOnFirstTransaction(t *testing.T) {
 	defer client2.Stop()
 
 	remoteTip = chain1.Tip()
-	txn2 := testfakes.SetDataTransaction("down/in/the/thing", "sometestvalue")
+	txn2, err := chaintree.NewSetDataTransaction("down/in/the/thing", "sometestvalue")
+	require.Nil(t, err)
 	unsignedBlock := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			Height:       0,
@@ -287,7 +291,8 @@ func transactLocal(t testing.TB, tree *consensus.SignedChainTree, treeKey *ecdsa
 		pt = &tip
 	}
 
-	txn := testfakes.SetDataTransaction(path, value)
+	txn, err := chaintree.NewSetDataTransaction(path, value)
+	require.Nil(t, err)
 	unsignedBlock := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			PreviousTip:  pt,
@@ -474,12 +479,14 @@ func TestNonOwnerTransactions(t *testing.T) {
 	require.Nil(t, err)
 
 	// transaction with non-owner key should fail
-	txn := testfakes.SetDataTransaction("down/in/the/thing", "sometestvalue")
+	txn, err := chaintree.NewSetDataTransaction("down/in/the/thing", "sometestvalue")
+	require.Nil(t, err)
 	_, err = client.PlayTransactions(chain, treeKey2, nil, []*transactions.Transaction{txn})
 	require.NotNil(t, err)
 
 	// 2nd transaction with non-owner key should fail
-	txn2 := testfakes.SetDataTransaction("down/in/the/thing", "someothertestvalue")
+	txn2, err := chaintree.NewSetDataTransaction("down/in/the/thing", "someothertestvalue")
+	require.Nil(t, err)
 	remoteTip := chain.Tip()
 	_, err = client.PlayTransactions(chain, treeKey2, &remoteTip, []*transactions.Transaction{txn2})
 	require.NotNil(t, err)
