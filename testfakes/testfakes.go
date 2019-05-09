@@ -1,6 +1,7 @@
 package testfakes
 
 import (
+	"github.com/golang/protobuf/ptypes"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/messages/signatures"
 	"github.com/quorumcontrol/messages/transactions"
@@ -11,9 +12,14 @@ func SetOwnershipTransaction(keyAddr string) *transactions.Transaction {
 		Authentication: []string{keyAddr},
 	}
 
+	payloadWrapper, err := ptypes.MarshalAny(payload)
+	if err != nil {
+		panic(err)
+	}
+
 	return &transactions.Transaction{
 		Type:    transactions.Transaction_SETOWNERSHIP,
-		Payload: &transactions.Transaction_SetOwnershipPayload{SetOwnershipPayload: payload},
+		Payload: payloadWrapper,
 	}
 }
 
@@ -23,9 +29,14 @@ func SetDataTransaction(path, value string) *transactions.Transaction {
 		Value: []byte(value),
 	}
 
+	payloadWrapper, err := ptypes.MarshalAny(payload)
+	if err != nil {
+		panic(err)
+	}
+
 	return &transactions.Transaction{
 		Type:    transactions.Transaction_SETDATA,
-		Payload: &transactions.Transaction_SetDataPayload{SetDataPayload: payload},
+		Payload: payloadWrapper,
 	}
 }
 
@@ -37,9 +48,14 @@ func EstablishTokenTransaction(name string, max uint64) *transactions.Transactio
 		MonetaryPolicy: policy,
 	}
 
+	payloadWrapper, err := ptypes.MarshalAny(payload)
+	if err != nil {
+		panic(err)
+	}
+
 	return &transactions.Transaction{
 		Type:    transactions.Transaction_ESTABLISHTOKEN,
-		Payload: &transactions.Transaction_EstablishTokenPayload{EstablishTokenPayload: payload},
+		Payload: payloadWrapper,
 	}
 }
 
@@ -49,9 +65,14 @@ func MintTokenTransaction(name string, amount uint64) *transactions.Transaction 
 		Amount: amount,
 	}
 
+	payloadWrapper, err := ptypes.MarshalAny(payload)
+	if err != nil {
+		panic(err)
+	}
+
 	return &transactions.Transaction{
 		Type:    transactions.Transaction_MINTTOKEN,
-		Payload: &transactions.Transaction_MintTokenPayload{MintTokenPayload: payload},
+		Payload: payloadWrapper,
 	}
 }
 
@@ -63,9 +84,14 @@ func SendTokenTransaction(id, name string, amount uint64, destination string) *t
 		Destination: destination,
 	}
 
+	payloadWrapper, err := ptypes.MarshalAny(payload)
+	if err != nil {
+		panic(err)
+	}
+
 	return &transactions.Transaction{
 		Type:    transactions.Transaction_SENDTOKEN,
-		Payload: &transactions.Transaction_SendTokenPayload{SendTokenPayload: payload},
+		Payload: payloadWrapper,
 	}
 }
 
@@ -77,9 +103,14 @@ func ReceiveTokenTransaction(sendTid string, tip []byte, sig *signatures.Signatu
 		Leaves:    leaves,
 	}
 
+	payloadWrapper, err := ptypes.MarshalAny(payload)
+	if err != nil {
+		panic(err)
+	}
+
 	return &transactions.Transaction{
 		Type:    transactions.Transaction_RECEIVETOKEN,
-		Payload: &transactions.Transaction_ReceiveTokenPayload{ReceiveTokenPayload: payload},
+		Payload: payloadWrapper,
 	}
 }
 
