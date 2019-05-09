@@ -204,7 +204,14 @@ func EstablishTokenTransaction(chainTreeDID string, tree *dag.Dag, txn *transact
 		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error, token \"%s\" already exists", tokenName)}
 	}
 
-	newTree, err = ledger.EstablishToken(*payload.MonetaryPolicy)
+	var monetaryPolicy transactions.TokenMonetaryPolicy
+	if payload.MonetaryPolicy == nil {
+		monetaryPolicy = transactions.TokenMonetaryPolicy{}
+	} else {
+		monetaryPolicy = *payload.MonetaryPolicy
+	}
+
+	newTree, err = ledger.EstablishToken(monetaryPolicy)
 	if err != nil {
 		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: err.Error()}
 	}
