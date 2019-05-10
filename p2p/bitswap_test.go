@@ -5,26 +5,24 @@ import (
 	"testing"
 	"time"
 
-	logging "github.com/ipfs/go-log"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/quorumcontrol/chaintree/safewrap"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestBitSwap(t *testing.T) {
-	logging.SetLogLevel("*", "debug")
+	keyA, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	keyB, err := crypto.GenerateKey()
+	require.Nil(t, err)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	nodeA := libP2PNodeGenerator(ctx, t)
-	nodeB := libP2PNodeGenerator(ctx, t)
-
-	log.Debug("test has now waited for bootstrap")
-
-	peerA, err := NewBitswapPeer(ctx, nodeA.(*LibP2PHost))
+	nodeA, peerA, err := NewHostAndBitSwapPeer(ctx, WithKey(keyA))
 	require.Nil(t, err)
 
-	peerB, err := NewBitswapPeer(ctx, nodeB.(*LibP2PHost))
-	require.Nil(t, err)
+	nodeB, peerB, err := NewHostAndBitSwapPeer(ctx, WithKey(keyB))
 
 	// Notice that the bootstrap is below the creation of the peer
 	// THIS IS IMPORTANT

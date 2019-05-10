@@ -75,6 +75,28 @@ func PeerFromEcdsaKey(publicKey *ecdsa.PublicKey) (peer.ID, error) {
 	return peer.IDFromPublicKey(p2pPublicKeyFromEcdsaPublic(publicKey))
 }
 
+func NewHostAndBitSwapPeer(ctx context.Context, userOpts ...configFactory) (*LibP2PHost, *BitswapPeer, error) {
+	h, err := NewHostFromOptions(ctx, userOpts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error generating libp2p host: %v", err)
+	}
+	peer, err := NewBitswapPeer(ctx, h)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error generating bitswap peer: %v", err)
+	}
+	return h, peer, nil
+}
+
+func NewHostFromOptions(ctx context.Context, userOpts ...configFactory) (*LibP2PHost, error) {
+	c := &Config{}
+	opts := append(defaultOptions(), userOpts...)
+	err := applyOptions(c, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("error applying opts: %v", err)
+	}
+	return newLibP2PHostFromConfig(ctx, c)
+}
+
 func NewRelayLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port int) (*LibP2PHost, error) {
 	cfg, err := backwardsCompatibleConfig(privateKey, port, true)
 	if err != nil {
@@ -193,74 +215,6 @@ func newLibP2PHostFromConfig(ctx context.Context, c *Config) (*LibP2PHost, error
 	return h, nil
 
 }
-
-// func newLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port int, useRelay bool) (*LibP2PHost, error) {
-// 	go func() {
-// 		<-ctx.Done()
-// 		if span := opentracing.SpanFromContext(ctx); span != nil {
-// 			span.Finish()
-// 		}
-// 	}()
-// 	priv, err := p2pPrivateFromEcdsaPrivate(privateKey)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	reporter := metrics.NewBandwidthCounter()
-
-// 	opts := []libp2p.Option{
-// 		libp2p.ListenAddrStrings(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port)),
-// 		libp2p.Identity(priv),
-// 		libp2p.DefaultTransports,
-// 		libp2p.DefaultMuxers,
-// 		libp2p.DefaultSecurity,
-// 		libp2p.NATPortMap(),
-// 		libp2p.BandwidthReporter(reporter),
-// 	}
-
-// 	if hostIP, ok := os.LookupEnv("TUPELO_PUBLIC_IP"); ok {
-// 		extMaddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/%d", hostIP, port))
-
-// 		if err != nil {
-// 			return nil, fmt.Errorf("Error creating multiaddress: %v", err)
-// 		}
-
-// 		addressFactory := func(addrs []ma.Multiaddr) []ma.Multiaddr {
-// 			return append(addrs, extMaddr)
-// 		}
-
-// 		opts = append(opts, libp2p.AddrsFactory(addressFactory))
-// 	}
-
-// 	if useRelay {
-// 		opts = append(opts, libp2p.EnableRelay(circuit.OptActive, circuit.OptHop))
-// 	}
-
-// 	basicHost, err := libp2p.New(ctx, opts...)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	// Construct a datastore (needed by the DHT). This is just a simple, in-memory thread-safe datastore.
-// 	dstore := dsync.MutexWrap(ds.NewMapDatastore())
-// 	// Make the DHT
-// 	dht := dht.NewDHT(ctx, basicHost, dstore)
-// 	// Make the routed host
-// 	routedHost := rhost.Wrap(basicHost, dht)
-
-// 	pub, err := pubsub.NewGossipSub(ctx, routedHost, pubsub.WithStrictSignatureVerification(false), pubsub.WithMessageSigning(false))
-// 	if err != nil {
-// 		return nil, fmt.Errorf("error creating new gossip sub: %v", err)
-// 	}
-
-// 	return &LibP2PHost{
-// 		host:      routedHost,
-// 		routing:   dht,
-// 		publicKey: &privateKey.PublicKey,
-// 		Reporter:  reporter,
-// 		pubsub:    pub,
-// 		parentCtx: ctx,
-// 	}, nil
-// }
 
 func (h *LibP2PHost) PublicKey() *ecdsa.PublicKey {
 	return h.publicKey

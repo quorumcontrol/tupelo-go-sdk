@@ -107,6 +107,13 @@ func WithAddrFilters(addrFilters []string) configFactory {
 	}
 }
 
+func WithAutoRelay(enabled bool) configFactory {
+	return func(c *Config) error {
+		c.EnableAutoRelay = enabled
+		return nil
+	}
+}
+
 func WithDiscoveryNamespaces(namespaces ...string) configFactory {
 	return func(c *Config) error {
 		c.DiscoveryNamespaces = namespaces
