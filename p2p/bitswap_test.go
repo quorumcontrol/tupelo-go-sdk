@@ -39,16 +39,12 @@ func TestBitSwap(t *testing.T) {
 	n := sw.WrapObject(map[string]string{"hello": "bitswap"})
 	require.Nil(t, sw.Err)
 
-	log.Debugf("creating object: %s", n.Cid().String())
-
 	swapCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	log.Debug("adding block")
 	err = peerA.Add(swapCtx, n)
 	require.Nil(t, err)
 
-	log.Debug("looking for block")
 	_, err = peerB.Get(swapCtx, n.Cid())
 	if err != nil {
 		t.Error(err)
