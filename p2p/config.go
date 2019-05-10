@@ -235,5 +235,8 @@ func WithExternalIP(ip string, port int) configFactory {
 
 func stringToIPNet(str string) (*net.IPNet, error) {
 	_, n, err := net.ParseCIDR(str)
-	return n, fmt.Errorf("error parsing %s: %v", str, err)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing %s: %v", str, err)
+	}
+	return n, nil
 }
