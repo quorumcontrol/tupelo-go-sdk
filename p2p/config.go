@@ -43,13 +43,16 @@ type Config struct {
 	addressFactory       addressFactory
 }
 
-var defaultOptions = []configFactory{
-	WithPubSubRouter("gossip"),
-	WithPubSubOptions(pubsub.WithStrictSignatureVerification(false), pubsub.WithMessageSigning(false)),
-	EnableNATMap(),
-	WithListenIP("0.0.0.0", 0),
-	WithBandWithReporter(metrics.NewBandwidthCounter()),
-	WithDatastore(dsync.MutexWrap(ds.NewMapDatastore())),
+// This is a function, because we want to return a new datastore each time
+func defaultOptions() []configFactory {
+	return []configFactory{
+		WithPubSubRouter("gossip"),
+		WithPubSubOptions(pubsub.WithStrictSignatureVerification(false), pubsub.WithMessageSigning(false)),
+		EnableNATMap(),
+		WithListenIP("0.0.0.0", 0),
+		WithBandWithReporter(metrics.NewBandwidthCounter()),
+		WithDatastore(dsync.MutexWrap(ds.NewMapDatastore())),
+	}
 }
 
 func applyOptions(c *Config, opts ...configFactory) error {
@@ -64,7 +67,7 @@ func applyOptions(c *Config, opts ...configFactory) error {
 
 func backwardsCompatibleConfig(key *ecdsa.PrivateKey, port int, useRelay bool) (*Config, error) {
 	c := &Config{}
-	opts := defaultOptions
+	opts := defaultOptions()
 
 	backwardsOpts := []configFactory{
 		WithKey(key),
