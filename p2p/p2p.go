@@ -6,28 +6,30 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	"time"
 
 	ds "github.com/ipfs/go-datastore"
-	dsync "github.com/ipfs/go-datastore/sync"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p"
-	circuit "github.com/libp2p/go-libp2p-circuit"
 	libp2pcrypto "github.com/libp2p/go-libp2p-crypto"
+	host "github.com/libp2p/go-libp2p-host"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
 	metrics "github.com/libp2p/go-libp2p-metrics"
 	net "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
+	pnet "github.com/libp2p/go-libp2p-pnet"
 	protocol "github.com/libp2p/go-libp2p-protocol"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	routing "github.com/libp2p/go-libp2p-routing"
 	swarm "github.com/libp2p/go-libp2p-swarm"
+	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	ma "github.com/multiformats/go-multiaddr"
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
-var log = logging.Logger("libp2play")
+var log = logging.Logger("tupelop2p")
 
 var ErrDialBackoff = swarm.ErrDialBackoff
 
@@ -35,13 +37,17 @@ var ErrDialBackoff = swarm.ErrDialBackoff
 var _ Node = (*LibP2PHost)(nil)
 
 type LibP2PHost struct {
+	Reporter metrics.Reporter
+
+	config          *Config
 	host            *rhost.RoutedHost
 	routing         *dht.IpfsDHT
 	publicKey       *ecdsa.PublicKey
-	Reporter        metrics.Reporter
 	bootstrapConfig *BootstrapConfig
 	pubsub          *pubsub.PubSub
+	datastore       ds.Batching
 	parentCtx       context.Context
+	discoverers     []*tupeloDiscoverer
 }
 
 const expectedKeySize = 32
@@ -70,81 +76,191 @@ func PeerFromEcdsaKey(publicKey *ecdsa.PublicKey) (peer.ID, error) {
 }
 
 func NewRelayLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port int) (*LibP2PHost, error) {
-	return newLibP2PHost(ctx, privateKey, port, true)
+	cfg, err := backwardsCompatibleConfig(privateKey, port, true)
+	if err != nil {
+		return nil, fmt.Errorf("error generating config: %v", err)
+	}
+	return newLibP2PHostFromConfig(ctx, cfg)
 }
 
 func NewLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port int) (*LibP2PHost, error) {
-	return newLibP2PHost(ctx, privateKey, port, false)
+	cfg, err := backwardsCompatibleConfig(privateKey, port, false)
+	if err != nil {
+		return nil, fmt.Errorf("error generating config: %v", err)
+	}
+	return newLibP2PHostFromConfig(ctx, cfg)
 }
 
-func newLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port int, useRelay bool) (*LibP2PHost, error) {
+func newLibP2PHostFromConfig(ctx context.Context, c *Config) (*LibP2PHost, error) {
 	go func() {
 		<-ctx.Done()
 		if span := opentracing.SpanFromContext(ctx); span != nil {
 			span.Finish()
 		}
 	}()
-	priv, err := p2pPrivateFromEcdsaPrivate(privateKey)
+
+	priv, err := p2pPrivateFromEcdsaPrivate(c.PrivateKey)
 	if err != nil {
 		return nil, err
 	}
-	// Generate a key pair for this host. We will use it at least
-	// to obtain a valid host ID.
-	reporter := metrics.NewBandwidthCounter()
+
+	var idht *dht.IpfsDHT
 
 	opts := []libp2p.Option{
-		libp2p.ListenAddrStrings(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port)),
+		libp2p.ListenAddrStrings(c.ListenAddrs...),
 		libp2p.Identity(priv),
 		libp2p.DefaultTransports,
 		libp2p.DefaultMuxers,
 		libp2p.DefaultSecurity,
-		libp2p.NATPortMap(),
-		libp2p.BandwidthReporter(reporter),
+		libp2p.BandwidthReporter(c.BandwidthReporter),
+		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
+			// make the DHT with the given Host
+			rting, err := dht.New(ctx, h, dhtopts.Datastore(c.DataStore))
+			if err == nil {
+				idht = rting
+			}
+			return rting, err
+		}),
 	}
 
-	if hostIP, ok := os.LookupEnv("TUPELO_PUBLIC_IP"); ok {
-		extMaddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/%d", hostIP, port))
+	if c.EnableAutoRelay {
+		opts = append(opts, libp2p.EnableAutoRelay())
+	}
 
+	if len(c.AddrFilters) > 0 {
+		opts = append(opts, libp2p.FilterAddresses(c.AddrFilters...))
+	}
+
+	if c.addressFactory != nil {
+		opts = append(opts, libp2p.AddrsFactory(basichost.AddrsFactory(c.addressFactory)))
+	}
+
+	if len(c.RelayOpts) > 0 {
+		opts = append(opts, libp2p.EnableRelay(c.RelayOpts...))
+	}
+
+	// Create protector if we have a secret.
+	if len(c.Segmenter) > 0 {
+		var key [32]byte
+		copy(key[:], c.Segmenter)
+		prot, err := pnet.NewV1ProtectorFromBytes(&key)
 		if err != nil {
-			return nil, fmt.Errorf("Error creating multiaddress: %v", err)
+			return nil, fmt.Errorf("error creating protected network: %v", err)
 		}
-
-		addressFactory := func(addrs []ma.Multiaddr) []ma.Multiaddr {
-			return append(addrs, extMaddr)
-		}
-
-		opts = append(opts, libp2p.AddrsFactory(addressFactory))
-	}
-
-	if useRelay {
-		opts = append(opts, libp2p.EnableRelay(circuit.OptActive, circuit.OptHop))
+		opts = append(opts, libp2p.PrivateNetwork(prot))
 	}
 
 	basicHost, err := libp2p.New(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}
-	// Construct a datastore (needed by the DHT). This is just a simple, in-memory thread-safe datastore.
-	dstore := dsync.MutexWrap(ds.NewMapDatastore())
-	// Make the DHT
-	dht := dht.NewDHT(ctx, basicHost, dstore)
-	// Make the routed host
-	routedHost := rhost.Wrap(basicHost, dht)
 
-	pub, err := pubsub.NewGossipSub(ctx, routedHost, pubsub.WithStrictSignatureVerification(false), pubsub.WithMessageSigning(false))
+	routedHost := basicHost.(*rhost.RoutedHost) // because of the routing option above, we got a routed host and not a basic one.
+
+	var pubCreator func(context.Context, host.Host, ...pubsub.Option) (*pubsub.PubSub, error)
+	switch c.PubSubRouter {
+	case "gossip":
+		pubCreator = pubsub.NewGossipSub
+	case "floodsub":
+		pubCreator = pubsub.NewFloodSub
+	case "random":
+		pubCreator = pubsub.NewRandomSub
+	}
+
+	pub, err := pubCreator(ctx, routedHost, c.PubSubOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating new gossip sub: %v", err)
 	}
 
-	return &LibP2PHost{
+	h := &LibP2PHost{
 		host:      routedHost,
-		routing:   dht,
-		publicKey: &privateKey.PublicKey,
-		Reporter:  reporter,
+		routing:   idht,
+		publicKey: &c.PrivateKey.PublicKey,
+		Reporter:  c.BandwidthReporter,
 		pubsub:    pub,
 		parentCtx: ctx,
-	}, nil
+		datastore: c.DataStore,
+	}
+
+	if len(c.DiscoveryNamespaces) > 0 {
+		discoverers := make([]*tupeloDiscoverer, len(c.DiscoveryNamespaces))
+		for i, namespace := range c.DiscoveryNamespaces {
+			discoverers[i] = newTupeloDiscoverer(h, namespace)
+		}
+		h.discoverers = discoverers
+	}
+
+	return h, nil
+
 }
+
+// func newLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port int, useRelay bool) (*LibP2PHost, error) {
+// 	go func() {
+// 		<-ctx.Done()
+// 		if span := opentracing.SpanFromContext(ctx); span != nil {
+// 			span.Finish()
+// 		}
+// 	}()
+// 	priv, err := p2pPrivateFromEcdsaPrivate(privateKey)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	reporter := metrics.NewBandwidthCounter()
+
+// 	opts := []libp2p.Option{
+// 		libp2p.ListenAddrStrings(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port)),
+// 		libp2p.Identity(priv),
+// 		libp2p.DefaultTransports,
+// 		libp2p.DefaultMuxers,
+// 		libp2p.DefaultSecurity,
+// 		libp2p.NATPortMap(),
+// 		libp2p.BandwidthReporter(reporter),
+// 	}
+
+// 	if hostIP, ok := os.LookupEnv("TUPELO_PUBLIC_IP"); ok {
+// 		extMaddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/%d", hostIP, port))
+
+// 		if err != nil {
+// 			return nil, fmt.Errorf("Error creating multiaddress: %v", err)
+// 		}
+
+// 		addressFactory := func(addrs []ma.Multiaddr) []ma.Multiaddr {
+// 			return append(addrs, extMaddr)
+// 		}
+
+// 		opts = append(opts, libp2p.AddrsFactory(addressFactory))
+// 	}
+
+// 	if useRelay {
+// 		opts = append(opts, libp2p.EnableRelay(circuit.OptActive, circuit.OptHop))
+// 	}
+
+// 	basicHost, err := libp2p.New(ctx, opts...)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	// Construct a datastore (needed by the DHT). This is just a simple, in-memory thread-safe datastore.
+// 	dstore := dsync.MutexWrap(ds.NewMapDatastore())
+// 	// Make the DHT
+// 	dht := dht.NewDHT(ctx, basicHost, dstore)
+// 	// Make the routed host
+// 	routedHost := rhost.Wrap(basicHost, dht)
+
+// 	pub, err := pubsub.NewGossipSub(ctx, routedHost, pubsub.WithStrictSignatureVerification(false), pubsub.WithMessageSigning(false))
+// 	if err != nil {
+// 		return nil, fmt.Errorf("error creating new gossip sub: %v", err)
+// 	}
+
+// 	return &LibP2PHost{
+// 		host:      routedHost,
+// 		routing:   dht,
+// 		publicKey: &privateKey.PublicKey,
+// 		Reporter:  reporter,
+// 		pubsub:    pub,
+// 		parentCtx: ctx,
+// 	}, nil
+// }
 
 func (h *LibP2PHost) PublicKey() *ecdsa.PublicKey {
 	return h.publicKey
@@ -184,8 +300,13 @@ func (h *LibP2PHost) Bootstrap(peers []string) (io.Closer, error) {
 }
 
 func (h *LibP2PHost) startDiscovery() error {
-	discoverer := newTupeloDiscoverer(h)
-	return discoverer.doDiscovery(h.parentCtx)
+	for _, discoverer := range h.discoverers {
+		err := discoverer.doDiscovery(h.parentCtx)
+		if err != nil {
+			return fmt.Errorf("error starting discovery for %s: %v", discoverer.namespace, err)
+		}
+	}
+	return nil
 }
 
 func (h *LibP2PHost) WaitForBootstrap(peerCount int, timeout time.Duration) error {

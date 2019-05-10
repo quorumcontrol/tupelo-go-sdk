@@ -3,11 +3,13 @@ package p2p
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"net"
 	"os"
 
 	ds "github.com/ipfs/go-datastore"
 	dsync "github.com/ipfs/go-datastore/sync"
 	circuit "github.com/libp2p/go-libp2p-circuit"
+	metrics "github.com/libp2p/go-libp2p-metrics"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/libp2p/go-libp2p"
@@ -30,12 +32,14 @@ type Config struct {
 	PrivateKey           *ecdsa.PrivateKey
 	EnableNATMap         bool
 	ListenAddrs          []string
-	AddrFilters          []string
+	AddrFilters          []*net.IPNet
 	Port                 int
 	PublicIP             string
-	Discovery            []string
+	DiscoveryNamespaces  []string
 	AdditionalP2POptions []libp2p.Option
 	DataStore            ds.Batching
+	BandwidthReporter    metrics.Reporter
+	Segmenter            []byte
 	addressFactory       addressFactory
 }
 
@@ -44,6 +48,7 @@ var defaultOptions = []configFactory{
 	WithPubSubOptions(pubsub.WithStrictSignatureVerification(false), pubsub.WithMessageSigning(false)),
 	EnableNATMap(),
 	WithListenIP("0.0.0.0", 0),
+	WithBandWithReporter(metrics.NewBandwidthCounter()),
 	WithDatastore(dsync.MutexWrap(ds.NewMapDatastore())),
 }
 
@@ -60,8 +65,13 @@ func applyOptions(c *Config, opts ...configFactory) error {
 func backwardsCompatibleConfig(key *ecdsa.PrivateKey, port int, useRelay bool) (*Config, error) {
 	c := &Config{}
 	opts := defaultOptions
-	opts = append(opts, WithListenIP("0.0.0.0", port))
-	opts = append(opts, WithKey(key))
+
+	backwardsOpts := []configFactory{
+		WithKey(key),
+		WithDiscoveryNamespaces("tupelo-transaction-gossipers"),
+		WithListenIP("0.0.0.0", port),
+	}
+	opts = append(opts, backwardsOpts...)
 
 	if hostIP, ok := os.LookupEnv("TUPELO_PUBLIC_IP"); ok {
 		opts = append(opts, WithExternalIP(hostIP, port))
@@ -77,6 +87,42 @@ func backwardsCompatibleConfig(key *ecdsa.PrivateKey, port int, useRelay bool) (
 	}
 
 	return c, nil
+}
+
+func WithAddrFilters(addrFilters []string) configFactory {
+	return func(c *Config) error {
+		addrFilterIPs := make([]*net.IPNet, len(addrFilters))
+		for i, cidr := range addrFilters {
+			net, err := stringToIPNet(cidr)
+			if err != nil {
+				return fmt.Errorf("error getting stringToIPnet: %v", err)
+			}
+			addrFilterIPs[i] = net
+		}
+		c.AddrFilters = addrFilterIPs
+		return nil
+	}
+}
+
+func WithDiscoveryNamespaces(namespaces ...string) configFactory {
+	return func(c *Config) error {
+		c.DiscoveryNamespaces = namespaces
+		return nil
+	}
+}
+
+func WithSegmenter(secret []byte) configFactory {
+	return func(c *Config) error {
+		c.Segmenter = secret
+		return nil
+	}
+}
+
+func WithBandWithReporter(reporter metrics.Reporter) configFactory {
+	return func(c *Config) error {
+		c.BandwidthReporter = reporter
+		return nil
+	}
 }
 
 func WithPubSubOptions(opts ...pubsub.Option) configFactory {
@@ -117,7 +163,7 @@ func WithBitswap(enabled bool) configFactory {
 func WithListenIP(ip string, port int) configFactory {
 	return func(c *Config) error {
 		c.Port = port
-		c.ListenAddrs = []string{fmt.Sprintf("/ip4/%s/%d", ip, c.Port)}
+		c.ListenAddrs = []string{fmt.Sprintf("/ip4/%s/tcp/%d", ip, c.Port)}
 		return nil
 	}
 }
@@ -156,4 +202,9 @@ func WithExternalIP(ip string, port int) configFactory {
 		c.addressFactory = addressFactory
 		return nil
 	}
+}
+
+func stringToIPNet(str string) (*net.IPNet, error) {
+	_, n, err := net.ParseCIDR(str)
+	return n, fmt.Errorf("error parsing %s: %v", str, err)
 }
