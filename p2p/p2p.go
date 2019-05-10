@@ -46,7 +46,7 @@ type LibP2PHost struct {
 	pubsub          *pubsub.PubSub
 	datastore       ds.Batching
 	parentCtx       context.Context
-	discoverers     []*tupeloDiscoverer
+	discoverers     map[string]*tupeloDiscoverer
 }
 
 const expectedKeySize = 32
@@ -204,9 +204,9 @@ func newLibP2PHostFromConfig(ctx context.Context, c *Config) (*LibP2PHost, error
 	}
 
 	if len(c.DiscoveryNamespaces) > 0 {
-		discoverers := make([]*tupeloDiscoverer, len(c.DiscoveryNamespaces))
-		for i, namespace := range c.DiscoveryNamespaces {
-			discoverers[i] = newTupeloDiscoverer(h, namespace)
+		discoverers := make(map[string]*tupeloDiscoverer)
+		for _, namespace := range c.DiscoveryNamespaces {
+			discoverers[namespace] = newTupeloDiscoverer(h, namespace)
 		}
 		h.discoverers = discoverers
 	}
@@ -283,6 +283,15 @@ func (h *LibP2PHost) WaitForBootstrap(peerCount int, timeout time.Duration) erro
 			return fmt.Errorf("timeout waiting for bootstrap")
 		}
 	}
+}
+
+func (h *LibP2PHost) WaitForDiscovery(namespace string, num int, duration time.Duration) error {
+	discoverer, ok := h.discoverers[namespace]
+	if !ok {
+		return fmt.Errorf("error missing discoverer (%s)", namespace)
+	}
+
+	return discoverer.waitForNumber(num, duration)
 }
 
 func (h *LibP2PHost) SetStreamHandler(protocol protocol.ID, handler net.StreamHandler) {
