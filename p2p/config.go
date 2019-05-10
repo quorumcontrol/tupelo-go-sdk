@@ -5,6 +5,11 @@ import (
 	"fmt"
 	"os"
 
+	ds "github.com/ipfs/go-datastore"
+	dsync "github.com/ipfs/go-datastore/sync"
+	circuit "github.com/libp2p/go-libp2p-circuit"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
+
 	"github.com/libp2p/go-libp2p"
 	ma "github.com/multiformats/go-multiaddr"
 )
@@ -16,11 +21,12 @@ type addressFactory func([]ma.Multiaddr) []ma.Multiaddr
 type configFactory func(c *Config) error
 
 type Config struct {
-	EnableRelayActive    bool
+	RelayOpts            []circuit.RelayOpt
 	EnableRelayHop       bool
 	EnableAutoRelay      bool
 	EnableBitSwap        bool
 	PubSubRouter         string
+	PubSubOptions        []pubsub.Option
 	PrivateKey           *ecdsa.PrivateKey
 	EnableNATMap         bool
 	ListenAddrs          []string
@@ -29,13 +35,16 @@ type Config struct {
 	PublicIP             string
 	Discovery            []string
 	AdditionalP2POptions []libp2p.Option
+	DataStore            ds.Batching
 	addressFactory       addressFactory
 }
 
 var defaultOptions = []configFactory{
 	WithPubSubRouter("gossip"),
+	WithPubSubOptions(pubsub.WithStrictSignatureVerification(false), pubsub.WithMessageSigning(false)),
 	EnableNATMap(),
 	WithListenIP("0.0.0.0", 0),
+	WithDatastore(dsync.MutexWrap(ds.NewMapDatastore())),
 }
 
 func applyOptions(c *Config, opts ...configFactory) error {
@@ -59,8 +68,7 @@ func backwardsCompatibleConfig(key *ecdsa.PrivateKey, port int, useRelay bool) (
 	}
 
 	if useRelay {
-		opts = append(opts, WithRelayActive())
-		opts = append(opts, WithRelayHop())
+		opts = append(opts, WithRelayOpts(circuit.OptActive, circuit.OptHop))
 	}
 
 	err := applyOptions(c, opts...)
@@ -71,16 +79,23 @@ func backwardsCompatibleConfig(key *ecdsa.PrivateKey, port int, useRelay bool) (
 	return c, nil
 }
 
-func WithRelayActive() configFactory {
+func WithPubSubOptions(opts ...pubsub.Option) configFactory {
 	return func(c *Config) error {
-		c.EnableRelayActive = true
+		c.PubSubOptions = opts
 		return nil
 	}
 }
 
-func WithRelayHop() configFactory {
+func WithDatastore(store ds.Batching) configFactory {
 	return func(c *Config) error {
-		c.EnableRelayHop = true
+		c.DataStore = store
+		return nil
+	}
+}
+
+func WithRelayOpts(opts ...circuit.RelayOpt) configFactory {
+	return func(c *Config) error {
+		c.RelayOpts = opts
 		return nil
 	}
 }
@@ -107,9 +122,14 @@ func WithListenIP(ip string, port int) configFactory {
 	}
 }
 
-func WithPubSubRouter(routType string) configFactory {
+var supportedGossipTypes = map[string]bool{"gossip": true, "random": true, "floodsub": true}
+
+func WithPubSubRouter(routeType string) configFactory {
 	return func(c *Config) error {
-		c.PubSubRouter = routType
+		if _, ok := supportedGossipTypes[routeType]; !ok {
+			return fmt.Errorf("%s is an unsupported gossip type", routeType)
+		}
+		c.PubSubRouter = routeType
 		return nil
 	}
 }
