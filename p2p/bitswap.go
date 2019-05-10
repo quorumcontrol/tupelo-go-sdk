@@ -22,15 +22,18 @@ func init() {
 	ipld.Register(cid.DagCBOR, cbor.DecodeBlock) // need to decode CBOR
 }
 
-// Peer is an IPFS-Lite peer. It provides a DAG service that can fetch and put
-// blocks from/to the IPFS network.
+// BitswapPeer is for exchanging ipld blocks on the network
+// it can be used in any of the LibP2PHost networks, but
+// can also be used directly on the IPFS network.
 type BitswapPeer struct {
 	ipld.DAGService
 
 	bstore blockstore.Blockstore
 }
 
-// Create a new block-swapping peer from an existing *LibP2PHost
+// NewBitswapPeer creates a new block-swapping peer from an existing *LibP2PHost
+// It is important that you bootstrap *after* creating this peer. There is a helper function:
+// NewHostAndBitSwapPeer which can create both the host and this peer at the same time.
 func NewBitswapPeer(ctx context.Context, host *LibP2PHost) (*BitswapPeer, error) {
 	bs := blockstore.NewBlockstore(host.datastore)
 	bs = blockstore.NewIdStore(bs)

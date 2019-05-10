@@ -5,24 +5,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/quorumcontrol/chaintree/safewrap"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestBitSwap(t *testing.T) {
-	keyA, err := crypto.GenerateKey()
-	require.Nil(t, err)
-	keyB, err := crypto.GenerateKey()
-	require.Nil(t, err)
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	nodeA, peerA, err := NewHostAndBitSwapPeer(ctx, WithKey(keyA))
+	nodeA, peerA, err := NewHostAndBitSwapPeer(ctx)
 	require.Nil(t, err)
 
-	nodeB, peerB, err := NewHostAndBitSwapPeer(ctx, WithKey(keyB))
+	nodeB, peerB, err := NewHostAndBitSwapPeer(ctx)
 	require.Nil(t, err)
 
 	// Notice that the bootstrap is below the creation of the peer

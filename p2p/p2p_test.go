@@ -63,10 +63,10 @@ func TestNewHostFromOptions(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	require.Nil(t, err)
 
-	t.Run("it works with only key option", func(t *testing.T) {
+	t.Run("it works with no options", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		h, err := NewHostFromOptions(ctx, WithKey(key))
+		h, err := NewHostFromOptions(ctx)
 		require.Nil(t, err)
 		require.NotNil(t, h)
 	})
