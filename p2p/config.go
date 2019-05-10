@@ -16,8 +16,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-const defaultPublicIP = "0.0.0.0"
-
 type addressFactory func([]ma.Multiaddr) []ma.Multiaddr
 
 type configFactory func(c *Config) error

@@ -23,6 +23,7 @@ func TestBitSwap(t *testing.T) {
 	require.Nil(t, err)
 
 	nodeB, peerB, err := NewHostAndBitSwapPeer(ctx, WithKey(keyB))
+	require.Nil(t, err)
 
 	// Notice that the bootstrap is below the creation of the peer
 	// THIS IS IMPORTANT

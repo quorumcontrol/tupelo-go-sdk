@@ -39,7 +39,6 @@ var _ Node = (*LibP2PHost)(nil)
 type LibP2PHost struct {
 	Reporter metrics.Reporter
 
-	config          *Config
 	host            *rhost.RoutedHost
 	routing         *dht.IpfsDHT
 	publicKey       *ecdsa.PublicKey

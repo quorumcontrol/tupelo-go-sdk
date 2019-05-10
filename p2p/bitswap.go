@@ -14,8 +14,6 @@ import (
 	dag "github.com/ipfs/go-merkledag"
 
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	host "github.com/libp2p/go-libp2p-host"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
 )
 
 func init() {
@@ -29,11 +27,7 @@ func init() {
 type BitswapPeer struct {
 	ipld.DAGService
 
-	ctx context.Context
-
 	bstore blockstore.Blockstore
-	host   host.Host
-	dht    *dht.IpfsDHT
 }
 
 // Create a new block-swapping peer from an existing *LibP2PHost
