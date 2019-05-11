@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"sync"
 	"time"
 
 	ds "github.com/ipfs/go-datastore"
@@ -47,6 +48,7 @@ type LibP2PHost struct {
 	datastore       ds.Batching
 	parentCtx       context.Context
 	discoverers     map[string]*tupeloDiscoverer
+	discoverLock    *sync.Mutex
 }
 
 const expectedKeySize = 32
@@ -194,21 +196,21 @@ func newLibP2PHostFromConfig(ctx context.Context, c *Config) (*LibP2PHost, error
 	}
 
 	h := &LibP2PHost{
-		host:      routedHost,
-		routing:   idht,
-		publicKey: &c.PrivateKey.PublicKey,
-		Reporter:  c.BandwidthReporter,
-		pubsub:    pub,
-		parentCtx: ctx,
-		datastore: c.DataStore,
+		host:         routedHost,
+		routing:      idht,
+		publicKey:    &c.PrivateKey.PublicKey,
+		Reporter:     c.BandwidthReporter,
+		pubsub:       pub,
+		parentCtx:    ctx,
+		datastore:    c.DataStore,
+		discoverLock: new(sync.Mutex),
+		discoverers:  make(map[string]*tupeloDiscoverer),
 	}
 
 	if len(c.DiscoveryNamespaces) > 0 {
-		discoverers := make(map[string]*tupeloDiscoverer)
 		for _, namespace := range c.DiscoveryNamespaces {
-			discoverers[namespace] = newTupeloDiscoverer(h, namespace)
+			h.discoverers[namespace] = newTupeloDiscoverer(h, namespace)
 		}
-		h.discoverers = discoverers
 	}
 
 	return h, nil
@@ -240,9 +242,11 @@ func (h *LibP2PHost) Bootstrap(peers []string) (io.Closer, error) {
 		return nil, fmt.Errorf("error connecting to at least 1 bootstrap node: %v", err)
 	}
 
-	err = h.startDiscovery()
-	if err != nil {
-		return nil, fmt.Errorf("error starting discovery: %v", err)
+	for _, discoverer := range h.discoverers {
+		err := discoverer.start(h.parentCtx)
+		if err != nil {
+			return nil, fmt.Errorf("error starting discovery for %s: %v", discoverer.namespace, err)
+		}
 	}
 
 	go func() {
@@ -252,14 +256,27 @@ func (h *LibP2PHost) Bootstrap(peers []string) (io.Closer, error) {
 	return closer, nil
 }
 
-func (h *LibP2PHost) startDiscovery() error {
-	for _, discoverer := range h.discoverers {
-		err := discoverer.doDiscovery(h.parentCtx)
-		if err != nil {
-			return fmt.Errorf("error starting discovery for %s: %v", discoverer.namespace, err)
-		}
+func (h *LibP2PHost) StartDiscovery(namespace string) {
+	h.discoverLock.Lock()
+	defer h.discoverLock.Unlock()
+
+	discoverer, ok := h.discoverers[namespace]
+	if !ok {
+		discoverer = newTupeloDiscoverer(h, namespace)
+		h.discoverers[namespace] = discoverer
 	}
-	return nil
+	discoverer.start(h.parentCtx)
+}
+
+func (h *LibP2PHost) StopDiscovery(namespace string) {
+	h.discoverLock.Lock()
+	defer h.discoverLock.Unlock()
+
+	discoverer, ok := h.discoverers[namespace]
+	if ok {
+		discoverer.stop()
+	}
+	delete(h.discoverers, namespace)
 }
 
 func (h *LibP2PHost) WaitForBootstrap(peerCount int, timeout time.Duration) error {

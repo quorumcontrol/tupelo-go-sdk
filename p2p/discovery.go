@@ -25,6 +25,9 @@ type tupeloDiscoverer struct {
 	discoverer *discovery.RoutingDiscovery
 	connected  uint64
 	events     *eventstream.EventStream
+	cancelFunc context.CancelFunc
+	parentCtx  context.Context
+	started    bool
 }
 
 type DiscoveryEvent struct {
@@ -42,14 +45,34 @@ func newTupeloDiscoverer(h *LibP2PHost, namespace string) *tupeloDiscoverer {
 	}
 }
 
-func (td *tupeloDiscoverer) doDiscovery(ctx context.Context) error {
-	if err := td.constantlyAdvertise(ctx); err != nil {
+func (td *tupeloDiscoverer) start(originalContext context.Context) error {
+	if td.started {
+		return nil
+	}
+	ctx, cancel := context.WithCancel(originalContext)
+	td.cancelFunc = cancel
+	td.parentCtx = ctx
+
+	if err := td.constantlyAdvertise(td.parentCtx); err != nil {
 		return fmt.Errorf("error advertising: %v", err)
 	}
-	if err := td.findPeers(ctx); err != nil {
+	if err := td.findPeers(td.parentCtx); err != nil {
 		return fmt.Errorf("error finding peers: %v", err)
 	}
+	td.started = true
 	return nil
+}
+
+func (td *tupeloDiscoverer) stop() {
+	if !td.started {
+		return
+	}
+	if td.cancelFunc != nil {
+		td.cancelFunc()
+		td.parentCtx = nil
+		td.cancelFunc = nil
+		td.started = false
+	}
 }
 
 func (td *tupeloDiscoverer) findPeers(ctx context.Context) error {

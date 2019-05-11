@@ -9,7 +9,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
-	logging "github.com/ipfs/go-log"
 	circuit "github.com/libp2p/go-libp2p-circuit"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -107,7 +106,6 @@ func TestUnmarshal31ByteKey(t *testing.T) {
 }
 
 func TestWaitForDiscovery(t *testing.T) {
-	logging.SetLogLevel("*", "debug")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -127,6 +125,34 @@ func TestWaitForDiscovery(t *testing.T) {
 	require.Nil(t, err)
 
 	// one should already be fine and not wait at all (because of bootstrap)
-	err = h1.WaitForDiscovery("one", 1, 5*time.Second)
+	err = h1.WaitForDiscovery("one", 1, 2*time.Second)
+	require.Nil(t, err)
+}
+
+func TestNewDiscoverers(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	h1, err := NewHostFromOptions(ctx)
+	require.Nil(t, err)
+
+	h2, err := NewHostFromOptions(ctx)
+	require.Nil(t, err)
+
+	_, err = h1.Bootstrap(bootstrapAddresses(h2))
+	require.Nil(t, err)
+
+	err = h1.WaitForBootstrap(1, 1*time.Second)
+	require.Nil(t, err)
+
+	ns := "totally-new"
+
+	h1.StartDiscovery(ns)
+	defer h1.StopDiscovery(ns)
+
+	h2.StartDiscovery(ns)
+	defer h2.StopDiscovery(ns)
+
+	err = h2.WaitForDiscovery(ns, 1, 2*time.Second)
 	require.Nil(t, err)
 }
