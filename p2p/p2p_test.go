@@ -147,10 +147,13 @@ func TestNewDiscoverers(t *testing.T) {
 
 	ns := "totally-new"
 
-	h1.StartDiscovery(ns)
+	err = h1.StartDiscovery(ns)
+	require.Nil(t, err)
+
 	defer h1.StopDiscovery(ns)
 
-	h2.StartDiscovery(ns)
+	err = h2.StartDiscovery(ns)
+	require.Nil(t, err)
 	defer h2.StopDiscovery(ns)
 
 	err = h2.WaitForDiscovery(ns, 1, 2*time.Second)
