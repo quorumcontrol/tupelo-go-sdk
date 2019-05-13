@@ -40,15 +40,15 @@ var _ Node = (*LibP2PHost)(nil)
 type LibP2PHost struct {
 	Reporter metrics.Reporter
 
-	host            *rhost.RoutedHost
-	routing         *dht.IpfsDHT
-	publicKey       *ecdsa.PublicKey
-	bootstrapConfig *BootstrapConfig
-	pubsub          *pubsub.PubSub
-	datastore       ds.Batching
-	parentCtx       context.Context
-	discoverers     map[string]*tupeloDiscoverer
-	discoverLock    *sync.Mutex
+	host             *rhost.RoutedHost
+	routing          *dht.IpfsDHT
+	publicKey        *ecdsa.PublicKey
+	bootstrapStarted bool
+	pubsub           *pubsub.PubSub
+	datastore        ds.Batching
+	parentCtx        context.Context
+	discoverers      map[string]*tupeloDiscoverer
+	discoverLock     *sync.Mutex
 }
 
 const expectedKeySize = 32
@@ -231,11 +231,16 @@ func (h *LibP2PHost) GetPubSub() *pubsub.PubSub {
 
 func (h *LibP2PHost) Bootstrap(peers []string) (io.Closer, error) {
 	bootstrapCfg := BootstrapConfigWithPeers(convertPeers(peers))
-	h.bootstrapConfig = &bootstrapCfg
+	h.bootstrapStarted = true
 	closer, err := Bootstrap(h.host, h.routing, bootstrapCfg)
 	if err != nil {
 		return nil, fmt.Errorf("error bootstrapping: %v", err)
 	}
+
+	go func() {
+		<-h.parentCtx.Done()
+		closer.Close()
+	}()
 
 	err = h.WaitForBootstrap(1, 20*time.Second)
 	if err != nil {
@@ -249,10 +254,6 @@ func (h *LibP2PHost) Bootstrap(peers []string) (io.Closer, error) {
 		}
 	}
 
-	go func() {
-		<-h.parentCtx.Done()
-		closer.Close()
-	}()
 	return closer, nil
 }
 
@@ -280,7 +281,7 @@ func (h *LibP2PHost) StopDiscovery(namespace string) {
 }
 
 func (h *LibP2PHost) WaitForBootstrap(peerCount int, timeout time.Duration) error {
-	if h.bootstrapConfig == nil {
+	if !h.bootstrapStarted {
 		return fmt.Errorf("error must call Bootstrap() before calling WaitForBootstrap")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)

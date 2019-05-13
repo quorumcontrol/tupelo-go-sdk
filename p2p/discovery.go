@@ -166,8 +166,19 @@ func (td *tupeloDiscoverer) constantlyAdvertise(ctx context.Context) error {
 	log.Debugf("advertising %s", td.namespace)
 	dur, err := td.discoverer.Advertise(ctx, td.namespace)
 	if err != nil {
+
+		if err.Error() == "failed to find any peer in table" {
+			// if this happened then we just haven't initialized the DHT yet, we can just retry
+			time.AfterFunc(2*time.Second, func() {
+				log.Infof("(%s) no bootstrap yet, advertising after 2 seconds", td.namespace)
+				td.constantlyAdvertise(ctx)
+			})
+			return nil
+		}
+
 		return err
 	}
+
 	go func() {
 		after := time.After(dur)
 		select {
