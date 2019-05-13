@@ -50,7 +50,9 @@ func SendTest(t *testing.T, generator nodeGenerator) {
 	nodeB := generator(ctx, t)
 
 	_, err := nodeA.Bootstrap(bootstrapAddresses(nodeB))
-	assert.Nil(t, err)
+	require.Nil(t, err)
+	err = nodeA.WaitForBootstrap(1, 1*time.Second)
+	require.Nil(t, err)
 
 	msgs := make(chan []byte, 1)
 
@@ -75,6 +77,8 @@ func SendAndReceiveTest(t *testing.T, generator nodeGenerator) {
 	nodeB := generator(ctx, t)
 
 	_, err := nodeA.Bootstrap(bootstrapAddresses(nodeB))
+	require.Nil(t, err)
+	err = nodeA.WaitForBootstrap(1, 1*time.Second)
 	require.Nil(t, err)
 
 	nodeB.SetStreamHandler("test/protocol", func(s net.Stream) {
