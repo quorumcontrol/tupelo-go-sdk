@@ -31,6 +31,14 @@ var (
 		"/ip4/18.196.112.81/tcp/34001/ipfs/16Uiu2HAmJXuoQMRqg4bShcBTczUMn8zMyCvXAPuefCtqZb21iih8",
 		"/ip4/34.231.17.217/tcp/34001/ipfs/16Uiu2HAmLos2gmQLkVkiYF3JJBDW2WqZxCHoMb2fLmo77a2tqExF",
 	}
+
+	// see https://github.com/filecoin-project/go-filecoin/blob/master/net/bootstrap.go
+	tupeloBootstrapConfig = dht.BootstrapConfig{
+		// Recommended initial options from issu #1947
+		Queries: 2,
+		Period:  5 * time.Minute,
+		Timeout: time.Minute,
+	}
 )
 
 // BootstrapNodes returns a slice of comma-saparated values from environment variable TUPELO_BOOTSTRAP_NODES
@@ -132,7 +140,7 @@ func Bootstrap(h *rhost.RoutedHost, routing *dht.IpfsDHT, cfg BootstrapConfig) (
 	if routing != nil {
 		ctx := procctx.OnClosingContext(proc)
 		log.Debug("starting routing bootstrap")
-		if err := routing.Bootstrap(ctx); err != nil {
+		if err := routing.BootstrapWithConfig(ctx, tupeloBootstrapConfig); err != nil {
 			proc.Close()
 			return nil, err
 		}
