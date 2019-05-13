@@ -8,6 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
+	circuit "github.com/libp2p/go-libp2p-circuit"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -48,6 +49,43 @@ func TestP2pBroadcastIp(t *testing.T) {
 	require.True(t, found)
 }
 
+func TestNewRelayLibP2PHost(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	h, err := NewRelayLibP2PHost(ctx, key, 0)
+	require.Nil(t, err)
+	require.NotNil(t, h)
+}
+
+func TestNewHostFromOptions(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	require.Nil(t, err)
+
+	t.Run("it works with no options", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		h, err := NewHostFromOptions(ctx)
+		require.Nil(t, err)
+		require.NotNil(t, h)
+	})
+
+	t.Run("it works with more esoteric options", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		h, err := NewHostFromOptions(
+			ctx,
+			WithKey(key),
+			WithAutoRelay(true),
+			WithSegmenter([]byte("my secret password")),
+			WithPubSubRouter("floodsub"),
+			WithRelayOpts(circuit.OptHop),
+		)
+		require.Nil(t, err)
+		require.NotNil(t, h)
+	})
+}
 func TestUnmarshal31ByteKey(t *testing.T) {
 	// we kept having failures that looked like lack of entropy, but
 	// were instead just a normal case where a 31 byte big.Int was generated as a

@@ -131,6 +131,7 @@ func Bootstrap(h *rhost.RoutedHost, routing *dht.IpfsDHT, cfg BootstrapConfig) (
 	// kick off Routing.Bootstrap
 	if routing != nil {
 		ctx := procctx.OnClosingContext(proc)
+		log.Debug("starting routing bootstrap")
 		if err := routing.Bootstrap(ctx); err != nil {
 			proc.Close()
 			return nil, err

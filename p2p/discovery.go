@@ -5,24 +5,42 @@ import (
 	"fmt"
 	"time"
 
+	"sync/atomic"
+
+	"github.com/AsynkronIT/protoactor-go/eventstream"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	inet "github.com/libp2p/go-libp2p-net"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 )
 
-const nameSpace = "tupelo-transaction-gossipers"
-
 const maxConnected = 300
 
+const (
+	// EventPeerConnected is emitted to the eventstream
+	// whenever a new peer is found
+	EventPeerConnected int = iota
+)
+
 type tupeloDiscoverer struct {
+	namespace  string
 	host       *LibP2PHost
 	discoverer *discovery.RoutingDiscovery
+	connected  uint64
+	events     *eventstream.EventStream
 }
 
-func newTupeloDiscoverer(h *LibP2PHost) *tupeloDiscoverer {
+type DiscoveryEvent struct {
+	Namespace string
+	Connected uint64
+	EventType int
+}
+
+func newTupeloDiscoverer(h *LibP2PHost, namespace string) *tupeloDiscoverer {
 	return &tupeloDiscoverer{
+		namespace:  namespace,
 		host:       h,
 		discoverer: discovery.NewRoutingDiscovery(h.routing),
+		events:     &eventstream.EventStream{},
 	}
 }
 
@@ -37,7 +55,7 @@ func (td *tupeloDiscoverer) doDiscovery(ctx context.Context) error {
 }
 
 func (td *tupeloDiscoverer) findPeers(ctx context.Context) error {
-	peerChan, err := td.discoverer.FindPeers(ctx, nameSpace)
+	peerChan, err := td.discoverer.FindPeers(ctx, td.namespace)
 	if err != nil {
 		return fmt.Errorf("error findPeers: %v", err)
 	}
@@ -75,11 +93,18 @@ func (td *tupeloDiscoverer) handleNewPeerInfo(ctx context.Context, p pstore.Peer
 		if err := host.Connect(ctx, p); err != nil {
 			log.Errorf("error connecting to  %s %v: %v", p.ID, p, err)
 		}
+		numConnected := uint64(len(connected))
+		atomic.StoreUint64(&td.connected, numConnected)
+		td.events.Publish(&DiscoveryEvent{
+			Namespace: td.namespace,
+			Connected: numConnected,
+			EventType: EventPeerConnected,
+		})
 	}()
 }
 
 func (td *tupeloDiscoverer) constantlyAdvertise(ctx context.Context) error {
-	dur, err := td.discoverer.Advertise(ctx, nameSpace)
+	dur, err := td.discoverer.Advertise(ctx, td.namespace)
 	if err != nil {
 		return err
 	}
