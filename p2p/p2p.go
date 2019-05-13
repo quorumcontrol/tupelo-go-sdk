@@ -76,7 +76,7 @@ func PeerFromEcdsaKey(publicKey *ecdsa.PublicKey) (peer.ID, error) {
 	return peer.IDFromPublicKey(p2pPublicKeyFromEcdsaPublic(publicKey))
 }
 
-func NewHostAndBitSwapPeer(ctx context.Context, userOpts ...configFactory) (*LibP2PHost, *BitswapPeer, error) {
+func NewHostAndBitSwapPeer(ctx context.Context, userOpts ...Option) (*LibP2PHost, *BitswapPeer, error) {
 	h, err := NewHostFromOptions(ctx, userOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error generating libp2p host: %v", err)
@@ -88,7 +88,7 @@ func NewHostAndBitSwapPeer(ctx context.Context, userOpts ...configFactory) (*Lib
 	return h, peer, nil
 }
 
-func NewHostFromOptions(ctx context.Context, userOpts ...configFactory) (*LibP2PHost, error) {
+func NewHostFromOptions(ctx context.Context, userOpts ...Option) (*LibP2PHost, error) {
 	c := &Config{}
 	opts := append(defaultOptions(), userOpts...)
 	err := applyOptions(c, opts...)
