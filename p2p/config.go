@@ -21,6 +21,8 @@ type addressFactory func([]ma.Multiaddr) []ma.Multiaddr
 
 type configFactory func(c *Config) error
 
+type Option configFactory
+
 type Config struct {
 	RelayOpts            []circuit.RelayOpt
 	EnableRelayHop       bool
