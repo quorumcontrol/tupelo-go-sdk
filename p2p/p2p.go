@@ -234,11 +234,6 @@ func (h *LibP2PHost) Bootstrap(peers []string) (io.Closer, error) {
 	bootstrapper.Start(h.parentCtx)
 	h.bootstrapStarted = true
 
-	err := h.WaitForBootstrap(1, 20*time.Second)
-	if err != nil {
-		return nil, fmt.Errorf("error connecting to at least 1 bootstrap node: %v", err)
-	}
-
 	for _, discoverer := range h.discoverers {
 		err := discoverer.start(h.parentCtx)
 		if err != nil {
