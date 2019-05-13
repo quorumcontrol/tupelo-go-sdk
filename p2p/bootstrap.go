@@ -30,7 +30,7 @@ var (
 
 	// see https://github.com/filecoin-project/go-filecoin/blob/master/net/bootstrap.go
 	tupeloBootstrapConfig = dht.BootstrapConfig{
-		// Recommended initial options from issu #1947
+		// Recommended initial options from issue #1947
 		Queries: 2,
 		Period:  5 * time.Minute,
 		Timeout: time.Minute,
@@ -71,7 +71,7 @@ type Bootstrapper struct {
 }
 
 // NewBootstrapper returns a new Bootstrapper that will attempt to keep connected
-// to the filecoin network by connecting to the given bootstrap peers.
+// to the network by connecting to the given bootstrap peers.
 func NewBootstrapper(bootstrapPeers []pstore.PeerInfo, h host.Host, d inet.Dialer, r routing.IpfsRouting, minPeer int, period time.Duration) *Bootstrapper {
 	b := &Bootstrapper{
 		MinPeerThreshold:  minPeer,
