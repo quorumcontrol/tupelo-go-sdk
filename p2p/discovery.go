@@ -171,7 +171,10 @@ func (td *tupeloDiscoverer) constantlyAdvertise(ctx context.Context) error {
 			// if this happened then we just haven't initialized the DHT yet, we can just retry
 			time.AfterFunc(2*time.Second, func() {
 				log.Infof("(%s) no bootstrap yet, advertising after 2 seconds", td.namespace)
-				td.constantlyAdvertise(ctx)
+				err = td.constantlyAdvertise(ctx)
+				if err != nil {
+					log.Errorf("error constantly advertising: %v", err)
+				}
 			})
 			return nil
 		}
