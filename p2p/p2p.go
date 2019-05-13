@@ -230,19 +230,11 @@ func (h *LibP2PHost) GetPubSub() *pubsub.PubSub {
 }
 
 func (h *LibP2PHost) Bootstrap(peers []string) (io.Closer, error) {
-	bootstrapCfg := BootstrapConfigWithPeers(convertPeers(peers))
+	bootstrapper := NewBootstrapper(convertPeers(peers), h.host, h.host.Network(), h.routing, 4, 2*time.Second)
+	bootstrapper.Start(h.parentCtx)
 	h.bootstrapStarted = true
-	closer, err := Bootstrap(h.host, h.routing, bootstrapCfg)
-	if err != nil {
-		return nil, fmt.Errorf("error bootstrapping: %v", err)
-	}
 
-	go func() {
-		<-h.parentCtx.Done()
-		closer.Close()
-	}()
-
-	err = h.WaitForBootstrap(1, 20*time.Second)
+	err := h.WaitForBootstrap(1, 20*time.Second)
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to at least 1 bootstrap node: %v", err)
 	}
@@ -254,7 +246,7 @@ func (h *LibP2PHost) Bootstrap(peers []string) (io.Closer, error) {
 		}
 	}
 
-	return closer, nil
+	return bootstrapper, nil
 }
 
 func (h *LibP2PHost) StartDiscovery(namespace string) error {
