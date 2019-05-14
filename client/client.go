@@ -11,15 +11,12 @@ import (
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/AsynkronIT/protoactor-go/eventstream"
 	lru "github.com/hashicorp/golang-lru"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"go.uber.org/zap"
 
 	"github.com/quorumcontrol/chaintree/chaintree"
-	"github.com/quorumcontrol/chaintree/dag"
-	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
-	"github.com/quorumcontrol/storage"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
@@ -206,32 +203,19 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 		return nil, fmt.Errorf("error signing: %v", err)
 	}
 
-	memStore := nodestore.NewStorageBasedStore(storage.NewMemStorage())
-
 	nodes, err := nodesForTransaction(tree)
 	if err != nil {
 		return nil, fmt.Errorf("error generating nodes for transaction %v", err)
 	}
 
-	for _, node := range nodes {
-		if err = memStore.StoreNode(node); err != nil {
-			return nil, fmt.Errorf("Failed to store node: %v", err)
-		}
-	}
-
 	storedTip := tree.Tip()
-	memoryDag := dag.NewDag(storedTip, memStore)
 
-	memoryTree, err := chaintree.NewChainTree(memoryDag, tree.ChainTree.BlockValidators, tree.ChainTree.Transactors)
-	if err != nil {
-		return nil, fmt.Errorf("error creating new tree: %v", err)
-	}
-	valid, err := memoryTree.ProcessBlock(blockWithHeaders)
+	newChainTree, valid, err := tree.ChainTree.ProcessBlockImmutable(blockWithHeaders)
 	if !valid || err != nil {
 		return nil, fmt.Errorf("error processing block (valid: %t): %v", valid, err)
 	}
 
-	expectedTip := memoryTree.Dag.Tip
+	expectedTip := newChainTree.Dag.Tip
 
 	transaction := messages.Transaction{
 		PreviousTip: storedTip.Bytes(),
@@ -274,10 +258,7 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 		return nil, fmt.Errorf("error, tree updated to different tip - expected: %v - received: %v", expectedTip.String(), respCid.String())
 	}
 
-	success, err := tree.ChainTree.ProcessBlock(blockWithHeaders)
-	if !success || err != nil {
-		return nil, fmt.Errorf("error processing block (valid: %t): %v", valid, err)
-	}
+	tree.ChainTree = newChainTree
 
 	tree.Signatures[c.Group.ID] = *resp.Signature
 
