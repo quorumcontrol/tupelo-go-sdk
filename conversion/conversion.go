@@ -36,19 +36,22 @@ func ToExternalSignature(s *signatures.Signature) (*extmsgs.Signature, error) {
 }
 
 func ToInternalSignature(sig extmsgs.Signature) (*signatures.Signature, error) {
-	signers, err := bitarray.Unmarshal(sig.Signers)
-	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling signers array: %v", err)
-	}
-
-	signersBools := make([]bool, signers.Capacity())
-	for i := uint64(0); i < signers.Capacity(); i++ {
-		isSet, err := signers.GetBit(i)
+	var signersArray []bool
+	if sig.Signers != nil {
+		signers, err := bitarray.Unmarshal(sig.Signers)
 		if err != nil {
-			return nil, fmt.Errorf("error getting signer from bitarray: %v", err)
+			return nil, fmt.Errorf("error unmarshalling signers array: %v", err)
 		}
 
-		signersBools[i] = isSet
+		signersArray := make([]bool, signers.Capacity())
+		for i := uint64(0); i < signers.Capacity(); i++ {
+			isSet, err := signers.GetBit(i)
+			if err != nil {
+				return nil, fmt.Errorf("error getting signer from bitarray: %v", err)
+			}
+
+			signersArray[i] = isSet
+		}
 	}
 
 	return &signatures.Signature{
@@ -57,7 +60,7 @@ func ToInternalSignature(sig extmsgs.Signature) (*signatures.Signature, error) {
 		NewTip:      sig.NewTip,
 		View:        sig.View,
 		Cycle:       sig.Cycle,
-		Signers:     signersBools,
+		Signers:     signersArray,
 		Signature:   sig.Signature,
 		Type:        sig.Type,
 		Height:      sig.Height,

@@ -3,10 +3,10 @@ package consensus
 import (
 	"fmt"
 
+	"github.com/golang/protobuf/ptypes"
 	cid "github.com/ipfs/go-cid"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
-	"github.com/quorumcontrol/chaintree/typecaster"
 	"github.com/quorumcontrol/messages/transactions"
 
 	"github.com/quorumcontrol/tupelo-go-sdk/conversion"
@@ -18,7 +18,7 @@ func getReceiveTokenPayloads(txns []*transactions.Transaction) ([]*transactions.
 	for _, t := range txns {
 		if t.Type == transactions.Transaction_RECEIVETOKEN {
 			rt := &transactions.ReceiveTokenPayload{}
-			err := typecaster.ToType(t.Payload, rt)
+			err := ptypes.UnmarshalAny(t.Payload, rt)
 			if err != nil {
 				return nil, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error typecasting payload: %v", err)}
 			}
