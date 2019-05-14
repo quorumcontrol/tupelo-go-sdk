@@ -13,8 +13,6 @@ import (
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 )
 
-const maxConnected = 300
-
 const (
 	// EventPeerConnected is emitted to the eventstream
 	// whenever a new peer is found
@@ -27,6 +25,9 @@ type tupeloDiscoverer struct {
 	discoverer *discovery.RoutingDiscovery
 	connected  uint64
 	events     *eventstream.EventStream
+	cancelFunc context.CancelFunc
+	parentCtx  context.Context
+	started    bool
 }
 
 type DiscoveryEvent struct {
@@ -44,17 +45,38 @@ func newTupeloDiscoverer(h *LibP2PHost, namespace string) *tupeloDiscoverer {
 	}
 }
 
-func (td *tupeloDiscoverer) doDiscovery(ctx context.Context) error {
-	if err := td.constantlyAdvertise(ctx); err != nil {
+func (td *tupeloDiscoverer) start(originalContext context.Context) error {
+	if td.started {
+		return nil
+	}
+	ctx, cancel := context.WithCancel(originalContext)
+	td.cancelFunc = cancel
+	td.parentCtx = ctx
+
+	if err := td.constantlyAdvertise(td.parentCtx); err != nil {
 		return fmt.Errorf("error advertising: %v", err)
 	}
-	if err := td.findPeers(ctx); err != nil {
+	if err := td.findPeers(td.parentCtx); err != nil {
 		return fmt.Errorf("error finding peers: %v", err)
 	}
+	td.started = true
 	return nil
 }
 
+func (td *tupeloDiscoverer) stop() {
+	if !td.started {
+		return
+	}
+	if td.cancelFunc != nil {
+		td.cancelFunc()
+		td.parentCtx = nil
+		td.cancelFunc = nil
+		td.started = false
+	}
+}
+
 func (td *tupeloDiscoverer) findPeers(ctx context.Context) error {
+	log.Debugf("find peers %s", td.namespace)
 	peerChan, err := td.discoverer.FindPeers(ctx, td.namespace)
 	if err != nil {
 		return fmt.Errorf("error findPeers: %v", err)
@@ -76,12 +98,14 @@ func (td *tupeloDiscoverer) handleNewPeerInfo(ctx context.Context, p pstore.Peer
 	host := td.host.host
 
 	if host.Network().Connectedness(p.ID) == inet.Connected {
+		log.Debugf("already connected peer %s", td.namespace)
+		numConnected := atomic.AddUint64(&td.connected, uint64(1))
+		td.events.Publish(&DiscoveryEvent{
+			Namespace: td.namespace,
+			Connected: numConnected,
+			EventType: EventPeerConnected,
+		})
 		return // we are already connected
-	}
-
-	connected := host.Network().Peers()
-	if len(connected) > maxConnected {
-		return // we already are connected to more than we need
 	}
 
 	log.Debugf("new peer: %s", p.ID)
@@ -93,8 +117,8 @@ func (td *tupeloDiscoverer) handleNewPeerInfo(ctx context.Context, p pstore.Peer
 		if err := host.Connect(ctx, p); err != nil {
 			log.Errorf("error connecting to  %s %v: %v", p.ID, p, err)
 		}
-		numConnected := uint64(len(connected))
-		atomic.StoreUint64(&td.connected, numConnected)
+		log.Debugf("node connected %s %v", td.namespace, p)
+		numConnected := atomic.AddUint64(&td.connected, uint64(1))
 		td.events.Publish(&DiscoveryEvent{
 			Namespace: td.namespace,
 			Connected: numConnected,
@@ -103,11 +127,61 @@ func (td *tupeloDiscoverer) handleNewPeerInfo(ctx context.Context, p pstore.Peer
 	}()
 }
 
+func (td *tupeloDiscoverer) waitForNumber(num int, duration time.Duration) error {
+	doneChan := make(chan struct{})
+	sub := td.events.Subscribe(func(evt interface{}) {
+		stats, ok := evt.(*DiscoveryEvent)
+		if !ok {
+			return
+		}
+		if stats.Connected >= uint64(num) {
+			go func() {
+				doneChan <- struct{}{}
+			}()
+		}
+	})
+	after := time.After(duration)
+
+	currCount := atomic.LoadUint64(&td.connected)
+	log.Debugf("currCount (%s) is %d", td.namespace, currCount)
+	if currCount >= uint64(num) {
+		go func() {
+			doneChan <- struct{}{}
+		}()
+	}
+
+	var err error
+	select {
+	case <-after:
+		err = fmt.Errorf("errror, waiting for number connected (%s)", td.namespace)
+	case <-doneChan:
+		err = nil
+	}
+	close(doneChan)
+	td.events.Unsubscribe(sub)
+	return err
+}
+
 func (td *tupeloDiscoverer) constantlyAdvertise(ctx context.Context) error {
+	log.Debugf("advertising %s", td.namespace)
 	dur, err := td.discoverer.Advertise(ctx, td.namespace)
 	if err != nil {
+
+		if err.Error() == "failed to find any peer in table" {
+			// if this happened then we just haven't initialized the DHT yet, we can just retry
+			time.AfterFunc(2*time.Second, func() {
+				log.Infof("(%s) no bootstrap yet, advertising after 2 seconds", td.namespace)
+				err = td.constantlyAdvertise(ctx)
+				if err != nil {
+					log.Errorf("error constantly advertising: %v", err)
+				}
+			})
+			return nil
+		}
+
 		return err
 	}
+
 	go func() {
 		after := time.After(dur)
 		select {
