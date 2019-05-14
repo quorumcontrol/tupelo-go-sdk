@@ -287,9 +287,11 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 		err error
 	)
 
+	latestRemoteTip := remoteTip
+
 	err = retry.Do(
 		func() error {
-			resp, err = c.attemptPlayTransactions(tree, treeKey, remoteTip, transactions)
+			resp, err = c.attemptPlayTransactions(tree, treeKey, latestRemoteTip, transactions)
 			if err != nil {
 				return err
 			}
@@ -297,7 +299,25 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 			return nil
 		},
 		retry.OnRetry(func(n uint, err error) {
-			c.log.Debugw("PlayTransactions attempt #%d error: %s", n, err)
+			c.log.Debugf("PlayTransactions attempt #%d error: %s", n, err)
+
+			if n > 1 {
+				// Try updating tip in case that's why we didn't succeed last time
+				// TODO: There's probably some error filtering we could do here to be smarter about this
+				cs, err := c.TipRequest()
+				if err != nil {
+					return
+				}
+
+				if cs.Signature != nil {
+					tip, err := cid.Cast(cs.Signature.NewTip)
+					if err != nil {
+						return
+					}
+					latestRemoteTip = &tip
+					tree.ChainTree.Dag.Tip = tip
+				}
+			}
 		}),
 		retry.LastErrorOnly(true),
 	)
