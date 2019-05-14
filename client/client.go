@@ -64,6 +64,11 @@ func (c *Client) Listen() {
 		return
 	}
 	c.subscriber = actor.EmptyRootContext.SpawnPrefix(actor.PropsFromFunc(c.subscriptionReceive), c.TreeDID+"-subscriber")
+	fut := actor.EmptyRootContext.RequestFuture(c.subscriber, &messages.Ping{}, 2*time.Second)
+	_, err := fut.Result()
+	if err != nil {
+		panic(fmt.Errorf("error waiting for future: %v", err))
+	}
 }
 
 func (c *Client) alreadyListening() bool {
@@ -81,9 +86,14 @@ func (c *Client) Stop() {
 func (c *Client) subscriptionReceive(actorContext actor.Context) {
 	switch msg := actorContext.Message().(type) {
 	case *actor.Started:
-		_, err := actorContext.SpawnNamed(c.pubsub.NewSubscriberProps(c.TreeDID), "pubsub")
+		sub, err := actorContext.SpawnNamed(c.pubsub.NewSubscriberProps(c.TreeDID), "pubsub")
 		if err != nil {
 			panic(fmt.Errorf("error spawning pubsub: %v", err))
+		}
+		fut := actorContext.RequestFuture(sub, &messages.Ping{}, 2*time.Second)
+		_, err = fut.Result()
+		if err != nil {
+			panic(fmt.Errorf("error waiting for future: %v", err))
 		}
 	case *messages.CurrentState:
 		heightString := strconv.FormatUint(msg.Signature.Height, 10)
@@ -98,6 +108,8 @@ func (c *Client) subscriptionReceive(actorContext actor.Context) {
 			c.log.Debugw("publishing error", "tx", string(msg.Source))
 			c.stream.Publish(msg)
 		}
+	case *messages.Ping:
+		actorContext.Respond(&messages.Pong{Msg: msg.Msg})
 	default:
 		c.log.Debugw("unknown message received", "type", reflect.TypeOf(msg).String())
 	}

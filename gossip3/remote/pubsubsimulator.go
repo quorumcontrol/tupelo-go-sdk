@@ -116,7 +116,7 @@ func newSimulatedSubscriberProps(topic string, simulatedPubSub *SimulatedPubSub,
 }
 
 func (bs *simulatedSubscriber) Receive(actorContext actor.Context) {
-	switch actorContext.Message().(type) {
+	switch msg := actorContext.Message().(type) {
 	case *actor.Started:
 		bs.Log.Debugw("subscribed", "topic", bs.topic, "subscribers", bs.subscribers)
 		parent := actorContext.Parent()
@@ -148,6 +148,8 @@ func (bs *simulatedSubscriber) Receive(actorContext actor.Context) {
 
 		})
 		bs.subscription = sub
+	case *messages.Ping:
+		actorContext.Respond(&messages.Pong{Msg: msg.Msg})
 	case *actor.Stopping:
 		bs.pubsubSystem.eventStream.Unsubscribe(bs.subscription)
 	}
