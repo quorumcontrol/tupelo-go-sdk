@@ -171,6 +171,8 @@ func (bs *broadcastSubscriber) Receive(actorContext actor.Context) {
 		bs.stopped = true
 		bs.subscription.Cancel()
 		bs.cancelFunc()
+	case *messages.Ping:
+		actorContext.Respond(&messages.Pong{Msg: msg.Msg})
 	case *pubsub.Message:
 		bs.handlePubSubMessage(actorContext, msg)
 	}
