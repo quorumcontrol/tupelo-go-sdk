@@ -30,7 +30,7 @@ func TestSubscription(t *testing.T) {
 				Height:   trans.Height,
 			},
 		}
-		err := pubSubSystem.Broadcast(string(trans.ObjectID), currState)
+		err := pubSubSystem.Broadcast(commitFirehose, currState)
 		require.Nil(t, err)
 
 		res, err := fut.Result()
@@ -47,7 +47,7 @@ func TestSubscription(t *testing.T) {
 		msgErr := &messages.Error{
 			Source: string(trans.ID()),
 		}
-		err := pubSubSystem.Broadcast(string(trans.ObjectID), msgErr)
+		err := pubSubSystem.Broadcast(commitFirehose, msgErr)
 		require.Nil(t, err)
 
 		res, err := fut.Result()

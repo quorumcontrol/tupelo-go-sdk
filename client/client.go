@@ -30,6 +30,7 @@ import (
 // TransactionBroadcastTopic is the topic from which clients
 // broadcast their transactions to the NotaryGroup
 const TransactionBroadcastTopic = "tupelo-transaction-broadcast"
+const commitFirehose = "tupelo-commits"
 
 // Client represents a Tupelo client for interacting with and
 // listening to ChainTree events
@@ -81,15 +82,18 @@ func (c *Client) Stop() {
 func (c *Client) subscriptionReceive(actorContext actor.Context) {
 	switch msg := actorContext.Message().(type) {
 	case *actor.Started:
-		_, err := actorContext.SpawnNamed(c.pubsub.NewSubscriberProps(c.TreeDID), "pubsub")
+		_, err := actorContext.SpawnNamed(c.pubsub.NewSubscriberProps(commitFirehose), "pubsub")
 		if err != nil {
 			panic(fmt.Errorf("error spawning pubsub: %v", err))
 		}
 	case *messages.CurrentState:
+		if string(msg.Signature.ObjectID) != c.TreeDID {
+			return
+		}
 		heightString := strconv.FormatUint(msg.Signature.Height, 10)
 		existed, _ := c.cache.ContainsOrAdd(heightString, msg)
 		if !existed {
-			c.log.Debugw("publishing current state", "objectID", string(msg.Signature.ObjectID), "height", heightString)
+			c.log.Debugw("publishing current state to eventstream", "objectID", string(msg.Signature.ObjectID), "height", heightString)
 			c.stream.Publish(msg)
 		}
 	case *messages.Error:
