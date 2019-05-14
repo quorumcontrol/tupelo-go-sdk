@@ -10,6 +10,7 @@ import (
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/AsynkronIT/protoactor-go/eventstream"
+	"github.com/avast/retry-go"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
@@ -170,7 +171,7 @@ func (c *Client) SendTransaction(trans *messages.Transaction) error {
 }
 
 // PlayTransactions plays transactions in chain tree.
-func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*chaintree.Transaction) (*consensus.AddBlockResponse, error) {
+func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*chaintree.Transaction) (*consensus.AddBlockResponse, error) {
 	sw := safewrap.SafeWrap{}
 
 	if remoteTip != nil && cid.Undef.Equals(*remoteTip) {
@@ -278,6 +279,33 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 	}
 
 	return addResponse, nil
+}
+
+func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*chaintree.Transaction) (*consensus.AddBlockResponse, error) {
+	var (
+		resp *consensus.AddBlockResponse
+		err error
+	)
+
+	err = retry.Do(
+		func() error {
+			resp, err = c.attemptPlayTransactions(tree, treeKey, remoteTip, transactions)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		},
+		retry.OnRetry(func(n uint, err error) {
+			c.log.Debugw("PlayTransactions attempt #%d error: %s", n, err)
+		}),
+		retry.LastErrorOnly(true),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
 
 func getRoot(sct *consensus.SignedChainTree) (*chaintree.RootNode, error) {
