@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sync"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/AsynkronIT/protoactor-go/plugin"
@@ -150,7 +151,10 @@ func (bs *broadcastSubscriber) Receive(actorContext actor.Context) {
 		}
 		bs.subscription = sub
 		self := actorContext.Self()
+		wg := &sync.WaitGroup{}
+		wg.Add(1)
 		go func() {
+			wg.Done()
 			for {
 				msg, err := sub.Next(bs.subCtx)
 				if bs.stopped {
@@ -167,6 +171,7 @@ func (bs *broadcastSubscriber) Receive(actorContext actor.Context) {
 				}
 			}
 		}()
+		wg.Wait()
 	case *actor.Stopping:
 		bs.stopped = true
 		bs.subscription.Cancel()
