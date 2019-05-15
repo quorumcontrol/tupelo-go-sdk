@@ -299,6 +299,13 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 			return err
 		},
 		retry.Attempts(MaxPlayTransactionsAttempts),
+		retry.RetryIf(func(err error) bool {
+			if err.Error() == "error timeout" { // ewwww; is there a better way to do this? a coded error of some sort?
+				return true
+			}
+			
+			return false
+		}),
 		retry.OnRetry(func(n uint, err error) {
 			c.log.Debugf("PlayTransactions attempt #%d error: %s", n, err)
 
