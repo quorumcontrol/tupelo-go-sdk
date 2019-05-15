@@ -29,6 +29,10 @@ import (
 // broadcast their transactions to the NotaryGroup
 const TransactionBroadcastTopic = "tupelo-transaction-broadcast"
 
+// How many times to attempt PlayTransactions before giving up.
+// 10 is the library's default, but this makes it explicit.
+const MaxPlayTransactionsAttempts = uint(10)
+
 // Client represents a Tupelo client for interacting with and
 // listening to ChainTree events
 type Client struct {
@@ -284,7 +288,7 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*chaintree.Transaction) (*consensus.AddBlockResponse, error) {
 	var (
 		resp *consensus.AddBlockResponse
-		err error
+		err  error
 	)
 
 	latestRemoteTip := remoteTip
@@ -294,6 +298,7 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 			resp, err = c.attemptPlayTransactions(tree, treeKey, latestRemoteTip, transactions)
 			return err
 		},
+		retry.Attempts(MaxPlayTransactionsAttempts),
 		retry.OnRetry(func(n uint, err error) {
 			c.log.Debugf("PlayTransactions attempt #%d error: %s", n, err)
 
