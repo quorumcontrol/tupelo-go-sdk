@@ -306,8 +306,8 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 			c.log.Debugf("PlayTransactions attempt #%d error: %s", n, err)
 
 			if n > 1 {
-				// Try updating tip in case that's why we didn't succeed last time
-				// TODO: There's probably some error filtering we could do here to be smarter about this
+				// Try updating tip in case it has moved forward since the first attempt
+				// (possibly due to our transactions succeeding but we just didn't get the response).
 				cs, err := c.TipRequest()
 				if err != nil {
 					return
@@ -316,10 +316,25 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 				if cs.Signature != nil {
 					tip, err := cid.Cast(cs.Signature.NewTip)
 					if err != nil {
+						c.log.Errorf("unable to cast remote tip to CID: %v", err)
 						return
 					}
-					latestRemoteTip = &tip
-					tree.ChainTree.Dag.Tip = tip
+
+					if !tip.Equals(tree.Tip()) {
+						newTipNode, err := tree.ChainTree.Dag.Get(tip)
+						if err != nil {
+							c.log.Errorf("error getting new tip node from DAG: %v", err)
+							return
+						}
+
+						if newTipNode == nil {
+							c.log.Errorw("latest tip node is not present", "cid", tip.String())
+							return
+						} else {
+							latestRemoteTip = &tip
+							tree.ChainTree.Dag.Tip = tip
+						}
+					}
 				}
 			}
 		}),
