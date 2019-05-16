@@ -10,16 +10,14 @@ import (
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/AsynkronIT/protoactor-go/eventstream"
+	"github.com/avast/retry-go"
 	lru "github.com/hashicorp/golang-lru"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"go.uber.org/zap"
 
 	"github.com/quorumcontrol/chaintree/chaintree"
-	"github.com/quorumcontrol/chaintree/dag"
-	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
-	"github.com/quorumcontrol/storage"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
@@ -30,6 +28,12 @@ import (
 // TransactionBroadcastTopic is the topic from which clients
 // broadcast their transactions to the NotaryGroup
 const TransactionBroadcastTopic = "tupelo-transaction-broadcast"
+
+// How many times to attempt PlayTransactions before giving up.
+// 10 is the library's default, but this makes it explicit.
+const MaxPlayTransactionsAttempts = uint(10)
+
+const ErrorTimeout = "error timeout"
 
 // Client represents a Tupelo client for interacting with and
 // listening to ChainTree events
@@ -173,7 +177,7 @@ func (c *Client) SendTransaction(trans *messages.Transaction) error {
 }
 
 // PlayTransactions plays transactions in chain tree.
-func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*chaintree.Transaction) (*consensus.AddBlockResponse, error) {
+func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*chaintree.Transaction) (*consensus.AddBlockResponse, error) {
 	sw := safewrap.SafeWrap{}
 
 	if remoteTip != nil && cid.Undef.Equals(*remoteTip) {
@@ -206,32 +210,19 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 		return nil, fmt.Errorf("error signing: %v", err)
 	}
 
-	memStore := nodestore.NewStorageBasedStore(storage.NewMemStorage())
-
 	nodes, err := nodesForTransaction(tree)
 	if err != nil {
 		return nil, fmt.Errorf("error generating nodes for transaction %v", err)
 	}
 
-	for _, node := range nodes {
-		if err = memStore.StoreNode(node); err != nil {
-			return nil, fmt.Errorf("Failed to store node: %v", err)
-		}
-	}
-
 	storedTip := tree.Tip()
-	memoryDag := dag.NewDag(storedTip, memStore)
 
-	memoryTree, err := chaintree.NewChainTree(memoryDag, tree.ChainTree.BlockValidators, tree.ChainTree.Transactors)
-	if err != nil {
-		return nil, fmt.Errorf("error creating new tree: %v", err)
-	}
-	valid, err := memoryTree.ProcessBlock(blockWithHeaders)
+	newChainTree, valid, err := tree.ChainTree.ProcessBlockImmutable(blockWithHeaders)
 	if !valid || err != nil {
 		return nil, fmt.Errorf("error processing block (valid: %t): %v", valid, err)
 	}
 
-	expectedTip := memoryTree.Dag.Tip
+	expectedTip := newChainTree.Dag.Tip
 
 	transaction := messages.Transaction{
 		PreviousTip: storedTip.Bytes(),
@@ -256,7 +247,7 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 	}
 
 	if uncastResp == nil {
-		return nil, fmt.Errorf("error timeout")
+		return nil, fmt.Errorf(ErrorTimeout)
 	}
 
 	var resp *messages.CurrentState
@@ -274,9 +265,10 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 		return nil, fmt.Errorf("error, tree updated to different tip - expected: %v - received: %v", expectedTip.String(), respCid.String())
 	}
 
-	success, err := tree.ChainTree.ProcessBlock(blockWithHeaders)
-	if !success || err != nil {
-		return nil, fmt.Errorf("error processing block (valid: %t): %v", valid, err)
+	tree.ChainTree = newChainTree
+
+	if tree.Signatures == nil {
+		tree.Signatures = make(consensus.SignatureMap)
 	}
 
 	tree.Signatures[c.Group.ID] = *resp.Signature
@@ -292,11 +284,69 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 		Signature: tree.Signatures[c.Group.ID],
 	}
 
-	if tree.Signatures == nil {
-		tree.Signatures = make(consensus.SignatureMap)
+	return addResponse, nil
+}
+
+func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*chaintree.Transaction) (*consensus.AddBlockResponse, error) {
+	var (
+		resp *consensus.AddBlockResponse
+		err  error
+	)
+
+	latestRemoteTip := remoteTip
+
+	err = retry.Do(
+		func() error {
+			resp, err = c.attemptPlayTransactions(tree, treeKey, latestRemoteTip, transactions)
+			return err
+		},
+		retry.Attempts(MaxPlayTransactionsAttempts),
+		retry.RetryIf(func(err error) bool {
+			return err.Error() == ErrorTimeout
+		}),
+		retry.OnRetry(func(n uint, err error) {
+			c.log.Debugf("PlayTransactions attempt #%d error: %s", n, err)
+
+			if n > 1 {
+				// Try updating tip in case it has moved forward since the first attempt
+				// (possibly due to our transactions succeeding but we just didn't get the response).
+				cs, err := c.TipRequest()
+				if err != nil {
+					return
+				}
+
+				if cs.Signature != nil {
+					tip, err := cid.Cast(cs.Signature.NewTip)
+					if err != nil {
+						c.log.Errorf("unable to cast remote tip to CID: %v", err)
+						return
+					}
+
+					if !tip.Equals(tree.Tip()) {
+						newTipNode, err := tree.ChainTree.Dag.Get(tip)
+						if err != nil {
+							c.log.Errorf("error getting new tip node from DAG: %v", err)
+							return
+						}
+
+						if newTipNode == nil {
+							c.log.Errorw("latest tip node is not present", "cid", tip.String())
+							return
+						} else {
+							latestRemoteTip = &tip
+							tree.ChainTree.Dag.Tip = tip
+						}
+					}
+				}
+			}
+		}),
+		retry.LastErrorOnly(true),
+	)
+	if err != nil {
+		return nil, err
 	}
 
-	return addResponse, nil
+	return resp, nil
 }
 
 func getRoot(sct *consensus.SignedChainTree) (*chaintree.RootNode, error) {

@@ -5,6 +5,7 @@ go 1.12
 require (
 	github.com/AsynkronIT/protoactor-go v0.0.0-20190318154652-aa1aa20c2fa0
 	github.com/Workiva/go-datastructures v1.0.50
+	github.com/avast/retry-go v2.3.0+incompatible
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/elastic/go-sysinfo v0.0.0-20190107121835-59ef8c0eae46 // indirect
 	github.com/ethereum/go-ethereum v1.8.25
@@ -37,7 +38,7 @@ require (
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829
-	github.com/quorumcontrol/chaintree v0.0.0-20190426130059-9145fcfcdb66e952d8c7da1fc27d23169710c8d3
+	github.com/quorumcontrol/chaintree v0.0.0-20190515172607-6a3407e067bd
 	github.com/quorumcontrol/storage v1.1.2
 	github.com/santhosh-tekuri/jsonschema v1.2.4 // indirect
 	github.com/stretchr/testify v1.3.0
