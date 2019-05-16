@@ -19,7 +19,8 @@ import (
 
 type addressFactory func([]ma.Multiaddr) []ma.Multiaddr
 
-type configFactory func(c *Config) error
+// Option is a configuration option for the server
+type Option func(c *Config) error
 
 type Config struct {
 	RelayOpts            []circuit.RelayOpt
@@ -43,12 +44,12 @@ type Config struct {
 }
 
 // This is a function, because we want to return a new datastore each time
-func defaultOptions() []configFactory {
+func defaultOptions() []Option {
 	key, err := crypto.GenerateKey()
 	if err != nil {
 		panic(fmt.Errorf("unable to generate a new key"))
 	}
-	return []configFactory{
+	return []Option{
 		WithKey(key),
 		WithPubSubRouter("gossip"),
 		WithPubSubOptions(pubsub.WithStrictSignatureVerification(false), pubsub.WithMessageSigning(false)),
@@ -59,7 +60,7 @@ func defaultOptions() []configFactory {
 	}
 }
 
-func applyOptions(c *Config, opts ...configFactory) error {
+func applyOptions(c *Config, opts ...Option) error {
 	for _, factory := range opts {
 		err := factory(c)
 		if err != nil {
@@ -73,7 +74,7 @@ func backwardsCompatibleConfig(key *ecdsa.PrivateKey, port int, useRelay bool) (
 	c := &Config{}
 	opts := defaultOptions()
 
-	backwardsOpts := []configFactory{
+	backwardsOpts := []Option{
 		WithKey(key),
 		WithDiscoveryNamespaces("tupelo-transaction-gossipers"),
 		WithListenIP("0.0.0.0", port),
@@ -98,7 +99,7 @@ func backwardsCompatibleConfig(key *ecdsa.PrivateKey, port int, useRelay bool) (
 
 // WithAddrFilters takes a string of cidr addresses (0.0.0.0/32) that will not
 // be dialed by swarm.
-func WithAddrFilters(addrFilters []string) configFactory {
+func WithAddrFilters(addrFilters []string) Option {
 	return func(c *Config) error {
 		addrFilterIPs := make([]*net.IPNet, len(addrFilters))
 		for i, cidr := range addrFilters {
@@ -114,7 +115,7 @@ func WithAddrFilters(addrFilters []string) configFactory {
 }
 
 // WithAutoRelay enabled AutoRelay in the config, defaults to false
-func WithAutoRelay(enabled bool) configFactory {
+func WithAutoRelay(enabled bool) Option {
 	return func(c *Config) error {
 		c.EnableAutoRelay = enabled
 		return nil
@@ -123,7 +124,7 @@ func WithAutoRelay(enabled bool) configFactory {
 
 // WithDiscoveryNamespaces enables discovery of all of the passed in namespaces
 // discovery is part of bootstrap, defaults to empty
-func WithDiscoveryNamespaces(namespaces ...string) configFactory {
+func WithDiscoveryNamespaces(namespaces ...string) Option {
 	return func(c *Config) error {
 		c.DiscoveryNamespaces = namespaces
 		return nil
@@ -132,7 +133,7 @@ func WithDiscoveryNamespaces(namespaces ...string) configFactory {
 
 // WithSegmenter enables the secret on libp2p in order to make sure
 // that this network does not combine with another. Default is off.
-func WithSegmenter(secret []byte) configFactory {
+func WithSegmenter(secret []byte) Option {
 	return func(c *Config) error {
 		c.Segmenter = secret
 		return nil
@@ -141,7 +142,7 @@ func WithSegmenter(secret []byte) configFactory {
 
 // WithBandwidthReporter sets the bandwidth reporter,
 // defaults to a new metrics.Reporter
-func WithBandwidthReporter(reporter metrics.Reporter) configFactory {
+func WithBandwidthReporter(reporter metrics.Reporter) Option {
 	return func(c *Config) error {
 		c.BandwidthReporter = reporter
 		return nil
@@ -150,7 +151,7 @@ func WithBandwidthReporter(reporter metrics.Reporter) configFactory {
 
 // WithPubSubOptions sets pubsub options.
 // Defaults to pubsub.WithStrictSignatureVerification(false), pubsub.WithMessageSigning(false)
-func WithPubSubOptions(opts ...pubsub.Option) configFactory {
+func WithPubSubOptions(opts ...pubsub.Option) Option {
 	return func(c *Config) error {
 		c.PubSubOptions = opts
 		return nil
@@ -159,7 +160,7 @@ func WithPubSubOptions(opts ...pubsub.Option) configFactory {
 
 // WithDatastore sets the datastore used by the host
 // defaults to in-memory map store.
-func WithDatastore(store ds.Batching) configFactory {
+func WithDatastore(store ds.Batching) Option {
 	return func(c *Config) error {
 		c.DataStore = store
 		return nil
@@ -168,7 +169,7 @@ func WithDatastore(store ds.Batching) configFactory {
 
 // WithRelayOpts turns on relay and sets the options
 // defaults to empty (and relay off).
-func WithRelayOpts(opts ...circuit.RelayOpt) configFactory {
+func WithRelayOpts(opts ...circuit.RelayOpt) Option {
 	return func(c *Config) error {
 		c.RelayOpts = opts
 		return nil
@@ -177,7 +178,7 @@ func WithRelayOpts(opts ...circuit.RelayOpt) configFactory {
 
 // WithKey is the identity key of the host, if not set it
 // the default options will generate you a new key
-func WithKey(key *ecdsa.PrivateKey) configFactory {
+func WithKey(key *ecdsa.PrivateKey) Option {
 	return func(c *Config) error {
 		c.PrivateKey = key
 		return nil
@@ -185,7 +186,7 @@ func WithKey(key *ecdsa.PrivateKey) configFactory {
 }
 
 // WithListenIP sets the listen IP, defaults to 0.0.0.0/0
-func WithListenIP(ip string, port int) configFactory {
+func WithListenIP(ip string, port int) Option {
 	return func(c *Config) error {
 		c.Port = port
 		c.ListenAddrs = []string{fmt.Sprintf("/ip4/%s/tcp/%d", ip, c.Port)}
@@ -197,7 +198,7 @@ var supportedGossipTypes = map[string]bool{"gossip": true, "random": true, "floo
 
 // WithPubSubRouter sets the router type of the pubsub. Supported is: gossip, random, floodsub
 // defaults to gossip
-func WithPubSubRouter(routeType string) configFactory {
+func WithPubSubRouter(routeType string) Option {
 	return func(c *Config) error {
 		if _, ok := supportedGossipTypes[routeType]; !ok {
 			return fmt.Errorf("%s is an unsupported gossip type", routeType)
@@ -208,7 +209,7 @@ func WithPubSubRouter(routeType string) configFactory {
 }
 
 // WithNATMap enables nat mapping
-func WithNATMap() configFactory {
+func WithNATMap() Option {
 	return func(c *Config) error {
 		c.EnableNATMap = true
 		return nil
@@ -216,7 +217,7 @@ func WithNATMap() configFactory {
 }
 
 // WithExternalIP sets an arbitrary ip/port for broadcasting to swarm
-func WithExternalIP(ip string, port int) configFactory {
+func WithExternalIP(ip string, port int) Option {
 	return func(c *Config) error {
 		extMaddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/%d", ip, c.Port))
 

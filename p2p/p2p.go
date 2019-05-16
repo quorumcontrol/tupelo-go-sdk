@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"sync"
 	"time"
 
 	ds "github.com/ipfs/go-datastore"
@@ -39,14 +40,15 @@ var _ Node = (*LibP2PHost)(nil)
 type LibP2PHost struct {
 	Reporter metrics.Reporter
 
-	host            *rhost.RoutedHost
-	routing         *dht.IpfsDHT
-	publicKey       *ecdsa.PublicKey
-	bootstrapConfig *BootstrapConfig
-	pubsub          *pubsub.PubSub
-	datastore       ds.Batching
-	parentCtx       context.Context
-	discoverers     []*tupeloDiscoverer
+	host             *rhost.RoutedHost
+	routing          *dht.IpfsDHT
+	publicKey        *ecdsa.PublicKey
+	bootstrapStarted bool
+	pubsub           *pubsub.PubSub
+	datastore        ds.Batching
+	parentCtx        context.Context
+	discoverers      map[string]*tupeloDiscoverer
+	discoverLock     *sync.Mutex
 }
 
 const expectedKeySize = 32
@@ -74,7 +76,7 @@ func PeerFromEcdsaKey(publicKey *ecdsa.PublicKey) (peer.ID, error) {
 	return peer.IDFromPublicKey(p2pPublicKeyFromEcdsaPublic(publicKey))
 }
 
-func NewHostAndBitSwapPeer(ctx context.Context, userOpts ...configFactory) (*LibP2PHost, *BitswapPeer, error) {
+func NewHostAndBitSwapPeer(ctx context.Context, userOpts ...Option) (*LibP2PHost, *BitswapPeer, error) {
 	h, err := NewHostFromOptions(ctx, userOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error generating libp2p host: %v", err)
@@ -86,7 +88,7 @@ func NewHostAndBitSwapPeer(ctx context.Context, userOpts ...configFactory) (*Lib
 	return h, peer, nil
 }
 
-func NewHostFromOptions(ctx context.Context, userOpts ...configFactory) (*LibP2PHost, error) {
+func NewHostFromOptions(ctx context.Context, userOpts ...Option) (*LibP2PHost, error) {
 	c := &Config{}
 	opts := append(defaultOptions(), userOpts...)
 	err := applyOptions(c, opts...)
@@ -194,21 +196,21 @@ func newLibP2PHostFromConfig(ctx context.Context, c *Config) (*LibP2PHost, error
 	}
 
 	h := &LibP2PHost{
-		host:      routedHost,
-		routing:   idht,
-		publicKey: &c.PrivateKey.PublicKey,
-		Reporter:  c.BandwidthReporter,
-		pubsub:    pub,
-		parentCtx: ctx,
-		datastore: c.DataStore,
+		host:         routedHost,
+		routing:      idht,
+		publicKey:    &c.PrivateKey.PublicKey,
+		Reporter:     c.BandwidthReporter,
+		pubsub:       pub,
+		parentCtx:    ctx,
+		datastore:    c.DataStore,
+		discoverLock: new(sync.Mutex),
+		discoverers:  make(map[string]*tupeloDiscoverer),
 	}
 
 	if len(c.DiscoveryNamespaces) > 0 {
-		discoverers := make([]*tupeloDiscoverer, len(c.DiscoveryNamespaces))
-		for i, namespace := range c.DiscoveryNamespaces {
-			discoverers[i] = newTupeloDiscoverer(h, namespace)
+		for _, namespace := range c.DiscoveryNamespaces {
+			h.discoverers[namespace] = newTupeloDiscoverer(h, namespace)
 		}
-		h.discoverers = discoverers
 	}
 
 	return h, nil
@@ -228,42 +230,45 @@ func (h *LibP2PHost) GetPubSub() *pubsub.PubSub {
 }
 
 func (h *LibP2PHost) Bootstrap(peers []string) (io.Closer, error) {
-	bootstrapCfg := BootstrapConfigWithPeers(convertPeers(peers))
-	h.bootstrapConfig = &bootstrapCfg
-	closer, err := Bootstrap(h.host, h.routing, bootstrapCfg)
-	if err != nil {
-		return nil, fmt.Errorf("error bootstrapping: %v", err)
-	}
+	bootstrapper := NewBootstrapper(convertPeers(peers), h.host, h.host.Network(), h.routing, 4, 2*time.Second)
+	bootstrapper.Start(h.parentCtx)
+	h.bootstrapStarted = true
 
-	err = h.WaitForBootstrap(1, 20*time.Second)
-	if err != nil {
-		return nil, fmt.Errorf("error connecting to at least 1 bootstrap node: %v", err)
-	}
-
-	err = h.startDiscovery()
-	if err != nil {
-		return nil, fmt.Errorf("error starting discovery: %v", err)
-	}
-
-	go func() {
-		<-h.parentCtx.Done()
-		closer.Close()
-	}()
-	return closer, nil
-}
-
-func (h *LibP2PHost) startDiscovery() error {
 	for _, discoverer := range h.discoverers {
-		err := discoverer.doDiscovery(h.parentCtx)
+		err := discoverer.start(h.parentCtx)
 		if err != nil {
-			return fmt.Errorf("error starting discovery for %s: %v", discoverer.namespace, err)
+			return nil, fmt.Errorf("error starting discovery for %s: %v", discoverer.namespace, err)
 		}
 	}
-	return nil
+
+	return bootstrapper, nil
+}
+
+func (h *LibP2PHost) StartDiscovery(namespace string) error {
+	h.discoverLock.Lock()
+	defer h.discoverLock.Unlock()
+
+	discoverer, ok := h.discoverers[namespace]
+	if !ok {
+		discoverer = newTupeloDiscoverer(h, namespace)
+		h.discoverers[namespace] = discoverer
+	}
+	return discoverer.start(h.parentCtx)
+}
+
+func (h *LibP2PHost) StopDiscovery(namespace string) {
+	h.discoverLock.Lock()
+	defer h.discoverLock.Unlock()
+
+	discoverer, ok := h.discoverers[namespace]
+	if ok {
+		discoverer.stop()
+	}
+	delete(h.discoverers, namespace)
 }
 
 func (h *LibP2PHost) WaitForBootstrap(peerCount int, timeout time.Duration) error {
-	if h.bootstrapConfig == nil {
+	if !h.bootstrapStarted {
 		return fmt.Errorf("error must call Bootstrap() before calling WaitForBootstrap")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -283,6 +288,15 @@ func (h *LibP2PHost) WaitForBootstrap(peerCount int, timeout time.Duration) erro
 			return fmt.Errorf("timeout waiting for bootstrap")
 		}
 	}
+}
+
+func (h *LibP2PHost) WaitForDiscovery(namespace string, num int, duration time.Duration) error {
+	discoverer, ok := h.discoverers[namespace]
+	if !ok {
+		return fmt.Errorf("error missing discoverer (%s)", namespace)
+	}
+
+	return discoverer.waitForNumber(num, duration)
 }
 
 func (h *LibP2PHost) SetStreamHandler(protocol protocol.ID, handler net.StreamHandler) {

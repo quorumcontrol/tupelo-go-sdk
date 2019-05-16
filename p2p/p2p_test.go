@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -102,4 +103,59 @@ func TestUnmarshal31ByteKey(t *testing.T) {
 	require.Nil(t, err)
 
 	assert.Equal(t, crypto.CompressPubkey(&key.PublicKey), libP2PPub)
+}
+
+func TestWaitForDiscovery(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	h1, err := NewHostFromOptions(ctx, WithDiscoveryNamespaces("one", "two"))
+	require.Nil(t, err)
+
+	h2, err := NewHostFromOptions(ctx, WithDiscoveryNamespaces("one"))
+	require.Nil(t, err)
+
+	_, err = h1.Bootstrap(bootstrapAddresses(h2))
+	require.Nil(t, err)
+
+	_, err = h2.Bootstrap(bootstrapAddresses(h1))
+	require.Nil(t, err)
+
+	err = h1.WaitForBootstrap(1, 1*time.Second)
+	require.Nil(t, err)
+
+	// one should already be fine and not wait at all (because of bootstrap)
+	err = h1.WaitForDiscovery("one", 1, 2*time.Second)
+	require.Nil(t, err)
+}
+
+func TestNewDiscoverers(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	h1, err := NewHostFromOptions(ctx)
+	require.Nil(t, err)
+
+	h2, err := NewHostFromOptions(ctx)
+	require.Nil(t, err)
+
+	_, err = h1.Bootstrap(bootstrapAddresses(h2))
+	require.Nil(t, err)
+
+	err = h1.WaitForBootstrap(1, 1*time.Second)
+	require.Nil(t, err)
+
+	ns := "totally-new"
+
+	err = h1.StartDiscovery(ns)
+	require.Nil(t, err)
+
+	defer h1.StopDiscovery(ns)
+
+	err = h2.StartDiscovery(ns)
+	require.Nil(t, err)
+	defer h2.StopDiscovery(ns)
+
+	err = h2.WaitForDiscovery(ns, 1, 2*time.Second)
+	require.Nil(t, err)
 }
