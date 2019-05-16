@@ -33,6 +33,8 @@ const TransactionBroadcastTopic = "tupelo-transaction-broadcast"
 // 10 is the library's default, but this makes it explicit.
 const MaxPlayTransactionsAttempts = uint(10)
 
+const ErrorTimeout = "error timeout"
+
 // Client represents a Tupelo client for interacting with and
 // listening to ChainTree events
 type Client struct {
@@ -245,7 +247,7 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 	}
 
 	if uncastResp == nil {
-		return nil, fmt.Errorf("error timeout")
+		return nil, fmt.Errorf(ErrorTimeout)
 	}
 
 	var resp *messages.CurrentState
@@ -300,7 +302,7 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 		},
 		retry.Attempts(MaxPlayTransactionsAttempts),
 		retry.RetryIf(func(err error) bool {
-			return err.Error() == "error timeout" // ewwww; is there a better way to do this? a coded error of some sort?
+			return err.Error() == ErrorTimeout
 		}),
 		retry.OnRetry(func(n uint, err error) {
 			c.log.Debugf("PlayTransactions attempt #%d error: %s", n, err)
