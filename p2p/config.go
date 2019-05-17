@@ -234,6 +234,13 @@ func WithExternalIP(ip string, port int) Option {
 	}
 }
 
+func WithLibp2pOptions(opts ...libp2p.Option) Option {
+	return func(c *Config) error {
+		c.AdditionalP2POptions = opts
+		return nil
+	}
+}
+
 func stringToIPNet(str string) (*net.IPNet, error) {
 	_, n, err := net.ParseCIDR(str)
 	if err != nil {

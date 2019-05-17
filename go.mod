@@ -21,6 +21,7 @@ require (
 	github.com/ipfs/go-merkledag v0.0.3
 	github.com/libp2p/go-libp2p v0.0.21
 	github.com/libp2p/go-libp2p-circuit v0.0.4
+	github.com/libp2p/go-libp2p-connmgr v0.0.3
 	github.com/libp2p/go-libp2p-crypto v0.0.1
 	github.com/libp2p/go-libp2p-discovery v0.0.2
 	github.com/libp2p/go-libp2p-host v0.0.2
