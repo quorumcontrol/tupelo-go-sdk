@@ -173,6 +173,8 @@ func newLibP2PHostFromConfig(ctx context.Context, c *Config) (*LibP2PHost, error
 		opts = append(opts, libp2p.PrivateNetwork(prot))
 	}
 
+	opts = append(opts, c.AdditionalP2POptions...)
+
 	basicHost, err := libp2p.New(ctx, opts...)
 	if err != nil {
 		return nil, err

@@ -9,7 +9,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/libp2p/go-libp2p"
 	circuit "github.com/libp2p/go-libp2p-circuit"
+	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -75,6 +77,9 @@ func TestNewHostFromOptions(t *testing.T) {
 	t.Run("it works with more esoteric options", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
+
+		cm := connmgr.NewConnManager(20, 100, 20*time.Second)
+
 		h, err := NewHostFromOptions(
 			ctx,
 			WithKey(key),
@@ -82,6 +87,7 @@ func TestNewHostFromOptions(t *testing.T) {
 			WithSegmenter([]byte("my secret password")),
 			WithPubSubRouter("floodsub"),
 			WithRelayOpts(circuit.OptHop),
+			WithLibp2pOptions(libp2p.ConnectionManager(cm)),
 		)
 		require.Nil(t, err)
 		require.NotNil(t, h)
