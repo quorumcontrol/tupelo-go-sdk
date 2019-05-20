@@ -143,7 +143,7 @@ func (c *Client) Subscribe(trans *messages.Transaction, timeout time.Duration) *
 
 			// if we didn't get an equal tip, but it was at the same height, it means someone else got to us first.
 			if msg.Signature.Height == trans.Height {
-				actorContext.Send(fut.PID(), fmt.Errorf("signature at same hight did not match transaction new tip. Expected %s got %s", trans.NewTip, msg.Signature.NewTip))
+				actorContext.Send(fut.PID(), fmt.Errorf("error signature at same height did not match transaction new tip. Expected %s, got %s", trans.NewTip, msg.Signature.NewTip))
 				return
 			}
 
@@ -151,7 +151,7 @@ func (c *Client) Subscribe(trans *messages.Transaction, timeout time.Duration) *
 			// log it as an error still because we'd like to minimize these things. Also, don't send a positive, just don't send anything and
 			// let timeout handle this if it's actually an error.
 			if msg.Signature.Height > trans.Height {
-				c.log.Error("received height %d before the height %s was looking for (%d)", msg.Signature.Height, transID, trans.Height)
+				c.log.Error("error received height %d before the height %s was looking for (%d)", msg.Signature.Height, transID, trans.Height)
 				return
 			}
 		}
