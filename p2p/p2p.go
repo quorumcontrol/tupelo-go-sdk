@@ -28,6 +28,7 @@ import (
 	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	ma "github.com/multiformats/go-multiaddr"
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
 )
 
 var log = logging.Logger("tupelop2p")
@@ -99,6 +100,7 @@ func NewHostFromOptions(ctx context.Context, userOpts ...Option) (*LibP2PHost, e
 }
 
 func NewRelayLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port int) (*LibP2PHost, error) {
+	middleware.Log.Debugw("constructing new relay libp2p host")
 	cfg, err := backwardsCompatibleConfig(privateKey, port, true)
 	if err != nil {
 		return nil, fmt.Errorf("error generating config: %v", err)
@@ -107,6 +109,7 @@ func NewRelayLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port 
 }
 
 func NewLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port int) (*LibP2PHost, error) {
+	middleware.Log.Debugw("constructing new libp2p host")
 	cfg, err := backwardsCompatibleConfig(privateKey, port, false)
 	if err != nil {
 		return nil, fmt.Errorf("error generating config: %v", err)
