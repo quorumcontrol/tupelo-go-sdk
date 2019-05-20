@@ -173,6 +173,8 @@ func newLibP2PHostFromConfig(ctx context.Context, c *Config) (*LibP2PHost, error
 		opts = append(opts, libp2p.PrivateNetwork(prot))
 	}
 
+	opts = append(opts, c.AdditionalP2POptions...)
+
 	basicHost, err := libp2p.New(ctx, opts...)
 	if err != nil {
 		return nil, err
@@ -230,7 +232,12 @@ func (h *LibP2PHost) GetPubSub() *pubsub.PubSub {
 }
 
 func (h *LibP2PHost) Bootstrap(peers []string) (io.Closer, error) {
-	bootstrapper := NewBootstrapper(convertPeers(peers), h.host, h.host.Network(), h.routing, 4, 2*time.Second)
+	minPeers := 4
+	if len(peers) < minPeers {
+		minPeers = len(peers)
+	}
+	bootstrapper := NewBootstrapper(convertPeers(peers), h.host, h.host.Network(), h.routing,
+		minPeers, 2*time.Second)
 	bootstrapper.Start(h.parentCtx)
 	h.bootstrapStarted = true
 
