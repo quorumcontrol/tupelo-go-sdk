@@ -12,7 +12,6 @@ import (
 )
 
 func init() {
-	RegisterMessage(&Error{})
 	RegisterMessage(&Ping{})
 	RegisterMessage(&Pong{})
 	RegisterMessage(&Store{})
@@ -26,17 +25,6 @@ func init() {
 type DestinationSettable interface {
 	SetDestination(*ActorPID)
 	GetDestination() *ActorPID
-}
-
-// Error represents an error message.
-type Error struct {
-	Source string
-	Code   int
-	Memo   string
-}
-
-func (Error) TypeCode() int8 {
-	return -1
 }
 
 type Ping struct {
