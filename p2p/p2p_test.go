@@ -127,7 +127,7 @@ func TestWaitForDiscovery(t *testing.T) {
 	_, err = h2.Bootstrap(bootstrapAddresses(h1))
 	require.Nil(t, err)
 
-	err = h1.WaitForBootstrap(1, 1*time.Second)
+	err = h1.WaitForBootstrap(1, 10*time.Second)
 	require.Nil(t, err)
 
 	// one should already be fine and not wait at all (because of bootstrap)
@@ -148,7 +148,7 @@ func TestNewDiscoverers(t *testing.T) {
 	_, err = h1.Bootstrap(bootstrapAddresses(h2))
 	require.Nil(t, err)
 
-	err = h1.WaitForBootstrap(1, 1*time.Second)
+	err = h1.WaitForBootstrap(1, 10*time.Second)
 	require.Nil(t, err)
 
 	ns := "totally-new"
