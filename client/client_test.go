@@ -1,6 +1,7 @@
 package client
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -28,6 +29,7 @@ func TestSubscription(t *testing.T) {
 			Signature: &messages.Signature{
 				ObjectID: trans.ObjectID,
 				Height:   trans.Height,
+				NewTip:   trans.NewTip,
 			},
 		}
 		err := pubSubSystem.Broadcast(string(trans.ObjectID), currState)
@@ -38,20 +40,24 @@ func TestSubscription(t *testing.T) {
 		require.Equal(t, currState, res)
 	})
 
-	t.Run("works with errors", func(t *testing.T) {
+	t.Run("errors when height has non-matching tip", func(t *testing.T) {
 		client := New(ng, string(trans.ObjectID), pubSubSystem)
 		defer client.Stop()
 
 		fut := client.Subscribe(&trans, 1*time.Second)
 		time.Sleep(100 * time.Millisecond)
-		msgErr := &messages.Error{
-			Source: string(trans.ID()),
+		currState := &messages.CurrentState{
+			Signature: &messages.Signature{
+				ObjectID: trans.ObjectID,
+				Height:   trans.Height,
+				NewTip:   []byte("somebadtip"),
+			},
 		}
-		err := pubSubSystem.Broadcast(string(trans.ObjectID), msgErr)
+		err := pubSubSystem.Broadcast(string(trans.ObjectID), currState)
 		require.Nil(t, err)
 
 		res, err := fut.Result()
 		require.Nil(t, err)
-		require.Equal(t, msgErr, res)
+		require.IsType(t, errors.New("error"), res)
 	})
 }

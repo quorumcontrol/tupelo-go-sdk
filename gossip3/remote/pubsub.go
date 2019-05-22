@@ -177,18 +177,20 @@ func (bs *broadcastSubscriber) Receive(actorContext actor.Context) {
 }
 
 func (bs *broadcastSubscriber) handlePubSubMessage(actorContext actor.Context, pubsubMsg *pubsub.Message) {
-	bs.Log.Debugw("received")
+	bs.Log.Debugw("received pubsub message", "topic", bs.topicName)
 	msg, err := pubsubMessageToWireMessage(pubsubMsg)
 	if err != nil {
 		bs.Log.Errorw("error getting wire message", "err", err)
 		return
 	}
 
+	bs.Log.Debugw("converted to wire message", "msg", msg.TypeCode())
 	if traceable, ok := msg.(tracing.Traceable); ok {
 		sp := traceable.NewSpan("pubsub-receive")
 		defer sp.Finish()
 	}
 	if bs.notifyParent {
+		bs.Log.Debugw("notifying parent actor")
 		actorContext.Send(actorContext.Parent(), msg)
 	}
 	for _, subscriber := range bs.subscribers {

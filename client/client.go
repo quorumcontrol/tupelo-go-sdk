@@ -92,15 +92,10 @@ func (c *Client) subscriptionReceive(actorContext actor.Context) {
 		}
 	case *messages.CurrentState:
 		heightString := strconv.FormatUint(msg.Signature.Height, 10)
+		//TODO: this needs to check the validity of the signature
 		existed, _ := c.cache.ContainsOrAdd(heightString, msg)
 		if !existed {
 			c.log.Debugw("publishing current state", "objectID", string(msg.Signature.ObjectID), "height", heightString)
-			c.stream.Publish(msg)
-		}
-	case *messages.Error:
-		existed, _ := c.cache.ContainsOrAdd(string(msg.Source), msg)
-		if !existed {
-			c.log.Debugw("publishing error", "tx", string(msg.Source))
 			c.stream.Publish(msg)
 		}
 	default:
@@ -141,12 +136,24 @@ func (c *Client) Subscribe(trans *messages.Transaction, timeout time.Duration) *
 	sub := c.stream.Subscribe(func(msgInter interface{}) {
 		switch msg := msgInter.(type) {
 		case *messages.CurrentState:
-			if msg.Signature.Height == trans.Height {
+			// if the tips are equal then we got a great response and we can go on our merry way
+			if bytes.Equal(msg.Signature.NewTip, trans.NewTip) {
 				actorContext.Send(fut.PID(), msg)
+				return
 			}
-		case *messages.Error:
-			if msg.Source == string(transID) {
-				actorContext.Send(fut.PID(), msg)
+
+			// if we didn't get an equal tip, but it was at the same height, it means someone else got to us first.
+			if msg.Signature.Height == trans.Height {
+				actorContext.Send(fut.PID(), fmt.Errorf("error signature at same height did not match transaction new tip. Expected %s, got %s", trans.NewTip, msg.Signature.NewTip))
+				return
+			}
+
+			// if the height of the return was greater than this transaction than don't freak out because messages can come in out of order, but
+			// log it as an error still because we'd like to minimize these things. Also, don't send a positive, just don't send anything and
+			// let timeout handle this if it's actually an error.
+			if msg.Signature.Height > trans.Height {
+				c.log.Error("error received height %d before the height %s was looking for (%d)", msg.Signature.Height, transID, trans.Height)
+				return
 			}
 		}
 	})
@@ -234,7 +241,7 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 		State:       nodesToBytes(nodes),
 	}
 
-	fut := c.Subscribe(&transaction, 60*time.Second)
+	fut := c.Subscribe(&transaction, 10*time.Second)
 
 	time.Sleep(100 * time.Millisecond)
 	err = c.SendTransaction(&transaction)
@@ -253,7 +260,7 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 
 	var resp *messages.CurrentState
 	switch respVal := uncastResp.(type) {
-	case *messages.Error:
+	case error:
 		return nil, fmt.Errorf("error response: %v", respVal)
 	case *messages.CurrentState:
 		resp = respVal
