@@ -94,7 +94,7 @@ type Signature struct {
 	NewTip        []byte
 	View          uint64
 	Cycle         uint64
-	Signers       []byte // this is a marshaled BitArray from github.com/Workiva/go-datastructures
+	Signers       []uint32
 	Signature     []byte
 	Type          string
 }

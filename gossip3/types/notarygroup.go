@@ -10,7 +10,6 @@ import (
 	"sort"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
-	"github.com/Workiva/go-datastructures/bitarray"
 )
 
 // NotaryGroup represents a notary group.
@@ -86,24 +85,6 @@ func (ng *NotaryGroup) SetupAllRemoteActors(localKey *ecdsa.PublicKey) {
 	for _, signer := range ng.AllSigners() {
 		signer.Actor = actor.NewPID(signer.ActorAddress(localKey), "tupelo-"+signer.ID)
 	}
-}
-
-func (ng *NotaryGroup) VerKeysOf(signerArray bitarray.BitArray) ([][]byte, error) {
-	var verKeys [][]byte
-
-	signers := ng.AllSigners()
-
-	for i, signer := range signers {
-		isSet, err := signerArray.GetBit(uint64(i))
-		if err != nil {
-			return nil, fmt.Errorf("error converting signatures: %v", err)
-		}
-		if isSet {
-			verKeys = append(verKeys, signer.VerKey.Bytes())
-		}
-	}
-
-	return verKeys, nil
 }
 
 func randInt(max int) int {
