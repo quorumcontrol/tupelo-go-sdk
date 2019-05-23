@@ -671,9 +671,15 @@ github.com/prometheus/procfs v0.0.0-20190416084830-8368d24ba045 h1:Raos9GP+3BlCB
 github.com/prometheus/procfs v0.0.0-20190416084830-8368d24ba045/go.mod h1:TjEm7ze935MbeOT/UhFTIMYKhuLP4wbCsTZCD3I8kEA=
 github.com/quorumcontrol/chaintree v0.0.0-20190515172607-6a3407e067bd h1:DU9UrPfSVCDxMnYSPYyjjc9M+w1mJ/GHuGy0RdRm+UY=
 github.com/quorumcontrol/chaintree v0.0.0-20190515172607-6a3407e067bd/go.mod h1:gb3U31nAvHizf2p4TVR33bqI/Hao966IKB6fx48Uw9s=
+github.com/quorumcontrol/chaintree v0.0.0-20190523083755-b12b8ca0dfd5 h1:E/XtM1HWiZpVAQHzHlcBdTpsPiS2VN2pNbGfWE5p18c=
+github.com/quorumcontrol/chaintree v0.0.0-20190523083755-b12b8ca0dfd5/go.mod h1:KIZ1Dr+FH7kKR9RchQi+3yHGrRBcWFBQN+x2ymlMdNw=
 github.com/quorumcontrol/messages v0.0.0-20190329073357-72154292315e h1:8k6JaV19BPvytk7ZDivydhe4moMSXW14mZLRXlTKmy4=
 github.com/quorumcontrol/messages v0.0.0-20190329073357-72154292315e/go.mod h1:pzXj6nCg48pukCXaEgzsdSKuWsq5mAYv1erpV/ds4oU=
 github.com/quorumcontrol/messages v0.0.0-20190520123502-e5e9bc43a433 h1:mrGO4M/TpdZlF7Ej1HH3k5Yzo2VRU4WN78VacVLDnZc=
+github.com/quorumcontrol/messages v0.0.0-20190523083604-235912fee68d h1:/45rL7DYMT+yFbCZsVE/lxy2oduuk2mEW2ISfaTf7AI=
+github.com/quorumcontrol/messages v0.0.0-20190523083604-235912fee68d/go.mod h1:pzXj6nCg48pukCXaEgzsdSKuWsq5mAYv1erpV/ds4oU=
+github.com/quorumcontrol/messages/build/go v0.0.0-20190523083604-235912fee68d h1:c1iEeuRpROpO4tYhMhpJhFzSRzh32me8y+SBImH31Hw=
+github.com/quorumcontrol/messages/build/go v0.0.0-20190523083604-235912fee68d/go.mod h1:AalYdj/vWDqRzlpOZ0z1UDo6nqVTiCZHoZ79/3lW/Xw=
 github.com/quorumcontrol/namedlocker v0.0.0-20180808140020-3f797c8b12b1 h1:FglNF7FTLpcl171qo5MFvbKjrLEsLtcKF72uQpefiPM=
 github.com/quorumcontrol/namedlocker v0.0.0-20180808140020-3f797c8b12b1/go.mod h1:7JSFW45PpKoXFaUpaJ8YtCNIwQWut0+Huo9ugBnKVe4=
 github.com/quorumcontrol/storage v1.1.2 h1:F6qRGnWx2GzO5fitMh8axvT9NjHUHnGp3n2MYwnjKP4=
@@ -842,6 +848,7 @@ golang.org/x/net v0.0.0-20190227160552-c95aed5357e7 h1:C2F/nMkR/9sfUTpvR3QrjBuTd
 golang.org/x/net v0.0.0-20190227160552-c95aed5357e7/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
 golang.org/x/net v0.0.0-20190311183353-d8887717615a h1:oWX7TPOiFAMXLq8o0ikBYfCJVlRHBcsciT5bXOrH628=
 golang.org/x/net v0.0.0-20190311183353-d8887717615a/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
+golang.org/x/net v0.0.0-20190328230028-74de082e2cca/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
 golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
 golang.org/x/net v0.0.0-20190415214537-1da14a5a36f2 h1:iC0Y6EDq+rhnAePxGvJs2kzUAYcwESqdcGRPzEUfzTU=
 golang.org/x/net v0.0.0-20190415214537-1da14a5a36f2/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
@@ -920,6 +927,7 @@ google.golang.org/grpc v1.17.0/go.mod h1:6QZJwpn2B+Zp71q/5VxRsJ6NXXVCE5NRUHRo+f3
 google.golang.org/grpc v1.18.0 h1:IZl7mfBGfbhYx2p2rKRtYgDFw6SBz+kclmxYrCksPPA=
 google.golang.org/grpc v1.18.0/go.mod h1:6QZJwpn2B+Zp71q/5VxRsJ6NXXVCE5NRUHRo+f3cWCs=
 google.golang.org/grpc v1.19.0/go.mod h1:mqu4LbDTu4XGKhr4mRzUsmM4RtVoemTSY81AxZiDr8c=
+google.golang.org/grpc v1.19.1/go.mod h1:mqu4LbDTu4XGKhr4mRzUsmM4RtVoemTSY81AxZiDr8c=
 google.golang.org/grpc v1.20.0/go.mod h1:chYK+tFQF0nDUGJgXMSgLCQk3phJEuONr2DCgLDdAQM=
 gopkg.in/airbrake/gobrake.v2 v2.0.9/go.mod h1:/h5ZAUhDkGaJfjzjKLSjv6zCL6O0LLBxU4K+aSYdM/U=
 gopkg.in/alecthomas/kingpin.v2 v2.2.6/go.mod h1:FMv+mEhP44yOT+4EoQTLFTRgOQ1FBLkstjWtayDeSgw=

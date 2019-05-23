@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Workiva/go-datastructures/bitarray"
-	"github.com/quorumcontrol/messages/signatures"
+	"github.com/quorumcontrol/messages/build/go/signatures"
 	extmsgs "github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 )
 

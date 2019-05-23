@@ -14,7 +14,7 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
-	"github.com/quorumcontrol/messages/transactions"
+	"github.com/quorumcontrol/messages/build/go/transactions"
 	"go.uber.org/zap"
 
 	"github.com/quorumcontrol/chaintree/chaintree"
