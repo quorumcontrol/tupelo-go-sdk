@@ -262,13 +262,13 @@ func (h *LibP2PHost) Bootstrap(peers []string) (io.Closer, error) {
 
 func (h *LibP2PHost) StartDiscovery(namespace string) error {
 	h.discoverLock.Lock()
-	defer h.discoverLock.Unlock()
 
 	discoverer, ok := h.discoverers[namespace]
 	if !ok {
 		discoverer = newTupeloDiscoverer(h, namespace)
 		h.discoverers[namespace] = discoverer
 	}
+	h.discoverLock.Unlock()
 	return discoverer.start(h.parentCtx)
 }
 
