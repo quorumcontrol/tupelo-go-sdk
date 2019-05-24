@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/golang/protobuf/ptypes"
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/storage"
@@ -33,12 +32,10 @@ func init() {
 	typecaster.AddType(TokenMint{})
 	typecaster.AddType(TokenSend{})
 	typecaster.AddType(TokenReceive{})
-	typecaster.AddType(StakePayload{})
 	cbornode.RegisterCborType(Token{})
 	cbornode.RegisterCborType(TokenMint{})
 	cbornode.RegisterCborType(TokenSend{})
 	cbornode.RegisterCborType(TokenReceive{})
-	cbornode.RegisterCborType(StakePayload{})
 }
 
 func complexType(obj interface{}) bool {
@@ -71,10 +68,9 @@ func DecodePath(path string) ([]string, error) {
 
 // SetDataTransaction just sets a path in tree/data to arbitrary data.
 func SetDataTransaction(_ string, tree *dag.Dag, txn *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
-	payload := &transactions.SetDataPayload{}
-	err := ptypes.UnmarshalAny(txn.Payload, payload)
+	payload, err := txn.EnsureSetDataPayload()
 	if err != nil {
-		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error casting payload: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error reading payload: %v", err)}
 	}
 
 	path, err := DecodePath(payload.Path)
@@ -106,10 +102,9 @@ func SetDataTransaction(_ string, tree *dag.Dag, txn *transactions.Transaction) 
 
 // SetOwnershipTransaction changes the ownership of a tree by adding a public key array to /_tupelo/authentications
 func SetOwnershipTransaction(_ string, tree *dag.Dag, txn *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
-	payload := &transactions.SetOwnershipPayload{}
-	err := ptypes.UnmarshalAny(txn.Payload, payload)
+	payload, err := txn.EnsureSetOwnershipPayload()
 	if err != nil {
-		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error casting payload: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error reading payload: %v", err)}
 	}
 
 	path, err := DecodePath(TreePathForAuthentications)
@@ -189,10 +184,9 @@ func CanonicalTokenName(tree *dag.Dag, defaultChainTreeDID, tokenName string, re
 }
 
 func EstablishTokenTransaction(chainTreeDID string, tree *dag.Dag, txn *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
-	payload := &transactions.EstablishTokenPayload{}
-	err := ptypes.UnmarshalAny(txn.Payload, payload)
+	payload, err := txn.EnsureEstablishTokenPayload()
 	if err != nil {
-		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error casting payload: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error reading payload: %v", err)}
 	}
 
 	tokenName, err := CanonicalTokenName(tree, chainTreeDID, payload.Name, true)
@@ -226,10 +220,9 @@ func EstablishTokenTransaction(chainTreeDID string, tree *dag.Dag, txn *transact
 }
 
 func MintTokenTransaction(chainTreeDID string, tree *dag.Dag, txn *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
-	payload := &transactions.MintTokenPayload{}
-	err := ptypes.UnmarshalAny(txn.Payload, payload)
+	payload, err := txn.EnsureMintTokenPayload()
 	if err != nil {
-		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error casting payload: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error reading payload: %v", err)}
 	}
 
 	tokenName, err := CanonicalTokenName(tree, chainTreeDID, payload.Name, true)
@@ -248,10 +241,9 @@ func MintTokenTransaction(chainTreeDID string, tree *dag.Dag, txn *transactions.
 }
 
 func SendTokenTransaction(chainTreeDID string, tree *dag.Dag, txn *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
-	payload := &transactions.SendTokenPayload{}
-	err := ptypes.UnmarshalAny(txn.Payload, payload)
+	payload, err := txn.EnsureSendTokenPayload()
 	if err != nil {
-		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error casting payload: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error reading payload: %v", err)}
 	}
 
 	tokenName, err := CanonicalTokenName(tree, chainTreeDID, payload.Name, false)
@@ -388,10 +380,9 @@ func getSendTokenFromReceive(senderDag *dag.Dag, tokenName string) (*TokenSend, 
 }
 
 func ReceiveTokenTransaction(_ string, tree *dag.Dag, txn *transactions.Transaction) (newTree *dag.Dag, valid bool, codedError chaintree.CodedError) {
-	payload := &transactions.ReceiveTokenPayload{}
-	err := ptypes.UnmarshalAny(txn.Payload, payload)
+	payload, err := txn.EnsureReceiveTokenPayload()
 	if err != nil {
-		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error typecasting payload: %v", err)}
+		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error reading payload: %v", err)}
 	}
 
 	tipCid, err := cid.Cast(payload.Tip)
@@ -432,20 +423,12 @@ func ReceiveTokenTransaction(_ string, tree *dag.Dag, txn *transactions.Transact
 	return newTree, true, nil
 }
 
-type StakePayload struct {
-	GroupId string
-	Amount  uint64
-	DstKey  PublicKey
-	VerKey  PublicKey
-}
-
 // THIS IS A pre-ALPHA TRANSACTION AND NO RULES ARE ENFORCED! Anyone can stake and join a group with no consequences.
 // additionally, it only allows staking a single group at the moment
-func StakeTransaction(_ string, tree *dag.Dag, transaction *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
-	payload := &StakePayload{}
-	err := typecaster.ToType(transaction.Payload, payload)
+func StakeTransaction(_ string, tree *dag.Dag, txn *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
+	payload, err := txn.EnsureStakePayload()
 	if err != nil {
-		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error casting payload: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error reading payload: %v", err)}
 	}
 
 	path, err := DecodePath(TreePathForStake)

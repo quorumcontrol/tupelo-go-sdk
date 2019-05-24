@@ -14,6 +14,7 @@ import (
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/chaintree/typecaster"
+	"github.com/quorumcontrol/messages/build/go/signatures"
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 	extmsgs "github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 )
@@ -21,10 +22,8 @@ import (
 func init() {
 	typecaster.AddType(StandardHeaders{})
 	typecaster.AddType(extmsgs.Signature{})
-	typecaster.AddType(PublicKey{})
 	cbornode.RegisterCborType(StandardHeaders{})
 	cbornode.RegisterCborType(extmsgs.Signature{})
-	cbornode.RegisterCborType(PublicKey{})
 }
 
 type SignatureMap map[string]extmsgs.Signature
@@ -73,12 +72,6 @@ const (
 	KeyTypeSecp256k1   = "secp256k1"
 )
 
-type PublicKey struct {
-	Id        string `refmt:"id,omitempty" json:"id,omitempty" cbor:"id,omitempty"`
-	Type      string `refmt:"type,omitempty" json:"type,omitempty" cbor:"type,omitempty"`
-	PublicKey []byte `refmt:"publicKey,omitempty" json:"publicKey,omitempty" cbor:"publicKey,omitempty"`
-}
-
 type StandardHeaders struct {
 	Signatures SignatureMap `refmt:"signatures,omitempty" json:"signatures,omitempty" cbor:"signatures,omitempty"`
 }
@@ -98,9 +91,9 @@ func DidToAddr(did string) string {
 	return segs[len(segs)-1]
 }
 
-// ToEcdsaPub returns the ecdsa typed key from the bytes in the PublicKey
-// at this time there is no error checking.
-func (pk *PublicKey) ToEcdsaPub() *ecdsa.PublicKey {
+// PublicKeyToEcdsaPub returns the ecdsa typed key from the bytes in the
+// PublicKey at this time there is no error checking.
+func PublicKeyToEcdsaPub(pk *signatures.PublicKey) *ecdsa.PublicKey {
 	ecdsaPk, err := crypto.UnmarshalPubkey(pk.PublicKey)
 	if err != nil {
 		panic("Failed to unmarshal public key")
@@ -109,7 +102,7 @@ func (pk *PublicKey) ToEcdsaPub() *ecdsa.PublicKey {
 }
 
 // PublicKeyToAddr converts a public key to an address.
-func PublicKeyToAddr(key *PublicKey) string {
+func PublicKeyToAddr(key *signatures.PublicKey) string {
 	switch key.Type {
 	case KeyTypeSecp256k1:
 		ecdsaPk, err := crypto.UnmarshalPubkey(key.PublicKey)
@@ -128,16 +121,16 @@ func BlsVerKeyToAddress(pubBytes []byte) common.Address {
 	return common.BytesToAddress(crypto.Keccak256(pubBytes)[12:])
 }
 
-func EcdsaToPublicKey(key *ecdsa.PublicKey) PublicKey {
-	return PublicKey{
+func EcdsaToPublicKey(key *ecdsa.PublicKey) signatures.PublicKey {
+	return signatures.PublicKey{
 		Type:      KeyTypeSecp256k1,
 		PublicKey: crypto.FromECDSAPub(key),
 		Id:        crypto.PubkeyToAddress(*key).String(),
 	}
 }
 
-func BlsKeyToPublicKey(key *bls.VerKey) PublicKey {
-	return PublicKey{
+func BlsKeyToPublicKey(key *bls.VerKey) signatures.PublicKey {
+	return signatures.PublicKey{
 		Id:        BlsVerKeyToAddress(key.Bytes()).Hex(),
 		PublicKey: key.Bytes(),
 		Type:      KeyTypeBLSGroupSig,
@@ -299,7 +292,7 @@ func EcdsaSign(payload interface{}, key *ecdsa.PrivateKey) (*extmsgs.Signature, 
 	}, nil
 }
 
-func Verify(hsh []byte, sig extmsgs.Signature, key PublicKey) (bool, error) {
+func Verify(hsh []byte, sig extmsgs.Signature, key signatures.PublicKey) (bool, error) {
 	switch sig.Type {
 	case KeyTypeSecp256k1:
 		recoverdPub, err := crypto.SigToPub(hsh, sig.Signature)

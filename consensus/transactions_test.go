@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/golang/protobuf/ptypes"
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/chaintree"
@@ -162,12 +161,10 @@ func TestEstablishTokenTransactionWithoutMonetaryPolicy(t *testing.T) {
 	tokenFullName := strings.Join([]string{treeDID, tokenName}, ":")
 
 	payload := &transactions.EstablishTokenPayload{Name: tokenName}
-	payloadWrapper, err := ptypes.MarshalAny(payload)
-	assert.Nil(t, err)
 
 	txn := &transactions.Transaction{
-		Type:    transactions.Transaction_ESTABLISHTOKEN,
-		Payload: payloadWrapper,
+		Type: transactions.Transaction_ESTABLISHTOKEN,
+		EstablishTokenPayload: payload,
 	}
 
 	blockWithHeaders := chaintree.BlockWithHeaders{
