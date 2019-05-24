@@ -88,6 +88,7 @@ func TestNewHostFromOptions(t *testing.T) {
 			WithPubSubRouter("floodsub"),
 			WithRelayOpts(circuit.OptHop),
 			WithLibp2pOptions(libp2p.ConnectionManager(cm)),
+			WithClientOnlyDHT(true),
 		)
 		require.Nil(t, err)
 		require.NotNil(t, h)
