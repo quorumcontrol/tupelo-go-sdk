@@ -141,7 +141,13 @@ func newLibP2PHostFromConfig(ctx context.Context, c *Config) (*LibP2PHost, error
 		libp2p.BandwidthReporter(c.BandwidthReporter),
 		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
 			// make the DHT with the given Host
-			rting, err := dht.New(ctx, h, dhtopts.Datastore(c.DataStore))
+			opts := []dhtopts.Option{
+				dhtopts.Datastore(c.DataStore),
+			}
+			if c.ClientOnlyDHT {
+				opts = append(opts, dhtopts.Client(true))
+			}
+			rting, err := dht.New(ctx, h, opts...)
 			if err == nil {
 				idht = rting
 			}
