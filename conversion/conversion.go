@@ -43,7 +43,7 @@ func ToInternalSignature(sig extmsgs.Signature) (*signatures.Signature, error) {
 			return nil, fmt.Errorf("error unmarshalling signers array: %v", err)
 		}
 
-		signersArray := make([]bool, signers.Capacity())
+		signersArray = make([]bool, signers.Capacity())
 		for i := uint64(0); i < signers.Capacity(); i++ {
 			isSet, err := signers.GetBit(i)
 			if err != nil {
