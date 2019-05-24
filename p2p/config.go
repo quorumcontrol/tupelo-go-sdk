@@ -41,6 +41,7 @@ type Config struct {
 	DataStore            ds.Batching
 	BandwidthReporter    metrics.Reporter
 	Segmenter            []byte
+	ClientOnlyDHT        bool
 	addressFactory       addressFactory
 }
 
@@ -236,6 +237,16 @@ func WithExternalIP(ip string, port int) Option {
 	}
 }
 
+// WithClientOnlyDHT sets whether or not the DHT will be put into client/server mode
+// client mode means it will not serve requests on the DHT
+func WithClientOnlyDHT(isClientOnly bool) Option {
+	return func(c *Config) error {
+		c.ClientOnlyDHT = isClientOnly
+		return nil
+	}
+}
+
+// With Libp2pOptions allows for additional libp2p options to be passed in
 func WithLibp2pOptions(opts ...libp2p.Option) Option {
 	return func(c *Config) error {
 		c.AdditionalP2POptions = opts
