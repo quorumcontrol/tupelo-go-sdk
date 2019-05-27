@@ -7,9 +7,8 @@ require (
 	github.com/Workiva/go-datastructures v1.0.50
 	github.com/avast/retry-go v2.3.0+incompatible
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
-	github.com/elastic/go-sysinfo v0.0.0-20190107121835-59ef8c0eae46 // indirect
+	github.com/elastic/go-sysinfo v1.0.1 // indirect
 	github.com/ethereum/go-ethereum v1.8.25
-	github.com/golang/protobuf v1.3.1
 	github.com/hashicorp/golang-lru v0.5.1
 	github.com/ipfs/go-bitswap v0.0.4
 	github.com/ipfs/go-blockservice v0.0.3
@@ -41,10 +40,8 @@ require (
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829
 	github.com/quorumcontrol/chaintree v0.0.0-20190524183749-8b070dcb62d7
-	github.com/quorumcontrol/messages v0.3.0
 	github.com/quorumcontrol/messages/build/go v0.0.0-20190524131644-280f165f71a5
 	github.com/quorumcontrol/storage v1.1.2
-	github.com/rogpeppe/godef v1.1.1 // indirect
 	github.com/santhosh-tekuri/jsonschema v1.2.4 // indirect
 	github.com/stretchr/testify v1.3.0
 	github.com/tinylib/msgp v1.1.0
@@ -58,8 +55,6 @@ require (
 	go.uber.org/zap v1.9.1
 	golang.org/x/crypto v0.0.0-20190422183909-d864b10871cd // indirect
 	golang.org/x/net v0.0.0-20190420063019-afa5a82059c6 // indirect
-	golang.org/x/sys v0.0.0-20190422165155-953cdadca894 // indirect
-	golang.org/x/tools v0.0.0-20190422233926-fe54fb35175b // indirect
 )
 
 replace github.com/libp2p/go-libp2p-pubsub v0.0.3 => github.com/quorumcontrol/go-libp2p-pubsub v0.0.0-20190515123400-58d894b144ff864d212cf4b13c42e8fdfe783aba
