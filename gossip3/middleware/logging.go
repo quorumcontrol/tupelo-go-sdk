@@ -57,10 +57,12 @@ func SetLogLevel(level string) error {
 }
 
 func buildLogger() *zap.SugaredLogger {
+	underK8s := os.Getenv("KUBERNETES_SERVICE_HOST") != ""
+
 	cfg := zap.NewDevelopmentConfig()
 	cfg.Level = globalLevel
-	if encoding := os.Getenv("TUPELO_GO_SDK_LOG_ENCODING"); encoding != "" {
-		cfg.Encoding = encoding
+	if underK8s {
+		cfg.Encoding = "json"
 	}
 
 	logger, err := cfg.Build()
