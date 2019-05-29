@@ -186,8 +186,9 @@ func (c *Client) Subscribe(trans *services.AddBlockRequest, timeout time.Duratio
 
 // SendTransaction sends a transaction to a signer.
 func (c *Client) SendTransaction(trans *services.AddBlockRequest) error {
-	c.log.Debugw("broadcasting transaction", "topic", TransactionBroadcastTopic)
-	return c.pubsub.Broadcast(c.Group.Config().TransactionTopic, trans)
+	topic := c.Group.Config().TransactionTopic
+	c.log.Debugw("broadcasting transaction", "topic", topic)
+	return c.pubsub.Broadcast(topic, trans)
 }
 
 func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*transactions.Transaction) (*consensus.AddBlockResponse, error) {
@@ -255,7 +256,6 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 	time.Sleep(100 * time.Millisecond)
 	c.log.Debugw("sending transaction", "height", transaction.Height, "chainTreeId", chainId)
 	err = c.SendTransaction(&transaction)
-	c.log.Debugw("finished sending transaction", "error", err)
 	if err != nil {
 		panic(fmt.Errorf("error sending transaction %v", err))
 	}
