@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
+	"github.com/quorumcontrol/messages/build/go/transactions"
 	"github.com/quorumcontrol/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -352,7 +353,7 @@ func TestTreeLedger_EstablishToken(t *testing.T) {
 
 	assert.False(t, otherTokenExists)
 
-	newTree, err := ledger.EstablishToken(TokenMonetaryPolicy{Maximum: uint64(42)})
+	newTree, err := ledger.EstablishToken(transactions.TokenMonetaryPolicy{Maximum: uint64(42)})
 	require.Nil(t, err)
 
 	ledger = NewTreeLedger(newTree, "other")
@@ -372,7 +373,7 @@ func TestTreeLedger_MintToken(t *testing.T) {
 		"_tupelo": map[string]interface{}{
 			"tokens": map[string]interface{}{
 				"test-token": map[string]interface{}{
-					MonetaryPolicyLabel: TokenMonetaryPolicy{Maximum: uint64(100)},
+					MonetaryPolicyLabel: transactions.TokenMonetaryPolicy{Maximum: uint64(100)},
 					TokenBalanceLabel:   uint64(10),
 					TokenMintLabel: []map[string]interface{}{
 						{"amount": 1},

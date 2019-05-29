@@ -3,11 +3,12 @@ package consensus
 import (
 	"fmt"
 
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/typecaster"
+	"github.com/quorumcontrol/messages/build/go/transactions"
 )
 
 const (
@@ -23,7 +24,7 @@ var transactionTypes = map[string][]string{
 type TokenLedger interface {
 	TokenExists() (bool, error)
 	Balance() (uint64, error)
-	EstablishToken(monetaryPolicy TokenMonetaryPolicy) (*dag.Dag, error)
+	EstablishToken(monetaryPolicy transactions.TokenMonetaryPolicy) (*dag.Dag, error)
 	MintToken(amount uint64) (*dag.Dag, error)
 	SendToken(txId, destination string, amount uint64) (*dag.Dag, error)
 	ReceiveToken(sendTokenTxId string, amount uint64) (*dag.Dag, error)
@@ -207,7 +208,7 @@ func (l *TreeLedger) createToken() (*dag.Dag, error) {
 	return newTree, nil
 }
 
-func (l *TreeLedger) EstablishToken(monetaryPolicy TokenMonetaryPolicy) (*dag.Dag, error) {
+func (l *TreeLedger) EstablishToken(monetaryPolicy transactions.TokenMonetaryPolicy) (*dag.Dag, error) {
 	newTree, err := l.createToken()
 	if err != nil {
 		return nil, err
@@ -251,7 +252,7 @@ func (l *TreeLedger) MintToken(amount uint64) (*dag.Dag, error) {
 		return nil, fmt.Errorf("error, token at path %v is missing a monetary policy", tokenPath)
 	}
 
-	monetaryPolicy := &TokenMonetaryPolicy{}
+	monetaryPolicy := &transactions.TokenMonetaryPolicy{}
 	err = typecaster.ToType(uncastMonetaryPolicy, monetaryPolicy)
 	if err != nil {
 		return nil, fmt.Errorf("error typecasting monetary policy: %v", err)

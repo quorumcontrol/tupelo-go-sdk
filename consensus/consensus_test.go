@@ -5,6 +5,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/quorumcontrol/chaintree/chaintree"
+	"github.com/quorumcontrol/messages/build/go/signatures"
+	"github.com/quorumcontrol/messages/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 	extmsgs "github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 	"github.com/stretchr/testify/assert"
@@ -14,22 +16,18 @@ func TestIsBlockSignedBy(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	assert.Nil(t, err)
 
-	blockWithHeaders := &chaintree.BlockWithHeaders{
+	txn, err := chaintree.NewSetDataTransaction("down/in/the/thing", "hi")
+	assert.Nil(t, err)
+
+	blockWithHeaders := chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: nil,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: "SET_DATA",
-					Payload: map[string]string{
-						"path":  "down/in/the/thing",
-						"value": "hi",
-					},
-				},
-			},
+			PreviousTip:  nil,
+			Height:       0,
+			Transactions: []*transactions.Transaction{txn},
 		},
 	}
 
-	signed, err := SignBlock(blockWithHeaders, key)
+	signed, err := SignBlock(&blockWithHeaders, key)
 
 	assert.Nil(t, err)
 
@@ -43,7 +41,7 @@ func TestIsBlockSignedBy(t *testing.T) {
 func TestVerify(t *testing.T) {
 	type testCase struct {
 		Description   string
-		PublicKey     PublicKey
+		PublicKey     signatures.PublicKey
 		Payload       []byte
 		Signature     extmsgs.Signature
 		ShouldSucceed bool

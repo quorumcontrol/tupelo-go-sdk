@@ -13,7 +13,7 @@ import (
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/chaintree/typecaster"
-	extmsgs "github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
+	"github.com/quorumcontrol/messages/build/go/transactions"
 )
 
 const (
@@ -22,43 +22,20 @@ const (
 	TreePathForStake           = "_tupelo/stake"
 	TreePathForData            = "data"
 
-	TokenMintLabel             = "mints"
-	TokenSendLabel             = "sends"
-	TokenReceiveLabel          = "receives"
+	TokenMintLabel    = "mints"
+	TokenSendLabel    = "sends"
+	TokenReceiveLabel = "receives"
 )
 
 func init() {
-	typecaster.AddType(SetDataPayload{})
-	typecaster.AddType(SetOwnershipPayload{})
-	typecaster.AddType(EstablishTokenPayload{})
-	typecaster.AddType(MintTokenPayload{})
-	typecaster.AddType(SendTokenPayload{})
-	typecaster.AddType(ReceiveTokenPayload{})
 	typecaster.AddType(Token{})
-	typecaster.AddType(TokenMonetaryPolicy{})
 	typecaster.AddType(TokenMint{})
 	typecaster.AddType(TokenSend{})
 	typecaster.AddType(TokenReceive{})
-	typecaster.AddType(StakePayload{})
-	cbornode.RegisterCborType(SetDataPayload{})
-	cbornode.RegisterCborType(SetOwnershipPayload{})
-	cbornode.RegisterCborType(EstablishTokenPayload{})
-	cbornode.RegisterCborType(MintTokenPayload{})
-	cbornode.RegisterCborType(SendTokenPayload{})
-	cbornode.RegisterCborType(ReceiveTokenPayload{})
 	cbornode.RegisterCborType(Token{})
-	cbornode.RegisterCborType(TokenMonetaryPolicy{})
 	cbornode.RegisterCborType(TokenMint{})
 	cbornode.RegisterCborType(TokenSend{})
 	cbornode.RegisterCborType(TokenReceive{})
-	cbornode.RegisterCborType(StakePayload{})
-}
-
-// SetDataPayload is the payload for a SetDataTransaction
-// Path / Value
-type SetDataPayload struct {
-	Path  string
-	Value interface{}
 }
 
 func complexType(obj interface{}) bool {
@@ -90,11 +67,10 @@ func DecodePath(path string) ([]string, error) {
 }
 
 // SetDataTransaction just sets a path in tree/data to arbitrary data.
-func SetDataTransaction(_ string, tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
-	payload := &SetDataPayload{}
-	err := typecaster.ToType(transaction.Payload, payload)
+func SetDataTransaction(_ string, tree *dag.Dag, txn *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
+	payload, err := txn.EnsureSetDataPayload()
 	if err != nil {
-		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error casting payload: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error reading payload: %v", err)}
 	}
 
 	path, err := DecodePath(payload.Path)
@@ -102,14 +78,20 @@ func SetDataTransaction(_ string, tree *dag.Dag, transaction *chaintree.Transact
 		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error decoding path: %v", err)}
 	}
 
+	var val interface{}
+	err = cbornode.DecodeInto(payload.Value, &val)
+	if err != nil {
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error decoding data value: %v", err)}
+	}
+
 	// SET_DATA always sets inside tree/data
 	dataPath, _ := DecodePath(TreePathForData)
 	path = append(dataPath, path...)
 
-	if complexType(payload.Value) {
-		newTree, err = tree.SetAsLink(path, payload.Value)
+	if complexType(val) {
+		newTree, err = tree.SetAsLink(path, val)
 	} else {
-		newTree, err = tree.Set(path, payload.Value)
+		newTree, err = tree.Set(path, val)
 	}
 	if err != nil {
 		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error setting: %v", err)}
@@ -118,16 +100,11 @@ func SetDataTransaction(_ string, tree *dag.Dag, transaction *chaintree.Transact
 	return newTree, true, nil
 }
 
-type SetOwnershipPayload struct {
-	Authentication []string
-}
-
 // SetOwnershipTransaction changes the ownership of a tree by adding a public key array to /_tupelo/authentications
-func SetOwnershipTransaction(_ string, tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
-	payload := &SetOwnershipPayload{}
-	err := typecaster.ToType(transaction.Payload, payload)
+func SetOwnershipTransaction(_ string, tree *dag.Dag, txn *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
+	payload, err := txn.EnsureSetOwnershipPayload()
 	if err != nil {
-		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error casting payload: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error reading payload: %v", err)}
 	}
 
 	path, err := DecodePath(TreePathForAuthentications)
@@ -154,8 +131,8 @@ func (tn *TokenName) String() string {
 
 func tokenNameFromString(tokenName string) TokenName {
 	components := strings.Split(tokenName, ":")
-	ctDIDComponents := components[:len(components) - 1]
-	localName := components[len(components) - 1]
+	ctDIDComponents := components[:len(components)-1]
+	localName := components[len(components)-1]
 	ctDID := strings.Join(ctDIDComponents, ":")
 	return TokenName{ChainTreeDID: ctDID, LocalName: localName}
 }
@@ -206,20 +183,10 @@ func CanonicalTokenName(tree *dag.Dag, defaultChainTreeDID, tokenName string, re
 	return &TokenName{ChainTreeDID: defaultChainTreeDID, LocalName: tokenName}, nil
 }
 
-type TokenMonetaryPolicy struct {
-	Maximum uint64
-}
-
-type EstablishTokenPayload struct {
-	Name           string
-	MonetaryPolicy TokenMonetaryPolicy
-}
-
-func EstablishTokenTransaction(chainTreeDID string, tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
-	payload := &EstablishTokenPayload{}
-	err := typecaster.ToType(transaction.Payload, payload)
+func EstablishTokenTransaction(chainTreeDID string, tree *dag.Dag, txn *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
+	payload, err := txn.EnsureEstablishTokenPayload()
 	if err != nil {
-		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error typecasting payload: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error reading payload: %v", err)}
 	}
 
 	tokenName, err := CanonicalTokenName(tree, chainTreeDID, payload.Name, true)
@@ -237,7 +204,14 @@ func EstablishTokenTransaction(chainTreeDID string, tree *dag.Dag, transaction *
 		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error, token \"%s\" already exists", tokenName)}
 	}
 
-	newTree, err = ledger.EstablishToken(payload.MonetaryPolicy)
+	var monetaryPolicy transactions.TokenMonetaryPolicy
+	if payload.MonetaryPolicy == nil {
+		monetaryPolicy = transactions.TokenMonetaryPolicy{}
+	} else {
+		monetaryPolicy = *payload.MonetaryPolicy
+	}
+
+	newTree, err = ledger.EstablishToken(monetaryPolicy)
 	if err != nil {
 		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: err.Error()}
 	}
@@ -245,16 +219,10 @@ func EstablishTokenTransaction(chainTreeDID string, tree *dag.Dag, transaction *
 	return newTree, true, nil
 }
 
-type MintTokenPayload struct {
-	Name   string
-	Amount uint64
-}
-
-func MintTokenTransaction(chainTreeDID string, tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
-	payload := &MintTokenPayload{}
-	err := typecaster.ToType(transaction.Payload, payload)
+func MintTokenTransaction(chainTreeDID string, tree *dag.Dag, txn *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
+	payload, err := txn.EnsureMintTokenPayload()
 	if err != nil {
-		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error typecasting payload: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error reading payload: %v", err)}
 	}
 
 	tokenName, err := CanonicalTokenName(tree, chainTreeDID, payload.Name, true)
@@ -272,18 +240,10 @@ func MintTokenTransaction(chainTreeDID string, tree *dag.Dag, transaction *chain
 	return newTree, true, nil
 }
 
-type SendTokenPayload struct {
-	Id          string
-	Name        string
-	Amount      uint64
-	Destination string
-}
-
-func SendTokenTransaction(chainTreeDID string, tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
-	payload := &SendTokenPayload{}
-	err := typecaster.ToType(transaction.Payload, payload)
+func SendTokenTransaction(chainTreeDID string, tree *dag.Dag, txn *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
+	payload, err := txn.EnsureSendTokenPayload()
 	if err != nil {
-		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error typecasting payload: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error reading payload: %v", err)}
 	}
 
 	tokenName, err := CanonicalTokenName(tree, chainTreeDID, payload.Name, false)
@@ -299,13 +259,6 @@ func SendTokenTransaction(chainTreeDID string, tree *dag.Dag, transaction *chain
 	}
 
 	return newTree, true, nil
-}
-
-type ReceiveTokenPayload struct {
-	SendTokenTransactionId string
-	Tip                    []byte
-	Signature              extmsgs.Signature
-	Leaves                 [][]byte
 }
 
 // Returns the first node in tree linked to by a value of parentNode
@@ -326,7 +279,7 @@ func findFirstLinkedNode(tree *dag.Dag, parentNode map[string]interface{}) (key 
 	return "", nil, fmt.Errorf("no linked nodes were found in the DAG")
 }
 
-func getSenderDagFromReceive(payload *ReceiveTokenPayload) (*dag.Dag, chaintree.CodedError) {
+func getSenderDagFromReceive(payload *transactions.ReceiveTokenPayload) (*dag.Dag, chaintree.CodedError) {
 	tipCid, err := cid.Cast(payload.Tip)
 	if err != nil {
 		return nil, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error casting tip to CID: %v", err)}
@@ -426,11 +379,10 @@ func getSendTokenFromReceive(senderDag *dag.Dag, tokenName string) (*TokenSend, 
 	return &tokenSend, nil
 }
 
-func ReceiveTokenTransaction(_ string, tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedError chaintree.CodedError) {
-	payload := &ReceiveTokenPayload{}
-	err := typecaster.ToType(transaction.Payload, payload)
+func ReceiveTokenTransaction(_ string, tree *dag.Dag, txn *transactions.Transaction) (newTree *dag.Dag, valid bool, codedError chaintree.CodedError) {
+	payload, err := txn.EnsureReceiveTokenPayload()
 	if err != nil {
-		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error typecasting payload: %v", err)}
+		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error reading payload: %v", err)}
 	}
 
 	tipCid, err := cid.Cast(payload.Tip)
@@ -471,20 +423,12 @@ func ReceiveTokenTransaction(_ string, tree *dag.Dag, transaction *chaintree.Tra
 	return newTree, true, nil
 }
 
-type StakePayload struct {
-	GroupId string
-	Amount  uint64
-	DstKey  PublicKey
-	VerKey  PublicKey
-}
-
 // THIS IS A pre-ALPHA TRANSACTION AND NO RULES ARE ENFORCED! Anyone can stake and join a group with no consequences.
 // additionally, it only allows staking a single group at the moment
-func StakeTransaction(_ string, tree *dag.Dag, transaction *chaintree.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
-	payload := &StakePayload{}
-	err := typecaster.ToType(transaction.Payload, payload)
+func StakeTransaction(_ string, tree *dag.Dag, txn *transactions.Transaction) (newTree *dag.Dag, valid bool, codedErr chaintree.CodedError) {
+	payload, err := txn.EnsureStakePayload()
 	if err != nil {
-		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error casting payload: %v", err)}
+		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error reading payload: %v", err)}
 	}
 
 	path, err := DecodePath(TreePathForStake)

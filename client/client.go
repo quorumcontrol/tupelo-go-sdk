@@ -10,10 +10,11 @@ import (
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/AsynkronIT/protoactor-go/eventstream"
-	"github.com/avast/retry-go"
+	retry "github.com/avast/retry-go"
 	lru "github.com/hashicorp/golang-lru"
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
+	"github.com/quorumcontrol/messages/build/go/transactions"
 	"go.uber.org/zap"
 
 	"github.com/quorumcontrol/chaintree/chaintree"
@@ -184,7 +185,7 @@ func (c *Client) SendTransaction(trans *messages.Transaction) error {
 }
 
 // PlayTransactions plays transactions in chain tree.
-func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*chaintree.Transaction) (*consensus.AddBlockResponse, error) {
+func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*transactions.Transaction) (*consensus.AddBlockResponse, error) {
 	sw := safewrap.SafeWrap{}
 
 	if remoteTip != nil && cid.Undef.Equals(*remoteTip) {
@@ -294,7 +295,7 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 	return addResponse, nil
 }
 
-func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*chaintree.Transaction) (*consensus.AddBlockResponse, error) {
+func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*transactions.Transaction) (*consensus.AddBlockResponse, error) {
 	var (
 		resp *consensus.AddBlockResponse
 		err  error

@@ -9,6 +9,7 @@ import (
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
+	"github.com/quorumcontrol/messages/build/go/transactions"
 	"github.com/quorumcontrol/storage"
 	"github.com/stretchr/testify/require"
 
@@ -30,23 +31,18 @@ func NewValidTransactionWithKey(t testing.TB, treeKey *ecdsa.PrivateKey) message
 func NewValidTransactionWithPathAndValue(t testing.TB, treeKey *ecdsa.PrivateKey, path, value string) messages.Transaction {
 	sw := safewrap.SafeWrap{}
 
-	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(treeKey.PublicKey).String())
+	txn, err := chaintree.NewSetDataTransaction(path, value)
+	require.Nil(t, err)
 
-	unsignedBlock := &chaintree.BlockWithHeaders{
+	unsignedBlock := chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
-			PreviousTip: nil,
-			Height:      0,
-			Transactions: []*chaintree.Transaction{
-				{
-					Type: "SET_DATA",
-					Payload: map[string]string{
-						"path":  path,
-						"value": value,
-					},
-				},
-			},
+			PreviousTip:  nil,
+			Height:       0,
+			Transactions: []*transactions.Transaction{txn},
 		},
 	}
+
+	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(treeKey.PublicKey).String())
 
 	nodeStore := nodestore.NewStorageBasedStore(storage.NewMemStorage())
 	emptyTree := consensus.NewEmptyTree(treeDID, nodeStore)
@@ -54,7 +50,7 @@ func NewValidTransactionWithPathAndValue(t testing.TB, treeKey *ecdsa.PrivateKey
 	testTree, err := chaintree.NewChainTree(emptyTree, nil, consensus.DefaultTransactors)
 	require.Nil(t, err)
 
-	blockWithHeaders, err := consensus.SignBlock(unsignedBlock, treeKey)
+	blockWithHeaders, err := consensus.SignBlock(&unsignedBlock, treeKey)
 	require.Nil(t, err)
 
 	_, err = testTree.ProcessBlock(blockWithHeaders)

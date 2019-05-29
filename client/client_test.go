@@ -60,5 +60,4 @@ func TestSubscription(t *testing.T) {
 		require.Nil(t, err)
 		require.IsType(t, errors.New("error"), res)
 	})
-
 }

@@ -3,23 +3,24 @@ package consensus
 import (
 	"fmt"
 
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
-	"github.com/quorumcontrol/chaintree/typecaster"
+	"github.com/quorumcontrol/messages/build/go/transactions"
 
+	"github.com/quorumcontrol/tupelo-go-sdk/conversion"
 	extmsgs "github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 )
 
-func getReceiveTokenPayloads(transactions []*chaintree.Transaction) ([]*ReceiveTokenPayload, error) {
-	receiveTokens := make([]*ReceiveTokenPayload, 0)
-	for _, t := range transactions {
-		if t.Type == TransactionTypeReceiveToken {
-			rt := &ReceiveTokenPayload{}
-			err := typecaster.ToType(t.Payload, rt)
+func getReceiveTokenPayloads(txns []*transactions.Transaction) ([]*transactions.ReceiveTokenPayload, error) {
+	receiveTokens := make([]*transactions.ReceiveTokenPayload, 0)
+	for _, t := range txns {
+		if t.Type == transactions.Transaction_RECEIVETOKEN {
+			rt, err := t.EnsureReceiveTokenPayload()
 			if err != nil {
-				return nil, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error typecasting payload: %v", err)}
+				return nil, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error reading payload: %v", err)}
 			}
+
 			receiveTokens = append(receiveTokens, rt)
 		}
 	}
@@ -83,7 +84,7 @@ func IsTokenRecipient(tree *dag.Dag, blockWithHeaders *chaintree.BlockWithHeader
 // verifier function arg and returns an IsValidSignature validator function
 // (see above) that calls the given sigVerifier with the Signature and Tip it
 // receives and uses its return values to determine validity.
-func GenerateIsValidSignature(sigVerifier func(sig *extmsgs.Signature) (bool, error)) chaintree.BlockValidatorFunc  {
+func GenerateIsValidSignature(sigVerifier func(sig *extmsgs.Signature) (bool, error)) chaintree.BlockValidatorFunc {
 	isValidSignature := func(tree *dag.Dag, blockWithHeaders *chaintree.BlockWithHeaders) (bool, chaintree.CodedError) {
 		// first determine if there any RECEIVE_TOKEN transactions in here
 		receiveTokens, err := getReceiveTokenPayloads(blockWithHeaders.Transactions)
@@ -98,7 +99,10 @@ func GenerateIsValidSignature(sigVerifier func(sig *extmsgs.Signature) (bool, er
 
 		// we have at least one RECEIVE_TOKEN transaction; make sure Signature is valid for Tip
 		for _, rt := range receiveTokens {
-			sig := &rt.Signature
+			sig, err := conversion.ToExternalSignature(rt.Signature)
+			if err != nil {
+				return false, &ErrorCode{Code: ErrInvalidSig, Memo: fmt.Sprintf("error converting signature: %v", err)}
+			}
 
 			tip, err := cid.Cast(rt.Tip)
 			if err != nil {

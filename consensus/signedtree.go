@@ -5,30 +5,21 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/nodestore"
+	"github.com/quorumcontrol/messages/build/go/transactions"
 	"github.com/quorumcontrol/storage"
 )
 
-const (
-	TransactionTypeEstablishToken = "ESTABLISH_TOKEN"
-	TransactionTypeMintToken      = "MINT_TOKEN"
-	TransactionTypeSendToken      = "SEND_TOKEN"
-	TransactionTypeReceiveToken   = "RECEIVE_TOKEN"
-	TransactionTypeSetData        = "SET_DATA"
-	TransactionTypeSetOwnership   = "SET_OWNERSHIP"
-	TransactionTypeStake          = "STAKE"
-)
-
-var DefaultTransactors = map[string]chaintree.TransactorFunc{
-	TransactionTypeEstablishToken: EstablishTokenTransaction,
-	TransactionTypeMintToken:      MintTokenTransaction,
-	TransactionTypeSendToken:      SendTokenTransaction,
-	TransactionTypeReceiveToken:   ReceiveTokenTransaction,
-	TransactionTypeSetData:        SetDataTransaction,
-	TransactionTypeSetOwnership:   SetOwnershipTransaction,
-	TransactionTypeStake:          StakeTransaction,
+var DefaultTransactors = map[transactions.Transaction_Type]chaintree.TransactorFunc{
+	transactions.Transaction_ESTABLISHTOKEN: EstablishTokenTransaction,
+	transactions.Transaction_MINTTOKEN:      MintTokenTransaction,
+	transactions.Transaction_SENDTOKEN:      SendTokenTransaction,
+	transactions.Transaction_RECEIVETOKEN:   ReceiveTokenTransaction,
+	transactions.Transaction_SETDATA:        SetDataTransaction,
+	transactions.Transaction_SETOWNERSHIP:   SetOwnershipTransaction,
+	transactions.Transaction_STAKE:          StakeTransaction,
 }
 
 type SignedChainTree struct {

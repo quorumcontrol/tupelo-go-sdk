@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/Workiva/go-datastructures/bitarray"
+	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	"github.com/quorumcontrol/tupelo-go-sdk/testnotarygroup"
 	"github.com/stretchr/testify/require"
 )
@@ -13,7 +14,7 @@ func TestVerKeysOf(t *testing.T) {
 	ng := NewNotaryGroup("TestVerKeysOf")
 
 	for i, signKey := range ts.SignKeys {
-		signer := NewLocalSigner(ts.PubKeys[i].ToEcdsaPub(), signKey)
+		signer := NewLocalSigner(consensus.PublicKeyToEcdsaPub(&ts.PubKeys[i]), signKey)
 		ng.AddSigner(signer)
 	}
 
