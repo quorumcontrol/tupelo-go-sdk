@@ -39,8 +39,8 @@ require (
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829
-	github.com/quorumcontrol/chaintree v0.0.0-20190529171404-a5491f79c95b
-	github.com/quorumcontrol/messages/build/go v0.0.0-20190529170636-956ba26cd2ef
+	github.com/quorumcontrol/chaintree v0.0.0-20190530190017-53765d7c259c
+	github.com/quorumcontrol/messages/build/go v0.0.0-20190530182608-30c127bffefb
 	github.com/quorumcontrol/storage v1.1.2
 	github.com/santhosh-tekuri/jsonschema v1.2.4 // indirect
 	github.com/stretchr/testify v1.3.0

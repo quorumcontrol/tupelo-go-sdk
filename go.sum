@@ -642,10 +642,10 @@ github.com/prometheus/procfs v0.0.0-20190416084830-8368d24ba045 h1:Raos9GP+3BlCB
 github.com/prometheus/procfs v0.0.0-20190416084830-8368d24ba045/go.mod h1:TjEm7ze935MbeOT/UhFTIMYKhuLP4wbCsTZCD3I8kEA=
 github.com/prometheus/procfs v0.0.0-20190425082905-87a4384529e0 h1:c8R11WC8m7KNMkTv/0+Be8vvwo4I3/Ut9AC2FW8fX3U=
 github.com/prometheus/procfs v0.0.0-20190425082905-87a4384529e0/go.mod h1:TjEm7ze935MbeOT/UhFTIMYKhuLP4wbCsTZCD3I8kEA=
-github.com/quorumcontrol/chaintree v0.0.0-20190529171404-a5491f79c95b h1:/5tN0VKZOJLvxqDbkqtlFX47ufaoJFQskO0Wn0LltKg=
-github.com/quorumcontrol/chaintree v0.0.0-20190529171404-a5491f79c95b/go.mod h1:S2h4KAtRoijIo35Lim2zuSpXI7eeBwNJk8p8ITrQsmU=
-github.com/quorumcontrol/messages/build/go v0.0.0-20190529170636-956ba26cd2ef h1:9SDQtqw6S7u50ZmZ430Ca2q7XvfdkUUlsgOqI65/UBs=
-github.com/quorumcontrol/messages/build/go v0.0.0-20190529170636-956ba26cd2ef/go.mod h1:b8jDN8PulcGcRJ2pQc0lbC3tPaOspGHoBIbPxfB7Jqg=
+github.com/quorumcontrol/chaintree v0.0.0-20190530190017-53765d7c259c h1:CZlTUDjlNlhYD0S+avPNroj/o36jd2HJyez5I+eoJFE=
+github.com/quorumcontrol/chaintree v0.0.0-20190530190017-53765d7c259c/go.mod h1:ArT6IHCFvT+CBJavEW/adlW0eXbBO6jKkE8l02dawjU=
+github.com/quorumcontrol/messages/build/go v0.0.0-20190530182608-30c127bffefb h1:x/0eUSPARsrbdV1R/3vJWIT8P3EhUaF1AIYPu9L4TKg=
+github.com/quorumcontrol/messages/build/go v0.0.0-20190530182608-30c127bffefb/go.mod h1:b8jDN8PulcGcRJ2pQc0lbC3tPaOspGHoBIbPxfB7Jqg=
 github.com/quorumcontrol/namedlocker v0.0.0-20180808140020-3f797c8b12b1 h1:FglNF7FTLpcl171qo5MFvbKjrLEsLtcKF72uQpefiPM=
 github.com/quorumcontrol/namedlocker v0.0.0-20180808140020-3f797c8b12b1/go.mod h1:7JSFW45PpKoXFaUpaJ8YtCNIwQWut0+Huo9ugBnKVe4=
 github.com/quorumcontrol/storage v1.1.2 h1:F6qRGnWx2GzO5fitMh8axvT9NjHUHnGp3n2MYwnjKP4=
