@@ -18,6 +18,7 @@ type NotaryGroup struct {
 	ID        string
 	Signers   map[string]*Signer
 	sortedIds []string
+	config    *Config
 }
 
 func (ng *NotaryGroup) GetMajorityCount() int64 {
@@ -30,10 +31,21 @@ func (ng *NotaryGroup) GetMajorityCount() int64 {
 
 // NewNotaryGroup instantiates a new NotaryGroup.
 func NewNotaryGroup(id string) *NotaryGroup {
+	c := DefaultConfig()
+	c.ID = id
+	return NewNotaryGroupFromConfig(c)
+}
+
+func NewNotaryGroupFromConfig(c *Config) *NotaryGroup {
 	return &NotaryGroup{
-		ID:      id,
+		ID:      c.ID,
 		Signers: make(map[string]*Signer),
+		config:  c,
 	}
+}
+
+func (ng *NotaryGroup) Config() *Config {
+	return ng.config
 }
 
 // AddSigner adds a signer to group.

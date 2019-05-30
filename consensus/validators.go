@@ -2,6 +2,9 @@ package consensus
 
 import (
 	"fmt"
+	"strings"
+
+	"github.com/quorumcontrol/chaintree/typecaster"
 
 	cid "github.com/ipfs/go-cid"
 	"github.com/quorumcontrol/chaintree/chaintree"
@@ -132,4 +135,48 @@ func GenerateIsValidSignature(sigVerifier func(sig *extmsgs.Signature) (bool, er
 	}
 
 	return isValidSignature
+}
+
+func IsOwner(tree *dag.Dag, blockWithHeaders *chaintree.BlockWithHeaders) (bool, chaintree.CodedError) {
+	id, _, err := tree.Resolve([]string{"id"})
+	if err != nil {
+		return false, &ErrorCode{Memo: fmt.Sprintf("error: %v", err), Code: ErrUnknown}
+	}
+
+	headers := &StandardHeaders{}
+
+	err = typecaster.ToType(blockWithHeaders.Headers, headers)
+	if err != nil {
+		return false, &ErrorCode{Memo: fmt.Sprintf("error: %v", err), Code: ErrUnknown}
+	}
+
+	var addrs []string
+
+	uncastAuths, _, err := tree.Resolve(strings.Split("tree/"+TreePathForAuthentications, "/"))
+	if err != nil {
+		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("err resolving: %v", err)}
+	}
+	// If there are no authentications then the Chain Tree is still owned by its genesis key
+	if uncastAuths == nil {
+		addrs = []string{DidToAddr(id.(string))}
+	} else {
+		err = typecaster.ToType(uncastAuths, &addrs)
+		if err != nil {
+			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("err casting: %v", err)}
+		}
+	}
+
+	for _, addr := range addrs {
+		isSigned, err := IsBlockSignedBy(blockWithHeaders, addr)
+
+		if err != nil {
+			return false, &ErrorCode{Memo: fmt.Sprintf("error finding if signed: %v", err), Code: ErrUnknown}
+		}
+
+		if isSigned {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
