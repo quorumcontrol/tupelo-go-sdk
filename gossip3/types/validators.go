@@ -1,6 +1,8 @@
-package consensus
+package types
 
 import (
+	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
+	"context"
 	"fmt"
 	"strings"
 
@@ -21,7 +23,7 @@ func getReceiveTokenPayloads(txns []*transactions.Transaction) ([]*transactions.
 		if t.Type == transactions.Transaction_RECEIVETOKEN {
 			rt, err := t.EnsureReceiveTokenPayload()
 			if err != nil {
-				return nil, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error reading payload: %v", err)}
+				return nil, &consensus.ErrorCode{Code: consensus.ErrUnknown, Memo: fmt.Sprintf("error reading payload: %v", err)}
 			}
 
 			receiveTokens = append(receiveTokens, rt)
@@ -38,7 +40,7 @@ func IsTokenRecipient(tree *dag.Dag, blockWithHeaders *chaintree.BlockWithHeader
 	// first determine if there are any RECEIVE_TOKEN transactions in here
 	receiveTokens, err := getReceiveTokenPayloads(blockWithHeaders.Transactions)
 	if err != nil {
-		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting RECEIVE_TOKEN transactions: %v", err)}
+		return false, &consensus.ErrorCode{Code: consensus.ErrUnknown, Memo: fmt.Sprintf("error getting RECEIVE_TOKEN transactions: %v", err)}
 	}
 
 	if len(receiveTokens) == 0 {
@@ -50,21 +52,21 @@ func IsTokenRecipient(tree *dag.Dag, blockWithHeaders *chaintree.BlockWithHeader
 
 	id, _, err := tree.Resolve([]string{"id"})
 	if err != nil {
-		return false, &ErrorCode{Memo: fmt.Sprintf("error: %v", err), Code: ErrUnknown}
+		return false, &consensus.ErrorCode{Memo: fmt.Sprintf("error: %v", err), Code: consensus.ErrUnknown}
 	}
 
 	for _, rt := range receiveTokens {
-		senderDag, codedErr := getSenderDagFromReceive(rt)
+		senderDag, codedErr := consensus.GetSenderDagFromReceive(rt)
 		if codedErr != nil {
 			return false, codedErr
 		}
 
-		tokenName, codedErr := getTokenNameFromReceive(senderDag)
+		tokenName, codedErr := consensus.GetTokenNameFromReceive(senderDag)
 		if codedErr != nil {
 			return false, codedErr
 		}
 
-		sendToken, codedErr := getSendTokenFromReceive(senderDag, tokenName)
+		sendToken, codedErr := consensus.GetSendTokenFromReceive(senderDag, tokenName)
 		if codedErr != nil {
 			return false, codedErr
 		}
@@ -92,7 +94,7 @@ func GenerateIsValidSignature(sigVerifier func(sig *extmsgs.Signature) (bool, er
 		// first determine if there any RECEIVE_TOKEN transactions in here
 		receiveTokens, err := getReceiveTokenPayloads(blockWithHeaders.Transactions)
 		if err != nil {
-			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting RECEIVE_TOKEN transactions: %v", err)}
+			return false, &consensus.ErrorCode{Code: consensus.ErrUnknown, Memo: fmt.Sprintf("error getting RECEIVE_TOKEN transactions: %v", err)}
 		}
 
 		if len(receiveTokens) == 0 {
@@ -104,17 +106,17 @@ func GenerateIsValidSignature(sigVerifier func(sig *extmsgs.Signature) (bool, er
 		for _, rt := range receiveTokens {
 			sig, err := conversion.ToExternalSignature(rt.Signature)
 			if err != nil {
-				return false, &ErrorCode{Code: ErrInvalidSig, Memo: fmt.Sprintf("error converting signature: %v", err)}
+				return false, &consensus.ErrorCode{Code: consensus.ErrInvalidSig, Memo: fmt.Sprintf("error converting signature: %v", err)}
 			}
 
 			tip, err := cid.Cast(rt.Tip)
 			if err != nil {
-				return false, &ErrorCode{Code: ErrInvalidTip, Memo: fmt.Sprintf("error casting tip to CID: %v", err)}
+				return false, &consensus.ErrorCode{Code: consensus.ErrInvalidTip, Memo: fmt.Sprintf("error casting tip to CID: %v", err)}
 			}
 
 			sigNewTip, err := cid.Cast(sig.NewTip)
 			if err != nil {
-				return false, &ErrorCode{Code: ErrInvalidTip, Memo: fmt.Sprintf("error casting tip to CID: %v", err)}
+				return false, &consensus.ErrorCode{Code: consensus.ErrInvalidTip, Memo: fmt.Sprintf("error casting tip to CID: %v", err)}
 			}
 
 			if sigNewTip != tip {
@@ -123,7 +125,7 @@ func GenerateIsValidSignature(sigVerifier func(sig *extmsgs.Signature) (bool, er
 
 			valid, err := sigVerifier(sig)
 			if err != nil {
-				return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error verifying signature: %v", err)}
+				return false, &consensus.ErrorCode{Code: consensus.ErrUnknown, Memo: fmt.Sprintf("error verifying signature: %v", err)}
 			}
 
 			if !valid {
@@ -137,40 +139,64 @@ func GenerateIsValidSignature(sigVerifier func(sig *extmsgs.Signature) (bool, er
 	return isValidSignature
 }
 
+func isTokenBurn(tokenName string, tx *transactions.Transaction) bool {
+	return tx.Type == transactions.Transaction_SENDTOKEN &&
+		tx.SendTokenPayload.Name == tokenName &&
+		tx.SendTokenPayload.Amount > 0 &&
+		tx.SendTokenPayload.Destination == ""
+}
+
+func HasBurnGenerator(ctx context.Context, ng *NotaryGroup) (chaintree.BlockValidatorFunc, error) {
+	tokenName := ng.Config().TransactionToken
+	if tokenName == "" {
+		return nil, fmt.Errorf("error you must specify a TransactionCurrency to use the HasBurnGenerator")
+	}
+
+	var burnValidator chaintree.BlockValidatorFunc = func(tree *dag.Dag, blockWithHeaders *chaintree.BlockWithHeaders) (bool, chaintree.CodedError) {
+		for _, tx := range blockWithHeaders.Block.Transactions {
+			if isTokenBurn(tokenName, tx) {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+	return burnValidator, nil
+}
+
 func IsOwner(tree *dag.Dag, blockWithHeaders *chaintree.BlockWithHeaders) (bool, chaintree.CodedError) {
 	id, _, err := tree.Resolve([]string{"id"})
 	if err != nil {
-		return false, &ErrorCode{Memo: fmt.Sprintf("error: %v", err), Code: ErrUnknown}
+		return false, &consensus.ErrorCode{Memo: fmt.Sprintf("error: %v", err), Code: consensus.ErrUnknown}
 	}
 
-	headers := &StandardHeaders{}
+	headers := &consensus.StandardHeaders{}
 
 	err = typecaster.ToType(blockWithHeaders.Headers, headers)
 	if err != nil {
-		return false, &ErrorCode{Memo: fmt.Sprintf("error: %v", err), Code: ErrUnknown}
+		return false, &consensus.ErrorCode{Memo: fmt.Sprintf("error: %v", err), Code: consensus.ErrUnknown}
 	}
 
 	var addrs []string
 
-	uncastAuths, _, err := tree.Resolve(strings.Split("tree/"+TreePathForAuthentications, "/"))
+	uncastAuths, _, err := tree.Resolve(strings.Split("tree/"+consensus.TreePathForAuthentications, "/"))
 	if err != nil {
-		return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("err resolving: %v", err)}
+		return false, &consensus.ErrorCode{Code: consensus.ErrUnknown, Memo: fmt.Sprintf("err resolving: %v", err)}
 	}
 	// If there are no authentications then the Chain Tree is still owned by its genesis key
 	if uncastAuths == nil {
-		addrs = []string{DidToAddr(id.(string))}
+		addrs = []string{consensus.DidToAddr(id.(string))}
 	} else {
 		err = typecaster.ToType(uncastAuths, &addrs)
 		if err != nil {
-			return false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("err casting: %v", err)}
+			return false, &consensus.ErrorCode{Code: consensus.ErrUnknown, Memo: fmt.Sprintf("err casting: %v", err)}
 		}
 	}
 
 	for _, addr := range addrs {
-		isSigned, err := IsBlockSignedBy(blockWithHeaders, addr)
+		isSigned, err := consensus.IsBlockSignedBy(blockWithHeaders, addr)
 
 		if err != nil {
-			return false, &ErrorCode{Memo: fmt.Sprintf("error finding if signed: %v", err), Code: ErrUnknown}
+			return false, &consensus.ErrorCode{Memo: fmt.Sprintf("error finding if signed: %v", err), Code: consensus.ErrUnknown}
 		}
 
 		if isSigned {
