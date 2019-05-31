@@ -14,7 +14,6 @@ import (
 func init() {
 	RegisterMessage(&Ping{})
 	RegisterMessage(&Pong{})
-	RegisterMessage(&Store{})
 	RegisterMessage(&CurrentState{})
 	RegisterMessage(&Signature{})
 	RegisterMessage(&Transaction{})
@@ -42,16 +41,6 @@ type Pong struct {
 
 func (Pong) TypeCode() int8 {
 	return -3
-}
-
-type Store struct {
-	Key        []byte
-	Value      []byte
-	SkipNotify bool `msg:"-"`
-}
-
-func (Store) TypeCode() int8 {
-	return -4
 }
 
 type CurrentState struct {
