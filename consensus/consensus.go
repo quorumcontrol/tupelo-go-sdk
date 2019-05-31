@@ -23,7 +23,7 @@ func init() {
 	cbornode.RegisterCborType(StandardHeaders{})
 }
 
-type SignatureMap map[string]signatures.Signature
+type SignatureMap map[string]*signatures.Signature
 
 // Merge returns a new SignatatureMap composed of the original with the other merged in
 // other wins when both SignatureMaps have signatures
@@ -189,7 +189,7 @@ func SignBlock(blockWithHeaders *chaintree.BlockWithHeaders, key *ecdsa.PrivateK
 		headers.Signatures = make(SignatureMap)
 	}
 
-	headers.Signatures[addr] = sig
+	headers.Signatures[addr] = &sig
 
 	var marshaledHeaders map[string]interface{}
 	err = typecaster.ToType(headers, &marshaledHeaders)

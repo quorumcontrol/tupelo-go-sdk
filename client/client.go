@@ -280,7 +280,7 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 		tree.Signatures = make(consensus.SignatureMap)
 	}
 
-	tree.Signatures[c.Group.ID] = *resp.Signature
+	tree.Signatures[c.Group.ID] = resp.Signature
 
 	newCid, err := cid.Cast(resp.Signature.NewTip)
 	if err != nil {
@@ -290,7 +290,7 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 	addResponse := &consensus.AddBlockResponse{
 		ChainId:   tree.MustId(),
 		Tip:       &newCid,
-		Signature: tree.Signatures[c.Group.ID],
+		Signature: *tree.Signatures[c.Group.ID],
 	}
 
 	return addResponse, nil

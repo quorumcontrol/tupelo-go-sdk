@@ -531,7 +531,7 @@ func TestReceiveToken(t *testing.T) {
 		leaves = append(leaves, ln.RawData())
 	}
 
-	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), &signature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), signature, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
@@ -666,7 +666,7 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 	require.Nil(t, err)
 
 
-	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", otherChainTree.Dag.Tip.Bytes(), &signature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", otherChainTree.Dag.Tip.Bytes(), signature, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
@@ -783,7 +783,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 		leaves = append(leaves, ln.RawData())
 	}
 
-	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), &signature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), signature, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
@@ -839,7 +839,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 		leaves = append(leaves, ln.RawData())
 	}
 
-	receiveTxn, err = chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), &signature, leaves)
+	receiveTxn, err = chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), signature, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders = &chaintree.BlockWithHeaders{
@@ -960,7 +960,7 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 
 	recipientHeight := uint64(0)
 
-	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), &signature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), signature, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
@@ -1083,7 +1083,7 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 
 	recipientHeight := uint64(0)
 
-	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), &signature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), signature, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
@@ -1210,7 +1210,7 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 
 	recipientHeight := uint64(0)
 
-	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), &signature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), signature, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
