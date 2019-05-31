@@ -279,6 +279,8 @@ func findFirstLinkedNode(tree *dag.Dag, parentNode map[string]interface{}) (key 
 	return "", nil, fmt.Errorf("no linked nodes were found in the DAG")
 }
 
+// GetSenderDagFromReceive takes the receive coin payload and returns the SendToken dag that
+// was included in the ReceiveTokenPayload
 func GetSenderDagFromReceive(payload *transactions.ReceiveTokenPayload) (*dag.Dag, chaintree.CodedError) {
 	tipCid, err := cid.Cast(payload.Tip)
 	if err != nil {
@@ -311,6 +313,8 @@ func GetSenderDagFromReceive(payload *transactions.ReceiveTokenPayload) (*dag.Da
 	return senderDag, nil
 }
 
+// GetTokenNameFromReceive takes the SendToken that was included in a ReceiveTokenPayload
+// and returns the name of the sent token.
 func GetTokenNameFromReceive(senderDag *dag.Dag) (string, chaintree.CodedError) {
 	treePath, err := DecodePath(TreePathForTokens)
 	if err != nil {
@@ -339,6 +343,8 @@ func GetTokenNameFromReceive(senderDag *dag.Dag) (string, chaintree.CodedError) 
 	return tokenName, nil
 }
 
+// GetSendTokenFromReceive takes DAG that is part of the ReceiveTokenPayload and returns 
+// The TokenSend for the specified tokenName
 func GetSendTokenFromReceive(senderDag *dag.Dag, tokenName string) (*TokenSend, chaintree.CodedError) {
 	treePath, err := DecodePath(TreePathForTokens)
 	if err != nil {

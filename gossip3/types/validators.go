@@ -146,6 +146,10 @@ func isTokenBurn(tokenName string, tx *transactions.Transaction) bool {
 		tx.SendTokenPayload.Destination == ""
 }
 
+// HasBurnGenerator is a higher-order generator (because we need notary group config for the token name) that returns a 
+// ChainTree validator that looks for the precense of a token burn in a block of transactions
+// if the block has a transaction which has a SendToken with the config TransactionToken name,
+// a value > 0 and a "" destination, it is considered a burn.
 func HasBurnGenerator(ctx context.Context, ng *NotaryGroup) (chaintree.BlockValidatorFunc, error) {
 	tokenName := ng.Config().TransactionToken
 	if tokenName == "" {
@@ -163,6 +167,9 @@ func HasBurnGenerator(ctx context.Context, ng *NotaryGroup) (chaintree.BlockVali
 	return burnValidator, nil
 }
 
+// IsOwner is a chaintree BlockValidator that looks at the block headers and makes sure
+// an authorized owner (in the consensus.TreePathForAuthentications path) has signed
+// this block.
 func IsOwner(tree *dag.Dag, blockWithHeaders *chaintree.BlockWithHeaders) (bool, chaintree.CodedError) {
 	id, _, err := tree.Resolve([]string{"id"})
 	if err != nil {
