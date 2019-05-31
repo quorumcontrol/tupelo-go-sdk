@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/binary"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/Workiva/go-datastructures/bitarray"
+	"github.com/quorumcontrol/chaintree/chaintree"
 )
 
 // NotaryGroup represents a notary group.
@@ -46,6 +48,10 @@ func NewNotaryGroupFromConfig(c *Config) *NotaryGroup {
 
 func (ng *NotaryGroup) Config() *Config {
 	return ng.config
+}
+
+func (ng *NotaryGroup) BlockValidators(ctx context.Context) ([]chaintree.BlockValidatorFunc, error) {
+	return ng.config.blockValidators(ctx, ng)
 }
 
 // AddSigner adds a signer to group.

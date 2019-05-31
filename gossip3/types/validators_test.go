@@ -48,4 +48,41 @@ func TestBurnValidator(t *testing.T) {
 		require.True(t, isValid)
 	})
 
+	t.Run("with no burn", func(t *testing.T) {
+		blockWithHeaders := blockWithTxs(nil)
+		isValid,err := validator(nil, blockWithHeaders)
+		require.Nil(t,err)
+		require.False(t, isValid)
+	})
+
+	t.Run("with 0 value burn", func(t *testing.T) {
+		blockWithHeaders := blockWithTxs([]*transactions.Transaction{
+			&transactions.Transaction{
+				Type: transactions.Transaction_SENDTOKEN,
+				SendTokenPayload: &transactions.SendTokenPayload{
+					Name: config.TransactionToken,
+					Amount: 0,
+					Destination: "",
+				},
+			}})
+		isValid,err := validator(nil, blockWithHeaders)
+		require.Nil(t,err)
+		require.False(t, isValid)
+	})
+
+	t.Run("with wrong token burn", func(t *testing.T) {
+		blockWithHeaders := blockWithTxs([]*transactions.Transaction{
+			&transactions.Transaction{
+				Type: transactions.Transaction_SENDTOKEN,
+				SendTokenPayload: &transactions.SendTokenPayload{
+					Name: "different token",
+					Amount: 100,
+					Destination: "",
+				},
+			}})
+		isValid,err := validator(nil, blockWithHeaders)
+		require.Nil(t,err)
+		require.False(t, isValid)
+	})
+
 }
