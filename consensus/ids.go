@@ -1,21 +1,23 @@
 package consensus
 
 import (
-	"github.com/quorumcontrol/messages/build/go/signatures"
 	"encoding/binary"
-	"github.com/quorumcontrol/messages/build/go/services"
-	"fmt"
+
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/golang/protobuf/proto"
+	"github.com/quorumcontrol/messages/build/go/services"
+	"github.com/quorumcontrol/messages/build/go/signatures"
 )
 
 func RequestID(req *services.AddBlockRequest) []byte {
 	//TODO: fix me and make me canonical
-	bits,err := proto.Marshal(req)
-	if err != nil {
-		panic(fmt.Errorf("error marshaling: %v", err))
-	}
-	return  crypto.Keccak256(bits)
+
+	return crypto.Keccak256(appendMultiple(
+		req.ObjectId,
+		req.PreviousTip,
+		uint64ToBytes(req.Height),
+		req.NewTip,
+		crypto.Keccak256(req.Payload),
+	))
 }
 
 func ConflictSetID(objectID []byte, height uint64) string {
@@ -23,12 +25,25 @@ func ConflictSetID(objectID []byte, height uint64) string {
 }
 
 func GetSignable(sig *signatures.Signature) []byte {
-	return append(append(sig.ObjectId, append(sig.PreviousTip, sig.NewTip...)...), append(uint64ToBytes(sig.View), uint64ToBytes(sig.Cycle)...)...)
+	return appendMultiple(
+		sig.ObjectId,
+		sig.PreviousTip,
+		sig.NewTip,
+		uint64ToBytes(sig.View),
+		uint64ToBytes(sig.Cycle),
+	)
 }
-
 
 func uint64ToBytes(id uint64) []byte {
 	a := make([]byte, 8)
 	binary.BigEndian.PutUint64(a, id)
 	return a
+}
+
+func appendMultiple(bits ...[]byte) []byte {
+	var retSlice []byte
+	for _, b := range bits {
+		retSlice = append(retSlice, b...)
+	}
+	return retSlice
 }
