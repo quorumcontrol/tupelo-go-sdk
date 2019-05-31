@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"encoding/binary"
 	"github.com/quorumcontrol/messages/build/go/services"
 	"fmt"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -14,4 +15,15 @@ func RequestID(req *services.AddBlockRequest) []byte {
 				panic(fmt.Errorf("error marshaling: %v", err))
 			}
 			return  crypto.Keccak256(bits)
+}
+
+func ConflictSetID(objectID []byte, height uint64) string {
+	return string(crypto.Keccak256(append(objectID, uint64ToBytes(height)...)))
+}
+
+
+func uint64ToBytes(id uint64) []byte {
+	a := make([]byte, 8)
+	binary.BigEndian.PutUint64(a, id)
+	return a
 }
