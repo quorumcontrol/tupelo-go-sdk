@@ -273,7 +273,7 @@ func (b *bridge) handleIncomingWireDelivery(context actor.Context, wd *mbridge.W
 }
 
 func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *mbridge.WireDelivery) {
-	var sp opentracing.Span
+	// var sp opentracing.Span
 
 	// if traceable, ok := wd.originalMessage.(tracing.Traceable); tracing.Enabled && ok && traceable.Started() {
 	// 	serialized, err := traceable.SerializedContext()
@@ -288,7 +288,7 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *mbridge.W
 	// 	// open when going across the wire
 	// 	sp = traceable.NewSpan("bridge-outgoing")
 	// } else {
-		sp = opentracing.StartSpan("outgoing-untraceable")
+		sp := opentracing.StartSpan("outgoing-untraceable")
 	// }
 	defer sp.Finish()
 

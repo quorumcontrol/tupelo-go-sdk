@@ -1,12 +1,10 @@
 package remote
 
 import (
-	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
 	"github.com/quorumcontrol/messages/build/go/services"
 	"context"
 	"testing"
 	"time"
-	logging "github.com/ipfs/go-log"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -48,8 +46,6 @@ func TestLocalStillWorks(t *testing.T) {
 }
 
 func TestRemoteMessageSending(t *testing.T) {
-	logging.SetLogLevel("tupeloremote", "debug")
-	middleware.SetLogLevel("debug")
 	ts := testnotarygroup.NewTestSet(t, 4)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
