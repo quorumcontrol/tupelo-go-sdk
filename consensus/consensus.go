@@ -16,17 +16,14 @@ import (
 	"github.com/quorumcontrol/chaintree/typecaster"
 	"github.com/quorumcontrol/messages/build/go/signatures"
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
-	extmsgs "github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 )
 
 func init() {
 	typecaster.AddType(StandardHeaders{})
-	typecaster.AddType(extmsgs.Signature{})
 	cbornode.RegisterCborType(StandardHeaders{})
-	cbornode.RegisterCborType(extmsgs.Signature{})
 }
 
-type SignatureMap map[string]extmsgs.Signature
+type SignatureMap map[string]signatures.Signature
 
 // Merge returns a new SignatatureMap composed of the original with the other merged in
 // other wins when both SignatureMaps have signatures
@@ -177,7 +174,7 @@ func SignBlock(blockWithHeaders *chaintree.BlockWithHeaders, key *ecdsa.PrivateK
 
 	addr := crypto.PubkeyToAddress(key.PublicKey).String()
 
-	sig := extmsgs.Signature{
+	sig := signatures.Signature{
 		Signature: sigBytes,
 		Type:      KeyTypeSecp256k1,
 	}
@@ -242,7 +239,7 @@ func IsBlockSignedBy(blockWithHeaders *chaintree.BlockWithHeaders, addr string) 
 	return false, fmt.Errorf("unkown signature type")
 }
 
-func BlsSign(payload interface{}, key *bls.SignKey) (*extmsgs.Signature, error) {
+func BlsSign(payload interface{}, key *bls.SignKey) (*signatures.Signature, error) {
 	hsh, err := ObjToHash(payload)
 	if err != nil {
 		return nil, fmt.Errorf("error hashing block: %v", err)
@@ -253,7 +250,7 @@ func BlsSign(payload interface{}, key *bls.SignKey) (*extmsgs.Signature, error) 
 		return nil, fmt.Errorf("error signing: %v", err)
 	}
 
-	sig := &extmsgs.Signature{
+	sig := &signatures.Signature{
 		Signature: sigBytes,
 		Type:      KeyTypeBLSGroupSig,
 	}
@@ -262,13 +259,13 @@ func BlsSign(payload interface{}, key *bls.SignKey) (*extmsgs.Signature, error) 
 }
 
 // Sign the bytes sent in with no additional manipulation (no hashing or serializing)
-func BlsSignBytes(hsh []byte, key *bls.SignKey) (*extmsgs.Signature, error) {
+func BlsSignBytes(hsh []byte, key *bls.SignKey) (*signatures.Signature, error) {
 	sigBytes, err := key.Sign(hsh)
 	if err != nil {
 		return nil, fmt.Errorf("error signing: %v", err)
 	}
 
-	sig := &extmsgs.Signature{
+	sig := &signatures.Signature{
 		Signature: sigBytes,
 		Type:      KeyTypeBLSGroupSig,
 	}
@@ -276,7 +273,7 @@ func BlsSignBytes(hsh []byte, key *bls.SignKey) (*extmsgs.Signature, error) {
 	return sig, nil
 }
 
-func EcdsaSign(payload interface{}, key *ecdsa.PrivateKey) (*extmsgs.Signature, error) {
+func EcdsaSign(payload interface{}, key *ecdsa.PrivateKey) (*signatures.Signature, error) {
 	hsh, err := ObjToHash(payload)
 	if err != nil {
 		return nil, fmt.Errorf("error hashing block: %v", err)
@@ -286,13 +283,13 @@ func EcdsaSign(payload interface{}, key *ecdsa.PrivateKey) (*extmsgs.Signature, 
 	if err != nil {
 		return nil, fmt.Errorf("error signing: %v", err)
 	}
-	return &extmsgs.Signature{
+	return &signatures.Signature{
 		Signature: sigBytes,
 		Type:      KeyTypeSecp256k1,
 	}, nil
 }
 
-func Verify(hsh []byte, sig extmsgs.Signature, key signatures.PublicKey) (bool, error) {
+func Verify(hsh []byte, sig signatures.Signature, key signatures.PublicKey) (bool, error) {
 	switch sig.Type {
 	case KeyTypeSecp256k1:
 		recoverdPub, err := crypto.SigToPub(hsh, sig.Signature)

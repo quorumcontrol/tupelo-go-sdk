@@ -4,11 +4,12 @@ go 1.12
 
 require (
 	github.com/AsynkronIT/protoactor-go v0.0.0-20190318154652-aa1aa20c2fa0
-	github.com/Workiva/go-datastructures v1.0.50
 	github.com/avast/retry-go v2.3.0+incompatible
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/elastic/go-sysinfo v1.0.1 // indirect
 	github.com/ethereum/go-ethereum v1.8.25
+	github.com/gogo/protobuf v1.2.1
+	github.com/golang/protobuf v1.3.1
 	github.com/hashicorp/golang-lru v0.5.1
 	github.com/ipfs/go-bitswap v0.0.4
 	github.com/ipfs/go-blockservice v0.0.3
@@ -37,14 +38,12 @@ require (
 	github.com/libp2p/go-libp2p-swarm v0.0.3
 	github.com/multiformats/go-multiaddr v0.0.2
 	github.com/opentracing/opentracing-go v1.1.0
-	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829
 	github.com/quorumcontrol/chaintree v0.0.0-20190530190017-53765d7c259c
-	github.com/quorumcontrol/messages/build/go v0.0.0-20190530182608-30c127bffefb
+	github.com/quorumcontrol/messages/build/go v0.0.0-20190531102608-2481f64457ab2de649292edfd5c069b4cec3a723
 	github.com/quorumcontrol/storage v1.1.2
 	github.com/santhosh-tekuri/jsonschema v1.2.4 // indirect
 	github.com/stretchr/testify v1.3.0
-	github.com/tinylib/msgp v1.1.0
 	github.com/uber-go/atomic v1.3.2 // indirect
 	github.com/uber/jaeger-client-go v2.15.0+incompatible
 	github.com/uber/jaeger-lib v1.5.0

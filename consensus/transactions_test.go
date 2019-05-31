@@ -3,6 +3,7 @@ package consensus_test
 import (
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
+	"github.com/quorumcontrol/messages/build/go/signatures"
 	"strings"
 	"testing"
 
@@ -13,13 +14,11 @@ import (
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/messages/build/go/transactions"
 	"github.com/quorumcontrol/storage"
-	"github.com/quorumcontrol/tupelo-go-sdk/conversion"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/quorumcontrol/chaintree/typecaster"
 
-	extmsgs "github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 )
 
 func TestEstablishTokenTransactionWithMaximum(t *testing.T) {
@@ -532,9 +531,7 @@ func TestReceiveToken(t *testing.T) {
 		leaves = append(leaves, ln.RawData())
 	}
 
-	internalSignature, err := conversion.ToInternalSignature(signature)
-	require.Nil(t, err)
-	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), &signature, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
@@ -668,10 +665,8 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 	otherChainTree, err := chaintree.NewChainTree(emptyTree, nil, consensus.DefaultTransactors)
 	require.Nil(t, err)
 
-	internalSignature, err := conversion.ToInternalSignature(signature)
-	require.Nil(t, err)
 
-	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", otherChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", otherChainTree.Dag.Tip.Bytes(), &signature, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
@@ -788,10 +783,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 		leaves = append(leaves, ln.RawData())
 	}
 
-	internalSignature, err := conversion.ToInternalSignature(signature)
-	require.Nil(t, err)
-
-	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), &signature, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
@@ -847,10 +839,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 		leaves = append(leaves, ln.RawData())
 	}
 
-	internalSignature, err = conversion.ToInternalSignature(signature)
-	require.Nil(t, err)
-
-	receiveTxn, err = chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	receiveTxn, err = chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), &signature, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders = &chaintree.BlockWithHeaders{
@@ -956,7 +945,7 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 
 	objectID, err := senderChainTree.Id()
 	require.Nil(t, err)
-	signature.ObjectID = []byte(objectID)
+	signature.ObjectId = []byte(objectID)
 	signature.NewTip = senderChainTree.Dag.Tip.Bytes()
 	signature.PreviousTip = signedBlock.PreviousTip.Bytes()
 
@@ -971,10 +960,7 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 
 	recipientHeight := uint64(0)
 
-	internalSignature, err := conversion.ToInternalSignature(signature)
-	require.Nil(t, err)
-
-	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), &signature, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
@@ -988,7 +974,7 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 	recipientChainTree, err :=  consensus.NewSignedChainTree(recipientKey.PublicKey, store)
 	require.Nil(t, err)
 
-	isValidSignature := types.GenerateIsValidSignature(func(sig *extmsgs.Signature) (bool, error) {
+	isValidSignature := GenerateIsValidSignature(func(sig *signatures.Signature) (bool, error) {
 		return false, nil
 	})
 
@@ -1097,10 +1083,7 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 
 	recipientHeight := uint64(0)
 
-	internalSignature, err := conversion.ToInternalSignature(signature)
-	require.Nil(t, err)
-
-	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), &signature, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
@@ -1212,7 +1195,7 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 
 	objectID, err := senderChainTree.Id()
 	require.Nil(t, err)
-	signature.ObjectID = []byte(objectID)
+	signature.ObjectId = []byte(objectID)
 	signature.NewTip = emptyTree.Tip.Bytes() // invalid
 	signature.PreviousTip = signedBlock.PreviousTip.Bytes()
 
@@ -1227,10 +1210,7 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 
 	recipientHeight := uint64(0)
 
-	internalSignature, err := conversion.ToInternalSignature(signature)
-	require.Nil(t, err)
-
-	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), &signature, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
@@ -1244,7 +1224,7 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 	recipientChainTree, err :=  consensus.NewSignedChainTree(recipientKey.PublicKey, store)
 	require.Nil(t, err)
 
-	isValidSignature := types.GenerateIsValidSignature(func(sig *extmsgs.Signature) (bool, error) {
+	isValidSignature := GenerateIsValidSignature(func(sig *signatures.Signature) (bool, error) {
 		return true, nil // this should get caught before it gets here; so ensure this doesn't cause false positives
 	})
 

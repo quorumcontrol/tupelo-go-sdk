@@ -1,24 +1,28 @@
 package remote
 
 import (
+	mbridge "github.com/quorumcontrol/messages/build/go/bridge"
 	gocontext "context"
 	"fmt"
 	"math/rand"
 	"reflect"
 	"time"
+	ptypes "github.com/golang/protobuf/ptypes"
+	logging "github.com/ipfs/go-log"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/AsynkronIT/protoactor-go/plugin"
 	pnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/opentracing/opentracing-go"
-	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 	"github.com/quorumcontrol/tupelo-go-sdk/tracing"
-	"github.com/tinylib/msgp/msgp"
+	"github.com/gogo/protobuf/io"
 )
+
+var logger = logging.Logger("tupeloremote")
 
 const maxBridgeBackoffs = 10
 
@@ -53,7 +57,7 @@ func (bs *bridgeStream) SetupOutgoing(remoteAddress peer.ID) error {
 }
 
 func (bs *bridgeStream) HandleIncoming(s pnet.Stream) {
-	msgChan := make(chan WireDelivery)
+	msgChan := make(chan *mbridge.WireDelivery)
 	bs.stream = s
 
 	// there is a separate go routine handling message reading/delivery
@@ -68,19 +72,21 @@ func (bs *bridgeStream) HandleIncoming(s pnet.Stream) {
 	// and allow everything to unblock.
 	go func() {
 		done := bs.ctx.Done()
-		reader := msgp.NewReader(bs.stream)
+		reader := io.NewDelimitedReader(bs.stream, 1<<20) // max size of 1MB
 
 		for {
 			select {
 			case <-done:
 				return
 			default:
-				var wd WireDelivery
-				err := wd.DecodeMsg(reader)
+				wd := &mbridge.WireDelivery{}
+				err := reader.ReadMsg(wd)
 				if err != nil {
+					logger.Errorf("error reading: %v", err)
 					actor.EmptyRootContext.Send(bs.act, internalStreamDied{stream: bs})
 					return
 				}
+				logger.Debugf("received wd: %v", wd)
 				msgChan <- wd
 			}
 		}
@@ -101,7 +107,9 @@ func (bs *bridgeStream) HandleIncoming(s pnet.Stream) {
 
 				return
 			case wd := <-msgChan:
-				actor.EmptyRootContext.Send(bs.act, &wd)
+				wd.Outgoing = false
+				logger.Debugf("forwarding wd: %v", wd)
+				actor.EmptyRootContext.Send(bs.act, wd)
 			}
 		}
 	}()
@@ -180,13 +188,17 @@ func (b *bridge) NormalState(context actor.Context) {
 		b.handleIncomingStream(context, msg)
 	case *internalStreamDied:
 		b.handleStreamDied(context, msg)
-	case *WireDelivery:
+	case *mbridge.WireDelivery:
 		context.SetReceiveTimeout(bridgeReceiveTimeout)
 		if msg.Outgoing {
+			logger.Debugf("delivering outgoing %v", msg)
 			b.handleOutgoingWireDelivery(context, msg)
 		} else {
+			logger.Debugf("handling incoming %v", msg)
 			b.handleIncomingWireDelivery(context, msg)
 		}
+	default:
+		logger.Debugf("unknown message received %s", reflect.TypeOf(msg).String())
 	}
 }
 
@@ -217,12 +229,14 @@ func (b *bridge) handleIncomingStream(context actor.Context, stream pnet.Stream)
 	b.incomingStream.HandleIncoming(stream)
 }
 
-func (b *bridge) handleIncomingWireDelivery(context actor.Context, wd *WireDelivery) {
-	msg, err := wd.GetMessage()
+func (b *bridge) handleIncomingWireDelivery(context actor.Context, wd *mbridge.WireDelivery) {
+	dn := &ptypes.DynamicAny{}
+	err := ptypes.UnmarshalAny(wd.GetMessage(), dn)
 	if err != nil {
 		panic(fmt.Sprintf("error unmarshaling message: %v", err))
 	}
-
+	
+	msg := dn.Message
 	var sp opentracing.Span
 
 	if tracing.Enabled {
@@ -238,19 +252,19 @@ func (b *bridge) handleIncomingWireDelivery(context actor.Context, wd *WireDeliv
 	}
 
 	var sender *actor.PID
-	target := messages.FromActorPid(wd.Target)
+	target := fromActorPid(wd.Target)
 	if wd.Sender != nil {
-		sender = messages.FromActorPid(wd.Sender)
+		sender = fromActorPid(wd.Sender)
 		sender.Address = types.RoutableAddress(sender.Address).Swap().String()
 	}
 	target.Address = actor.ProcessRegistry.Address
 
-	dest, ok := msg.(messages.DestinationSettable)
-	if ok {
-		orig := dest.GetDestination()
-		orig.Address = b.localAddress
-		dest.SetDestination(orig)
-	}
+	// dest, ok := msg.(messages.DestinationSettable)
+	// if ok {
+	// 	orig := dest.GetDestination()
+	// 	orig.Address = b.localAddress
+	// 	dest.SetDestination(orig)
+	// }
 	if sp != nil {
 		sp.SetTag("sending-to-target", true)
 	}
@@ -258,24 +272,24 @@ func (b *bridge) handleIncomingWireDelivery(context actor.Context, wd *WireDeliv
 	context.RequestWithCustomSender(target, msg, sender)
 }
 
-func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDelivery) {
+func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *mbridge.WireDelivery) {
 	var sp opentracing.Span
 
-	if traceable, ok := wd.originalMessage.(tracing.Traceable); tracing.Enabled && ok && traceable.Started() {
-		serialized, err := traceable.SerializedContext()
-		if err == nil {
-			wd.Tracing = serialized
-		} else {
-			b.Log.Errorw("error serializing", "err", err)
-		}
-		// this is intentionally after the serialized
-		// it will complete before the next in the sequence
-		// starts and shouldn't be the span that's still
-		// open when going across the wire
-		sp = traceable.NewSpan("bridge-outgoing")
-	} else {
+	// if traceable, ok := wd.originalMessage.(tracing.Traceable); tracing.Enabled && ok && traceable.Started() {
+	// 	serialized, err := traceable.SerializedContext()
+	// 	if err == nil {
+	// 		wd.Tracing = serialized
+	// 	} else {
+	// 		b.Log.Errorw("error serializing", "err", err)
+	// 	}
+	// 	// this is intentionally after the serialized
+	// 	// it will complete before the next in the sequence
+	// 	// starts and shouldn't be the span that's still
+	// 	// open when going across the wire
+	// 	sp = traceable.NewSpan("bridge-outgoing")
+	// } else {
 		sp = opentracing.StartSpan("outgoing-untraceable")
-	}
+	// }
 	defer sp.Finish()
 
 	if b.outgoingStream == nil {
@@ -312,7 +326,8 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *WireDeliv
 
 	encSpan := opentracing.StartSpan("bridge-encodeMsg", opentracing.ChildOf(sp.Context()))
 	defer encSpan.Finish()
-	err := msgp.Encode(b.outgoingStream.stream, wd)
+	writer := io.NewDelimitedWriter(b.outgoingStream.stream)
+	err := writer.WriteMsg(wd)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.SetTag("error-encoding-message", err)

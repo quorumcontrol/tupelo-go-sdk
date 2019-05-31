@@ -9,9 +9,9 @@ import (
 	"github.com/AsynkronIT/protoactor-go/plugin"
 	peer "github.com/libp2p/go-libp2p-peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
 	"github.com/quorumcontrol/tupelo-go-sdk/tracing"
+	"github.com/golang/protobuf/proto"
 )
 
 func NewSimulatedPubSub() *SimulatedPubSub {
@@ -31,11 +31,11 @@ type SimulatedPubSub struct {
 
 type simulatorMessage struct {
 	topic string
-	msg   messages.WireMessage
+	msg   proto.Message
 }
 
 // Implements the broadcast necessary for the client side to send to the network
-func (sb *SimulatedPubSub) Broadcast(topic string, message messages.WireMessage) error {
+func (sb *SimulatedPubSub) Broadcast(topic string, message proto.Message) error {
 	middleware.Log.Debugw("publishing")
 	isValid := true
 

@@ -8,7 +8,6 @@ import (
 	"github.com/quorumcontrol/messages/build/go/signatures"
 	"github.com/quorumcontrol/messages/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
-	extmsgs "github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -43,7 +42,7 @@ func TestVerify(t *testing.T) {
 		Description   string
 		PublicKey     signatures.PublicKey
 		Payload       []byte
-		Signature     extmsgs.Signature
+		Signature     signatures.Signature
 		ShouldSucceed bool
 		ShouldError   bool
 	}

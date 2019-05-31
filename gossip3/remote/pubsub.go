@@ -9,17 +9,19 @@ import (
 	"github.com/AsynkronIT/protoactor-go/plugin"
 	peer "github.com/libp2p/go-libp2p-peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 	"github.com/quorumcontrol/tupelo-go-sdk/tracing"
 	"go.uber.org/zap"
+	ptypes "github.com/golang/protobuf/ptypes"
+	any "github.com/golang/protobuf/ptypes/any"
+	"github.com/golang/protobuf/proto"
 )
 
-type PubSubValidator func(context.Context, peer.ID, messages.WireMessage) bool
+type PubSubValidator func(context.Context, peer.ID, proto.Message) bool
 
 type PubSub interface {
-	Broadcast(topic string, msg messages.WireMessage) error
+	Broadcast(topic string, msg proto.Message) error
 	NewSubscriberProps(topic string) *actor.Props
 	RegisterTopicValidator(topic string, validatorFunc PubSubValidator, opts ...pubsub.ValidatorOpt) error
 	UnregisterTopicValidator(topic string)
@@ -47,33 +49,27 @@ func NewNetworkPubSub(host p2p.Node) *NetworkPubSub {
 }
 
 // Broadcast sends the message over the wire to any receivers
-func (nps *NetworkPubSub) Broadcast(topic string, message messages.WireMessage) error {
-	msg, ok := message.(messages.WireMessage)
+func (nps *NetworkPubSub) Broadcast(topic string, message proto.Message) error {
+	msg, ok := message.(proto.Message)
 	if !ok {
-		return fmt.Errorf("error, message of type %s is not a messages.WireMessage", reflect.TypeOf(msg).String())
+		return fmt.Errorf("error, message of type %s is not a messages.ProtoMessage", reflect.TypeOf(msg).String())
 	}
-	if traceable, ok := msg.(tracing.Traceable); ok {
-		sp := traceable.NewSpan("pubsub-publish")
-		defer sp.Finish()
+	// if traceable, ok := msg.(tracing.Traceable); ok {
+	// 	sp := traceable.NewSpan("pubsub-publish")
+	// 	defer sp.Finish()
+	// }
+
+	any, err := ptypes.MarshalAny(message)
+	if err != nil {
+		panic(fmt.Errorf("could not marshal message: %v", err))
 	}
-	marshaled, err := msg.MarshalMsg(nil)
+
+	marshaled, err := proto.Marshal(any)
 	if err != nil {
 		return fmt.Errorf("could not marshal message: %v", err)
 	}
 
-	wd := &WireDelivery{
-		originalMessage: msg,
-		Message:         marshaled,
-		Type:            msg.TypeCode(),
-		Target:          nil, // specifically nil because it's broadcast
-		Sender:          nil, // specifically nil because there is no response possible on broadcast
-	}
-	bits, err := wd.MarshalMsg(nil)
-	if err != nil {
-		return fmt.Errorf("error marshaling message: %v", err)
-	}
-
-	return nps.host.GetPubSub().Publish(topic, bits)
+	return nps.host.GetPubSub().Publish(topic, marshaled)
 }
 
 func (nps *NetworkPubSub) RegisterTopicValidator(topic string, validatorFunc PubSubValidator, opts ...pubsub.ValidatorOpt) error {
@@ -184,11 +180,11 @@ func (bs *broadcastSubscriber) handlePubSubMessage(actorContext actor.Context, p
 		return
 	}
 
-	bs.Log.Debugw("converted to wire message", "msg", msg.TypeCode())
-	if traceable, ok := msg.(tracing.Traceable); ok {
-		sp := traceable.NewSpan("pubsub-receive")
-		defer sp.Finish()
-	}
+	// bs.Log.Debugw("converted to wire message", "msg", msg.TypeCode())
+	// if traceable, ok := msg.(tracing.Traceable); ok {
+	// 	sp := traceable.NewSpan("pubsub-receive")
+	// 	defer sp.Finish()
+	// }
 	if bs.notifyParent {
 		bs.Log.Debugw("notifying parent actor")
 		actorContext.Send(actorContext.Parent(), msg)
@@ -198,15 +194,18 @@ func (bs *broadcastSubscriber) handlePubSubMessage(actorContext actor.Context, p
 	}
 }
 
-func pubsubMessageToWireMessage(pubsubMsg *pubsub.Message) (messages.WireMessage, error) {
-	wd := WireDelivery{}
-	_, err := wd.UnmarshalMsg(pubsubMsg.Data)
+func pubsubMessageToWireMessage(pubsubMsg *pubsub.Message) (proto.Message, error) {
+	any := &any.Any{}
+	err := proto.Unmarshal(pubsubMsg.Data, any)
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshaling: %v", err)
 	}
-	msg, err := wd.GetMessage()
+
+	dn := &ptypes.DynamicAny{}
+
+	err = ptypes.UnmarshalAny(any, dn)
 	if err != nil {
 		return nil, fmt.Errorf("error getting message: %v", err)
 	}
-	return msg, nil
+	return dn.Message, nil
 }

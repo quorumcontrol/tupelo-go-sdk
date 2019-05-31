@@ -1,6 +1,7 @@
 package remote
 
 import (
+	mbridge "github.com/quorumcontrol/messages/build/go/bridge"
 	"fmt"
 	"strings"
 
@@ -12,7 +13,7 @@ import (
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
-	"github.com/quorumcontrol/tupelo-go-sdk/tracing"
+	// "github.com/quorumcontrol/tupelo-go-sdk/tracing"
 )
 
 const p2pProtocol = "remoteactors/v1.0"
@@ -66,13 +67,13 @@ func (r *router) Receive(context actor.Context) {
 			handler = r.createBridge(context, remoteGateway)
 		}
 		context.Forward(handler)
-	case *WireDelivery:
+	case *mbridge.WireDelivery:
 		var sp opentracing.Span
 
-		if traceable, ok := msg.originalMessage.(tracing.Traceable); ok && tracing.Enabled && msg.Outgoing && traceable.Started() {
-			sp = traceable.NewSpan("router-outgoing")
-			defer sp.Finish()
-		}
+		// if traceable, ok := msg.originalMessage.(tracing.Traceable); ok && tracing.Enabled && msg.Outgoing && traceable.Started() {
+		// 	sp = traceable.NewSpan("router-outgoing")
+		// 	defer sp.Finish()
+		// }
 
 		target := types.RoutableAddress(msg.Target.Address)
 		if sp != nil {
