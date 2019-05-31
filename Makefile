@@ -7,13 +7,14 @@ endif
 
 FIRSTGOPATH = $(firstword $(subst :, ,$(GOPATH)))
 
-generated = gossip3/messages/external_gen.go gossip3/messages/external_gen_test.go
+generated = gossip3/messages/external_gen.go gossip3/messages/external_gen_test.go gossip3/remote/messages_gen.go gossip3/remote/messages_gen_test.go
 gosources = $(shell find . -path "./vendor/*" -prune -o -type f -name "*.go" -print)
 
 all: build
 
-$(generated): gossip3/messages/external.go $(FIRSTGOPATH)/bin/msgp
+$(generated): gossip3/messages/external.go gossip3/remote/messages.go $(FIRSTGOPATH)/bin/msgp
 	cd gossip3/messages && go generate
+	cd gossip3/remote && go generate
 
 $(FIRSTGOPATH)/bin/modvendor:
 	go get -u github.com/goware/modvendor
@@ -26,7 +27,7 @@ vendor: go.mod go.sum $(FIRSTGOPATH)/bin/modvendor
 build: $(gosources) $(generated) go.mod go.sum
 	go build ./...
 
-lint: $(FIRSTGOPATH)/bin/golangci-lint
+lint: $(FIRSTGOPATH)/bin/golangci-lint build
 	$(FIRSTGOPATH)/bin/golangci-lint run --build-tags integration
 
 test: $(gosources) $(generated) go.mod go.sum $(FIRSTGOPATH)/bin/gotestsum
