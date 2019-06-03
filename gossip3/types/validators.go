@@ -140,10 +140,16 @@ func GenerateIsValidSignature(sigVerifier func(sig *extmsgs.Signature) (bool, er
 	return isValidSignature
 }
 
-func isTokenBurn(tokenName string, tx *transactions.Transaction) bool {
+func isTokenBurn(tokenName string, burnAmount uint64, tx *transactions.Transaction) bool {
+	amount := uint64(0)
+	if burnAmount == 0 {
+		amount = 1
+	} else {
+		amount = burnAmount
+	}
 	return tx.Type == transactions.Transaction_SENDTOKEN &&
 		tx.SendTokenPayload.Name == tokenName &&
-		tx.SendTokenPayload.Amount > 0 &&
+		tx.SendTokenPayload.Amount >= amount &&
 		tx.SendTokenPayload.Destination == ""
 }
 
@@ -157,9 +163,11 @@ func HasBurnGenerator(ctx context.Context, ng *NotaryGroup) (chaintree.BlockVali
 		return nil, fmt.Errorf("error you must specify a TransactionCurrency to use the HasBurnGenerator")
 	}
 
+	burnAmount := ng.Config().BurnAmount
+
 	var burnValidator chaintree.BlockValidatorFunc = func(tree *dag.Dag, blockWithHeaders *chaintree.BlockWithHeaders) (bool, chaintree.CodedError) {
 		for _, tx := range blockWithHeaders.Block.Transactions {
-			if isTokenBurn(tokenName, tx) {
+			if isTokenBurn(tokenName, burnAmount, tx) {
 				return true, nil
 			}
 		}

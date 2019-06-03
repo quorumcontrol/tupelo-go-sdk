@@ -1,28 +1,29 @@
 package types
 
 import (
-	"github.com/stretchr/testify/require"
 	"context"
-	"github.com/quorumcontrol/messages/build/go/transactions"
-	"github.com/quorumcontrol/chaintree/chaintree"
 	"testing"
+
+	"github.com/quorumcontrol/chaintree/chaintree"
+	"github.com/quorumcontrol/messages/build/go/transactions"
+	"github.com/stretchr/testify/require"
 )
 
-
 func TestBurnValidator(t *testing.T) {
-	ctx,cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	config := DefaultConfig()
 
 	config.ID = "TestBurnValidator"
 	config.TransactionToken = "did:atest/ink"
+	config.BurnAmount = 1
 	config.ValidatorGenerators = append(config.ValidatorGenerators, HasBurnGenerator)
 
 	ng := NewNotaryGroupFromConfig(config)
-	validator,err := HasBurnGenerator(ctx, ng)
-	require.Nil(t,err)
-	
+	validator, err := HasBurnGenerator(ctx, ng)
+	require.Nil(t, err)
+
 	blockWithTxs := func(txs []*transactions.Transaction) *chaintree.BlockWithHeaders {
 		return &chaintree.BlockWithHeaders{
 			Block: chaintree.Block{
@@ -38,20 +39,20 @@ func TestBurnValidator(t *testing.T) {
 			&transactions.Transaction{
 				Type: transactions.Transaction_SENDTOKEN,
 				SendTokenPayload: &transactions.SendTokenPayload{
-					Name: config.TransactionToken,
-					Amount: 1,
+					Name:        config.TransactionToken,
+					Amount:      1,
 					Destination: "",
 				},
 			}})
-		isValid,err := validator(nil, blockWithHeaders)
-		require.Nil(t,err)
+		isValid, err := validator(nil, blockWithHeaders)
+		require.Nil(t, err)
 		require.True(t, isValid)
 	})
 
 	t.Run("with no burn", func(t *testing.T) {
 		blockWithHeaders := blockWithTxs(nil)
-		isValid,err := validator(nil, blockWithHeaders)
-		require.Nil(t,err)
+		isValid, err := validator(nil, blockWithHeaders)
+		require.Nil(t, err)
 		require.False(t, isValid)
 	})
 
@@ -60,13 +61,13 @@ func TestBurnValidator(t *testing.T) {
 			&transactions.Transaction{
 				Type: transactions.Transaction_SENDTOKEN,
 				SendTokenPayload: &transactions.SendTokenPayload{
-					Name: config.TransactionToken,
-					Amount: 0,
+					Name:        config.TransactionToken,
+					Amount:      0,
 					Destination: "",
 				},
 			}})
-		isValid,err := validator(nil, blockWithHeaders)
-		require.Nil(t,err)
+		isValid, err := validator(nil, blockWithHeaders)
+		require.Nil(t, err)
 		require.False(t, isValid)
 	})
 
@@ -75,14 +76,49 @@ func TestBurnValidator(t *testing.T) {
 			&transactions.Transaction{
 				Type: transactions.Transaction_SENDTOKEN,
 				SendTokenPayload: &transactions.SendTokenPayload{
-					Name: "different token",
-					Amount: 100,
+					Name:        "different token",
+					Amount:      100,
 					Destination: "",
 				},
 			}})
-		isValid,err := validator(nil, blockWithHeaders)
-		require.Nil(t,err)
+		isValid, err := validator(nil, blockWithHeaders)
+		require.Nil(t, err)
 		require.False(t, isValid)
+	})
+
+	t.Run("with a configured burn amount", func(t *testing.T) {
+		config.BurnAmount = 100
+
+		defer func() { config.BurnAmount = 1 }()
+
+		validator, err := HasBurnGenerator(ctx, ng)
+		require.Nil(t, err)
+
+		blockWithHeaders := blockWithTxs([]*transactions.Transaction{
+			&transactions.Transaction{
+				Type: transactions.Transaction_SENDTOKEN,
+				SendTokenPayload: &transactions.SendTokenPayload{
+					Name:        config.TransactionToken,
+					Amount:      99,
+					Destination: "",
+				},
+			}})
+		isValid, err := validator(nil, blockWithHeaders)
+		require.Nil(t, err)
+		require.False(t, isValid)
+
+		blockWithHeaders = blockWithTxs([]*transactions.Transaction{
+			&transactions.Transaction{
+				Type: transactions.Transaction_SENDTOKEN,
+				SendTokenPayload: &transactions.SendTokenPayload{
+					Name:        config.TransactionToken,
+					Amount:      100,
+					Destination: "",
+				},
+			}})
+		isValid, err = validator(nil, blockWithHeaders)
+		require.Nil(t, err)
+		require.True(t, isValid)
 	})
 
 }

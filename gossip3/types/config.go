@@ -22,6 +22,7 @@ type ValidatorGenerator func(ctx context.Context, notaryGroup *NotaryGroup) (cha
 type Config struct {
 	ID                  string
 	TransactionToken    string
+	BurnAmount          uint64
 	ValidatorGenerators []ValidatorGenerator
 	Transactions        map[transactions.Transaction_Type]chaintree.TransactorFunc
 }
@@ -38,10 +39,10 @@ func (c *Config) blockValidators(ctx context.Context, ng *NotaryGroup) ([]chaint
 	return validators, nil
 }
 
-// WrapBlockValidator is a convenience function when your BlockValidatorFunc does not need any state
+// WrapStatelessValidator is a convenience function when your BlockValidatorFunc does not need any state
 // from the notary group or config. Currently IsOwner and IsTokenRecipient do not need any state
 // and so this lets one easily wrap them.
-func WrapBlockValidator(fn chaintree.BlockValidatorFunc) ValidatorGenerator {
+func WrapStatelessValidator(fn chaintree.BlockValidatorFunc) ValidatorGenerator {
 	var validatorGenerator ValidatorGenerator = func(_ context.Context, _ *NotaryGroup) (chaintree.BlockValidatorFunc, error) {
 		return fn, nil
 	}
@@ -55,8 +56,8 @@ func WrapBlockValidator(fn chaintree.BlockValidatorFunc) ValidatorGenerator {
 func DefaultConfig() *Config {
 	return &Config{
 		ValidatorGenerators: []ValidatorGenerator{
-			WrapBlockValidator(IsOwner),
-			WrapBlockValidator(IsTokenRecipient),
+			WrapStatelessValidator(IsOwner),
+			WrapStatelessValidator(IsTokenRecipient),
 		},
 		Transactions: consensus.DefaultTransactors,
 	}
