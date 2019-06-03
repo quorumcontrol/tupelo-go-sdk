@@ -1,9 +1,10 @@
 package types
 
 import (
-	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	"context"
 	"fmt"
+
+	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/messages/build/go/transactions"
@@ -19,9 +20,8 @@ type ValidatorGenerator func(ctx context.Context, notaryGroup *NotaryGroup) (cha
 // Config is the simplest thing that could work for now
 // it is just an in-memory only configuration for the notary group.
 type Config struct {
-	ID               string
-	TransactionToken string
-	// Rather than taking a simple chaintree.BlockValidator we take a
+	ID                  string
+	TransactionToken    string
 	ValidatorGenerators []ValidatorGenerator
 	Transactions        map[transactions.Transaction_Type]chaintree.TransactorFunc
 }

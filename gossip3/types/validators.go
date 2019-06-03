@@ -1,10 +1,11 @@
 package types
 
 import (
-	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	"context"
 	"fmt"
 	"strings"
+
+	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 
 	"github.com/quorumcontrol/chaintree/typecaster"
 
@@ -146,7 +147,7 @@ func isTokenBurn(tokenName string, tx *transactions.Transaction) bool {
 		tx.SendTokenPayload.Destination == ""
 }
 
-// HasBurnGenerator is a higher-order generator (because we need notary group config for the token name) that returns a 
+// HasBurnGenerator is a higher-order generator (because we need notary group config for the token name) that returns a
 // ChainTree validator that looks for the precense of a token burn in a block of transactions
 // if the block has a transaction which has a SendToken with the config TransactionToken name,
 // a value > 0 and a "" destination, it is considered a burn.
@@ -201,7 +202,6 @@ func IsOwner(tree *dag.Dag, blockWithHeaders *chaintree.BlockWithHeaders) (bool,
 
 	for _, addr := range addrs {
 		isSigned, err := consensus.IsBlockSignedBy(blockWithHeaders, addr)
-
 		if err != nil {
 			return false, &consensus.ErrorCode{Memo: fmt.Sprintf("error finding if signed: %v", err), Code: consensus.ErrUnknown}
 		}
