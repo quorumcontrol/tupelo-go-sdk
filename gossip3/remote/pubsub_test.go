@@ -1,6 +1,7 @@
 package remote
 
 import (
+	"github.com/quorumcontrol/messages/build/go/services"
 	"bytes"
 	"context"
 	"crypto/ecdsa"
@@ -12,11 +13,11 @@ import (
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/ethereum/go-ethereum/crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
-	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/golang/protobuf/proto"
 )
 
 func TestPubSub(t *testing.T) {
@@ -55,8 +56,8 @@ func TestPubSub(t *testing.T) {
 
 	actorContext := actor.EmptyRootContext
 
-	validTx := &messages.Transaction{
-		ObjectID: []byte("valid"),
+	validTx := &services.AddBlockRequest{
+		ObjectId: []byte("valid"),
 	}
 
 	networkPubsubA := NewNetworkPubSub(nodeA)
@@ -72,7 +73,7 @@ func TestPubSub(t *testing.T) {
 			case *actor.Started:
 				actCtx.Spawn(networkPubsubB.NewSubscriberProps(topicName))
 				actCtx.Send(ready.PID(), true)
-			case *messages.Transaction:
+			case *services.AddBlockRequest:
 				actCtx.Send(subscriber.PID(), msg)
 			}
 		}
@@ -91,16 +92,16 @@ func TestPubSub(t *testing.T) {
 		resp, err := subscriber.Result()
 		require.Nil(t, err)
 
-		assert.Equal(t, validTx.ObjectID, resp.(*messages.Transaction).ObjectID)
+		assert.Equal(t, validTx.ObjectId, resp.(*services.AddBlockRequest).ObjectId)
 	})
 
 	t.Run("validations", func(t *testing.T) {
-		invalidTx := &messages.Transaction{
-			ObjectID: []byte("invalid"),
+		invalidTx := &services.AddBlockRequest{
+			ObjectId: []byte("invalid"),
 		}
 
-		validator := func(ctx context.Context, p peer.ID, msg messages.WireMessage) bool {
-			return bytes.Equal(msg.(*messages.Transaction).ObjectID, validTx.ObjectID)
+		validator := func(ctx context.Context, p peer.ID, msg proto.Message) bool {
+			return bytes.Equal(msg.(*services.AddBlockRequest).ObjectId, validTx.ObjectId)
 		}
 
 		err := networkPubsubA.RegisterTopicValidator(topicName, validator)
@@ -118,7 +119,7 @@ func TestPubSub(t *testing.T) {
 			case *actor.Started:
 				actCtx.Spawn(networkPubsubB.NewSubscriberProps(topicName))
 				actCtx.Send(ready.PID(), true)
-			case *messages.Transaction:
+			case *services.AddBlockRequest:
 				actCtx.Send(subscriber.PID(), msg)
 			}
 		}
@@ -140,15 +141,15 @@ func TestPubSub(t *testing.T) {
 		require.Nil(t, err)
 
 		// assert that even though we sent the invalidTx first, we still get the validTx back
-		assert.Equal(t, validTx.ObjectID, resp.(*messages.Transaction).ObjectID)
+		assert.Equal(t, validTx.ObjectId, resp.(*services.AddBlockRequest).ObjectId)
 	})
 }
 
 func TestSimulatedBroadcaster(t *testing.T) {
 	actorContext := actor.EmptyRootContext
 
-	validTx := &messages.Transaction{
-		ObjectID: []byte("totaltest"),
+	validTx := &services.AddBlockRequest{
+		ObjectId: []byte("totaltest"),
 	}
 
 	simulatedPubSub := NewSimulatedPubSub()
@@ -163,7 +164,7 @@ func TestSimulatedBroadcaster(t *testing.T) {
 				actCtx.Spawn(simulatedPubSub.NewSubscriberProps(topicName))
 				time.Sleep(50 * time.Millisecond)
 				actCtx.Send(ready.PID(), true)
-			case *messages.Transaction:
+			case *services.AddBlockRequest:
 				actCtx.Send(subscriber.PID(), msg)
 			default:
 				middleware.Log.Debugw("parent received message type", "type", reflect.TypeOf(msg).String())
@@ -183,16 +184,16 @@ func TestSimulatedBroadcaster(t *testing.T) {
 		resp, err := subscriber.Result()
 		require.Nil(t, err)
 
-		assert.Equal(t, validTx.ObjectID, resp.(*messages.Transaction).ObjectID)
+		assert.Equal(t, validTx.ObjectId, resp.(*services.AddBlockRequest).ObjectId)
 	})
 
 	t.Run("validations", func(t *testing.T) {
-		invalidTx := &messages.Transaction{
-			ObjectID: []byte("invalid"),
+		invalidTx := &services.AddBlockRequest{
+			ObjectId: []byte("invalid"),
 		}
 
-		validator := func(ctx context.Context, p peer.ID, msg messages.WireMessage) bool {
-			return bytes.Equal(msg.(*messages.Transaction).ObjectID, validTx.ObjectID)
+		validator := func(ctx context.Context, p peer.ID, msg proto.Message) bool {
+			return bytes.Equal(msg.(*services.AddBlockRequest).ObjectId, validTx.ObjectId)
 		}
 
 		err := simulatedPubSub.RegisterTopicValidator(topicName, validator)
@@ -207,7 +208,7 @@ func TestSimulatedBroadcaster(t *testing.T) {
 				actCtx.Spawn(simulatedPubSub.NewSubscriberProps(topicName))
 				time.Sleep(50 * time.Millisecond)
 				actCtx.Send(ready.PID(), true)
-			case *messages.Transaction:
+			case *services.AddBlockRequest:
 				actCtx.Send(subscriber.PID(), msg)
 			}
 		}
@@ -229,7 +230,7 @@ func TestSimulatedBroadcaster(t *testing.T) {
 		require.Nil(t, err)
 
 		// assert that even though we sent the invalidTx first, we still get the validTx back
-		assert.Equal(t, validTx.ObjectID, resp.(*messages.Transaction).ObjectID)
+		assert.Equal(t, validTx.ObjectId, resp.(*services.AddBlockRequest).ObjectId)
 	})
 }
 

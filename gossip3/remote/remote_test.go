@@ -1,17 +1,16 @@
 package remote
 
 import (
+	"github.com/quorumcontrol/messages/build/go/services"
 	"context"
 	"testing"
 	"time"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 	"github.com/quorumcontrol/tupelo-go-sdk/testnotarygroup"
-	"github.com/quorumcontrol/tupelo-go-sdk/tracing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -36,14 +35,14 @@ func TestLocalStillWorks(t *testing.T) {
 
 	localPing := rootContext.Spawn(actor.PropsFromFunc(func(ctx actor.Context) {
 		switch msg := ctx.Message().(type) {
-		case *messages.Ping:
-			ctx.Respond(&messages.Pong{Msg: msg.Msg})
+		case *services.Ping:
+			ctx.Respond(&services.Pong{Msg: msg.Msg})
 		}
 	}))
 
-	resp, err := rootContext.RequestFuture(localPing, &messages.Ping{Msg: "hi"}, 1*time.Second).Result()
+	resp, err := rootContext.RequestFuture(localPing, &services.Ping{Msg: "hi"}, 1*time.Second).Result()
 	require.Nil(t, err)
-	assert.Equal(t, resp.(*messages.Pong).Msg, "hi")
+	assert.Equal(t, resp.(*services.Pong).Msg, "hi")
 }
 
 func TestRemoteMessageSending(t *testing.T) {
@@ -78,9 +77,9 @@ func TestRemoteMessageSending(t *testing.T) {
 
 	pingFunc := func(ctx actor.Context) {
 		switch msg := ctx.Message().(type) {
-		case *messages.Ping:
+		case *services.Ping:
 			// t.Logf("ctx: %v, msg: %v, sender: %v", ctx, msg, ctx.Sender().Address+ctx.Sender().GetId())
-			ctx.Respond(&messages.Pong{Msg: msg.Msg})
+			ctx.Respond(&services.Pong{Msg: msg.Msg})
 		}
 	}
 
@@ -108,23 +107,17 @@ func TestRemoteMessageSending(t *testing.T) {
 	t.Run("ping", func(t *testing.T) {
 		remotePing := actor.NewPID(types.NewRoutableAddress(host1.Identity(), host3.Identity()).String(), host3Ping.GetId())
 
-		resp, err := rootContext.RequestFuture(remotePing, &messages.Ping{Msg: "hi"}, 100*time.Millisecond).Result()
+		resp, err := rootContext.RequestFuture(remotePing, &services.Ping{Msg: "hi"}, 100*time.Millisecond).Result()
 
 		assert.Nil(t, err)
-		assert.Equal(t, resp.(*messages.Pong).Msg, "hi")
+		assert.Equal(t, resp.(*services.Pong).Msg, "hi")
 	})
 
 	t.Run("sending a traceable when tracing is on", func(t *testing.T) {
-		tracing.StartJaeger("test-only")
-		defer tracing.StopJaeger()
-		remotePing := actor.NewPID(types.NewRoutableAddress(host1.Identity(), host3.Identity()).String(), host3Ping.GetId())
-		msg := &messages.Ping{Msg: "hi"}
-		msg.StartTrace("test-only-ping")
-		defer msg.StopTrace()
-		resp, err := rootContext.RequestFuture(remotePing, msg, 100*time.Millisecond).Result()
-
-		assert.Nil(t, err)
-		assert.Equal(t, resp.(*messages.Pong).Msg, "hi")
+		// We *should* have serializable and traceable messages, but we don't.
+		// will take some work in the messages library (probaby with gogo protobuf)
+		// in order to bring those back. Without those, it's really hard to test this functionality.
+		t.Skip("we no longer have any serializable, and traceable messages at the moment.")
 	})
 
 	t.Run("when the otherside is closed permanently", func(t *testing.T) {
@@ -144,14 +137,14 @@ func TestRemoteMessageSending(t *testing.T) {
 
 		NewRouter(host4)
 
-		resp, err := rootContext.RequestFuture(remote4Ping, &messages.Ping{Msg: "hi"}, 100*time.Millisecond).Result()
+		resp, err := rootContext.RequestFuture(remote4Ping, &services.Ping{Msg: "hi"}, 100*time.Millisecond).Result()
 		require.Nil(t, err)
-		assert.Equal(t, resp.(*messages.Pong).Msg, "hi")
+		assert.Equal(t, resp.(*services.Pong).Msg, "hi")
 
 		host4Ping.Stop()
 		cancel()
 
-		resp, err = rootContext.RequestFuture(remote4Ping, &messages.Ping{Msg: "hi"}, 100*time.Millisecond).Result()
+		resp, err = rootContext.RequestFuture(remote4Ping, &services.Ping{Msg: "hi"}, 100*time.Millisecond).Result()
 		assert.NotNil(t, err)
 		assert.Nil(t, resp)
 	})
@@ -165,16 +158,16 @@ func TestRemoteMessageSending(t *testing.T) {
 		remotePing1 := actor.NewPID(types.NewRoutableAddress(host1.Identity(), host3.Identity()).String(), host3Ping.GetId())
 		remotePing2 := actor.NewPID(types.NewRoutableAddress(host3.Identity(), host1.Identity()).String(), host1Ping.GetId())
 
-		fut1 := rootContext.RequestFuture(remotePing1, &messages.Ping{Msg: "hi"}, 200*time.Millisecond)
-		fut2 := rootContext.RequestFuture(remotePing2, &messages.Ping{Msg: "hi"}, 200*time.Millisecond)
+		fut1 := rootContext.RequestFuture(remotePing1, &services.Ping{Msg: "hi"}, 200*time.Millisecond)
+		fut2 := rootContext.RequestFuture(remotePing2, &services.Ping{Msg: "hi"}, 200*time.Millisecond)
 
 		resp1, err := fut1.Result()
 		require.Nil(t, err)
-		assert.Equal(t, resp1.(*messages.Pong).Msg, "hi")
+		assert.Equal(t, resp1.(*services.Pong).Msg, "hi")
 
 		resp2, err := fut2.Result()
 		require.Nil(t, err)
-		assert.Equal(t, resp2.(*messages.Pong).Msg, "hi")
+		assert.Equal(t, resp2.(*services.Pong).Msg, "hi")
 	})
 
 }

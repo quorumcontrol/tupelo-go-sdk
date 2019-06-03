@@ -13,6 +13,7 @@ import (
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 	"github.com/quorumcontrol/tupelo-go-sdk/tracing"
+	// "github.com/quorumcontrol/tupelo-go-sdk/tracing"
 )
 
 const p2pProtocol = "remoteactors/v1.0"
@@ -66,7 +67,7 @@ func (r *router) Receive(context actor.Context) {
 			handler = r.createBridge(context, remoteGateway)
 		}
 		context.Forward(handler)
-	case *WireDelivery:
+	case *wireDeliveryWrapper:
 		var sp opentracing.Span
 
 		if traceable, ok := msg.originalMessage.(tracing.Traceable); ok && tracing.Enabled && msg.Outgoing && traceable.Started() {

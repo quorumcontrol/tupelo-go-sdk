@@ -1,6 +1,7 @@
 package testhelpers
 
 import (
+	"github.com/quorumcontrol/messages/build/go/services"
 	"crypto/ecdsa"
 	"testing"
 
@@ -14,21 +15,20 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
-	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 )
 
-func NewValidTransaction(t testing.TB) messages.Transaction {
+func NewValidTransaction(t testing.TB) services.AddBlockRequest {
 	treeKey, err := crypto.GenerateKey()
 	require.Nil(t, err)
 
 	return NewValidTransactionWithKey(t, treeKey)
 }
 
-func NewValidTransactionWithKey(t testing.TB, treeKey *ecdsa.PrivateKey) messages.Transaction {
+func NewValidTransactionWithKey(t testing.TB, treeKey *ecdsa.PrivateKey) services.AddBlockRequest {
 	return NewValidTransactionWithPathAndValue(t, treeKey, "down/in/the/thing", "hi")
 }
 
-func NewValidTransactionWithPathAndValue(t testing.TB, treeKey *ecdsa.PrivateKey, path, value string) messages.Transaction {
+func NewValidTransactionWithPathAndValue(t testing.TB, treeKey *ecdsa.PrivateKey, path, value string) services.AddBlockRequest {
 	sw := safewrap.SafeWrap{}
 
 	txn, err := chaintree.NewSetDataTransaction(path, value)
@@ -60,13 +60,13 @@ func NewValidTransactionWithPathAndValue(t testing.TB, treeKey *ecdsa.PrivateKey
 	bits := sw.WrapObject(blockWithHeaders).RawData()
 	require.Nil(t, sw.Err)
 
-	return messages.Transaction{
+	return services.AddBlockRequest{
 		PreviousTip: emptyTip.Bytes(),
 		Height:      blockWithHeaders.Height,
 		NewTip:      testTree.Dag.Tip.Bytes(),
 		Payload:     bits,
 		State:       nodes,
-		ObjectID:    []byte(treeDID),
+		ObjectId:    []byte(treeDID),
 	}
 }
 

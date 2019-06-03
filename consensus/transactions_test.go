@@ -1,10 +1,12 @@
 package consensus_test
 
 import (
-	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
-	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
 	"strings"
 	"testing"
+
+	"github.com/quorumcontrol/messages/build/go/signatures"
+	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	cid "github.com/ipfs/go-cid"
@@ -13,13 +15,10 @@ import (
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/messages/build/go/transactions"
 	"github.com/quorumcontrol/storage"
-	"github.com/quorumcontrol/tupelo-go-sdk/conversion"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/quorumcontrol/chaintree/typecaster"
-
-	extmsgs "github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 )
 
 func TestEstablishTokenTransactionWithMaximum(t *testing.T) {
@@ -165,7 +164,7 @@ func TestEstablishTokenTransactionWithoutMonetaryPolicy(t *testing.T) {
 	payload := &transactions.EstablishTokenPayload{Name: tokenName}
 
 	txn := &transactions.Transaction{
-		Type: transactions.Transaction_ESTABLISHTOKEN,
+		Type:                  transactions.Transaction_ESTABLISHTOKEN,
 		EstablishTokenPayload: payload,
 	}
 
@@ -515,7 +514,7 @@ func TestReceiveToken(t *testing.T) {
 	signedBlock, err := consensus.SignBlock(sendBlockWithHeaders, key)
 	require.Nil(t, err)
 
-	headers := & consensus.StandardHeaders{}
+	headers := &consensus.StandardHeaders{}
 	err = typecaster.ToType(signedBlock.Headers, headers)
 	require.Nil(t, err)
 
@@ -523,7 +522,7 @@ func TestReceiveToken(t *testing.T) {
 	signature, ok := headers.Signatures[sigAddr]
 	require.True(t, ok)
 
-	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2,  consensus.TokenSendLabel, "0"}
+	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
 	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
 	require.Nil(t, err)
 
@@ -532,9 +531,7 @@ func TestReceiveToken(t *testing.T) {
 		leaves = append(leaves, ln.RawData())
 	}
 
-	internalSignature, err := conversion.ToInternalSignature(signature)
-	require.Nil(t, err)
-	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), signature, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
@@ -545,7 +542,7 @@ func TestReceiveToken(t *testing.T) {
 		},
 	}
 
-	recipientChainTree, err :=  consensus.NewSignedChainTree(recipientKey.PublicKey, store)
+	recipientChainTree, err := consensus.NewSignedChainTree(recipientKey.PublicKey, store)
 	require.Nil(t, err)
 	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators, types.IsTokenRecipient)
 
@@ -555,13 +552,13 @@ func TestReceiveToken(t *testing.T) {
 
 	senderTree, err := senderChainTree.Tree()
 	require.Nil(t, err)
-	senderLedger :=  consensus.NewTreeLedger(senderTree, tokenFullName2)
+	senderLedger := consensus.NewTreeLedger(senderTree, tokenFullName2)
 	senderBalance, err := senderLedger.Balance()
 	require.Nil(t, err)
 
 	recipientTree, err := recipientChainTree.ChainTree.Tree()
 	require.Nil(t, err)
-	recipientLedger :=  consensus.NewTreeLedger(recipientTree, tokenFullName2)
+	recipientLedger := consensus.NewTreeLedger(recipientTree, tokenFullName2)
 	recipientBalance, err := recipientLedger.Balance()
 	require.Nil(t, err)
 
@@ -648,7 +645,7 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 	signedBlock, err := consensus.SignBlock(sendBlockWithHeaders, key)
 	require.Nil(t, err)
 
-	headers := & consensus.StandardHeaders{}
+	headers := &consensus.StandardHeaders{}
 	err = typecaster.ToType(signedBlock.Headers, headers)
 	require.Nil(t, err)
 
@@ -656,7 +653,7 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 	signature, ok := headers.Signatures[sigAddr]
 	require.True(t, ok)
 
-	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2,  consensus.TokenSendLabel, "0"}
+	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
 	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
 	require.Nil(t, err)
 
@@ -668,10 +665,7 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 	otherChainTree, err := chaintree.NewChainTree(emptyTree, nil, consensus.DefaultTransactors)
 	require.Nil(t, err)
 
-	internalSignature, err := conversion.ToInternalSignature(signature)
-	require.Nil(t, err)
-
-	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", otherChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", otherChainTree.Dag.Tip.Bytes(), signature, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
@@ -682,7 +676,7 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 		},
 	}
 
-	recipientChainTree, err :=  consensus.NewSignedChainTree(recipientKey.PublicKey, store)
+	recipientChainTree, err := consensus.NewSignedChainTree(recipientKey.PublicKey, store)
 	require.Nil(t, err)
 	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators, types.IsTokenRecipient)
 
@@ -771,7 +765,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 	signedBlock, err := consensus.SignBlock(sendBlockWithHeaders, key)
 	require.Nil(t, err)
 
-	headers := & consensus.StandardHeaders{}
+	headers := &consensus.StandardHeaders{}
 	err = typecaster.ToType(signedBlock.Headers, headers)
 	require.Nil(t, err)
 
@@ -779,7 +773,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 	signature, ok := headers.Signatures[sigAddr]
 	require.True(t, ok)
 
-	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2,  consensus.TokenSendLabel, "0"}
+	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
 	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
 	require.Nil(t, err)
 
@@ -788,10 +782,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 		leaves = append(leaves, ln.RawData())
 	}
 
-	internalSignature, err := conversion.ToInternalSignature(signature)
-	require.Nil(t, err)
-
-	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), signature, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
@@ -802,7 +793,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 		},
 	}
 
-	recipientChainTree, err :=  consensus.NewSignedChainTree(recipientKey.PublicKey, store)
+	recipientChainTree, err := consensus.NewSignedChainTree(recipientKey.PublicKey, store)
 	require.Nil(t, err)
 	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators, types.IsTokenRecipient)
 
@@ -830,7 +821,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 	signedBlock, err = consensus.SignBlock(sendBlockWithHeaders, key)
 	require.Nil(t, err)
 
-	headers = & consensus.StandardHeaders{}
+	headers = &consensus.StandardHeaders{}
 	err = typecaster.ToType(signedBlock.Headers, headers)
 	require.Nil(t, err)
 
@@ -838,7 +829,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 	signature, ok = headers.Signatures[sigAddr]
 	require.True(t, ok)
 
-	tokenPath = []string{"tree", "_tupelo", "tokens", tokenFullName2,  consensus.TokenSendLabel, "1"}
+	tokenPath = []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "1"}
 	leafNodes, err = senderChainTree.Dag.NodesForPath(tokenPath)
 	require.Nil(t, err)
 
@@ -847,10 +838,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 		leaves = append(leaves, ln.RawData())
 	}
 
-	internalSignature, err = conversion.ToInternalSignature(signature)
-	require.Nil(t, err)
-
-	receiveTxn, err = chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	receiveTxn, err = chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), signature, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders = &chaintree.BlockWithHeaders{
@@ -946,7 +934,7 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 	signedBlock, err := consensus.SignBlock(sendBlockWithHeaders, otherKey)
 	require.Nil(t, err)
 
-	headers := & consensus.StandardHeaders{}
+	headers := &consensus.StandardHeaders{}
 	err = typecaster.ToType(signedBlock.Headers, headers)
 	require.Nil(t, err)
 
@@ -956,11 +944,11 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 
 	objectID, err := senderChainTree.Id()
 	require.Nil(t, err)
-	signature.ObjectID = []byte(objectID)
+	signature.ObjectId = []byte(objectID)
 	signature.NewTip = senderChainTree.Dag.Tip.Bytes()
 	signature.PreviousTip = signedBlock.PreviousTip.Bytes()
 
-	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2,  consensus.TokenSendLabel, "0"}
+	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
 	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
 	require.Nil(t, err)
 
@@ -971,10 +959,7 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 
 	recipientHeight := uint64(0)
 
-	internalSignature, err := conversion.ToInternalSignature(signature)
-	require.Nil(t, err)
-
-	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), signature, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
@@ -985,10 +970,10 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 		},
 	}
 
-	recipientChainTree, err :=  consensus.NewSignedChainTree(recipientKey.PublicKey, store)
+	recipientChainTree, err := consensus.NewSignedChainTree(recipientKey.PublicKey, store)
 	require.Nil(t, err)
 
-	isValidSignature := types.GenerateIsValidSignature(func(sig *extmsgs.Signature) (bool, error) {
+	isValidSignature := types.GenerateIsValidSignature(func(sig *signatures.Signature) (bool, error) {
 		return false, nil
 	})
 
@@ -1078,7 +1063,7 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 	signedBlock, err := consensus.SignBlock(sendBlockWithHeaders, key)
 	require.Nil(t, err)
 
-	headers := & consensus.StandardHeaders{}
+	headers := &consensus.StandardHeaders{}
 	err = typecaster.ToType(signedBlock.Headers, headers)
 	require.Nil(t, err)
 
@@ -1086,7 +1071,7 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 	signature, ok := headers.Signatures[sigAddr]
 	require.True(t, ok)
 
-	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2,  consensus.TokenSendLabel, "0"}
+	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
 	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
 	require.Nil(t, err)
 
@@ -1097,10 +1082,7 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 
 	recipientHeight := uint64(0)
 
-	internalSignature, err := conversion.ToInternalSignature(signature)
-	require.Nil(t, err)
-
-	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), signature, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
@@ -1113,7 +1095,7 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 
 	recipientKey, err := crypto.GenerateKey()
 	require.Nil(t, err)
-	recipientChainTree, err :=  consensus.NewSignedChainTree(recipientKey.PublicKey, store)
+	recipientChainTree, err := consensus.NewSignedChainTree(recipientKey.PublicKey, store)
 	require.Nil(t, err)
 	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators, types.IsTokenRecipient)
 
@@ -1202,7 +1184,7 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 	signedBlock, err := consensus.SignBlock(sendBlockWithHeaders, otherKey)
 	require.Nil(t, err)
 
-	headers := & consensus.StandardHeaders{}
+	headers := &consensus.StandardHeaders{}
 	err = typecaster.ToType(signedBlock.Headers, headers)
 	require.Nil(t, err)
 
@@ -1212,11 +1194,11 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 
 	objectID, err := senderChainTree.Id()
 	require.Nil(t, err)
-	signature.ObjectID = []byte(objectID)
+	signature.ObjectId = []byte(objectID)
 	signature.NewTip = emptyTree.Tip.Bytes() // invalid
 	signature.PreviousTip = signedBlock.PreviousTip.Bytes()
 
-	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2,  consensus.TokenSendLabel, "0"}
+	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
 	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
 	require.Nil(t, err)
 
@@ -1227,10 +1209,7 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 
 	recipientHeight := uint64(0)
 
-	internalSignature, err := conversion.ToInternalSignature(signature)
-	require.Nil(t, err)
-
-	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), internalSignature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), signature, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
@@ -1241,10 +1220,10 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 		},
 	}
 
-	recipientChainTree, err :=  consensus.NewSignedChainTree(recipientKey.PublicKey, store)
+	recipientChainTree, err := consensus.NewSignedChainTree(recipientKey.PublicKey, store)
 	require.Nil(t, err)
 
-	isValidSignature := types.GenerateIsValidSignature(func(sig *extmsgs.Signature) (bool, error) {
+	isValidSignature := types.GenerateIsValidSignature(func(sig *signatures.Signature) (bool, error) {
 		return true, nil // this should get caught before it gets here; so ensure this doesn't cause false positives
 	})
 

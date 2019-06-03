@@ -3,6 +3,8 @@
 package client
 
 import (
+	"github.com/quorumcontrol/messages/build/go/services"
+	"github.com/quorumcontrol/messages/build/go/signatures"
 	"context"
 	"crypto/ecdsa"
 	"encoding/base64"
@@ -26,7 +28,6 @@ import (
 	"github.com/quorumcontrol/storage"
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
-	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/remote"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/testhelpers"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
@@ -112,7 +113,7 @@ func TestClientSendTransaction(t *testing.T) {
 
 	trans := testhelpers.NewValidTransaction(t)
 
-	client := New(ng, string(trans.ObjectID), remote.NewNetworkPubSub(host))
+	client := New(ng, string(trans.ObjectId), remote.NewNetworkPubSub(host))
 	defer client.Stop()
 
 	err = client.SendTransaction(&trans)
@@ -131,7 +132,7 @@ func TestClientSubscribe(t *testing.T) {
 
 	trans := testhelpers.NewValidTransaction(t)
 
-	client := New(ng, string(trans.ObjectID), remote.NewNetworkPubSub(host))
+	client := New(ng, string(trans.ObjectId), remote.NewNetworkPubSub(host))
 	defer client.Stop()
 
 	fut := client.Subscribe(&trans, 5*time.Second)
@@ -144,8 +145,8 @@ func TestClientSubscribe(t *testing.T) {
 	resp, err := fut.Result()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.IsType(t, &messages.CurrentState{}, resp)
-	currState := resp.(*messages.CurrentState)
+	require.IsType(t, &signatures.CurrentState{}, resp)
+	currState := resp.(*signatures.CurrentState)
 	assert.Equal(t, currState.Signature.NewTip, trans.NewTip)
 }
 
@@ -234,16 +235,16 @@ func transactRemote(t testing.TB, client *Client, treeID string, blockWithHeader
 		previousTipBytes = blockWithHeaders.PreviousTip.Bytes()
 	}
 
-	transMsg := &messages.Transaction{
+	transMsg := &services.AddBlockRequest{
 		PreviousTip: previousTipBytes,
 		Height:      blockWithHeaders.Height,
 		NewTip:      newTip.Bytes(),
 		Payload:     sw.WrapObject(blockWithHeaders).RawData(),
 		State:       stateNodes,
-		ObjectID:    []byte(treeID),
+		ObjectId:    []byte(treeID),
 	}
 
-	t.Logf("sending remote transaction id: %s height: %d", base64.StdEncoding.EncodeToString(transMsg.ID()), transMsg.Height)
+	t.Logf("sending remote transaction id: %s height: %d", base64.StdEncoding.EncodeToString(consensus.RequestID(transMsg)), transMsg.Height)
 
 	fut := client.Subscribe(transMsg, 30*time.Second)
 	time.Sleep(1 * time.Second)
@@ -295,11 +296,11 @@ func TestSnoozedTransaction(t *testing.T) {
 
 	resp0, err := sub0.Result()
 	require.Nil(t, err)
-	require.IsType(t, &messages.CurrentState{}, resp0)
+	require.IsType(t, &signatures.CurrentState{}, resp0)
 
 	resp1, err := sub1.Result()
 	require.Nil(t, err)
-	require.IsType(t, &messages.CurrentState{}, resp1)
+	require.IsType(t, &signatures.CurrentState{}, resp1)
 }
 
 func TestInvalidPreviousTipOnSnoozedTransaction(t *testing.T) {
@@ -359,9 +360,9 @@ func TestInvalidPreviousTipOnSnoozedTransaction(t *testing.T) {
 
 	resp0, err := sub0.Result()
 	require.Nil(t, err)
-	require.IsType(t, &messages.CurrentState{}, resp0)
+	require.IsType(t, &signatures.CurrentState{}, resp0)
 
-	t.Logf("resp0 tip %v", resp0.(*messages.CurrentState).Signature.NewTip)
+	t.Logf("resp0 tip %v", resp0.(*signatures.CurrentState).Signature.NewTip)
 
 	_, err = sub1.Result()
 	// TODO: this is now a timeout error.

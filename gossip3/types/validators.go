@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/quorumcontrol/messages/build/go/signatures"
+
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 
 	"github.com/quorumcontrol/chaintree/typecaster"
@@ -13,9 +15,6 @@ import (
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/messages/build/go/transactions"
-
-	"github.com/quorumcontrol/tupelo-go-sdk/conversion"
-	extmsgs "github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 )
 
 func getReceiveTokenPayloads(txns []*transactions.Transaction) ([]*transactions.ReceiveTokenPayload, error) {
@@ -90,7 +89,7 @@ func IsTokenRecipient(tree *dag.Dag, blockWithHeaders *chaintree.BlockWithHeader
 // verifier function arg and returns an IsValidSignature validator function
 // (see above) that calls the given sigVerifier with the Signature and Tip it
 // receives and uses its return values to determine validity.
-func GenerateIsValidSignature(sigVerifier func(sig *extmsgs.Signature) (bool, error)) chaintree.BlockValidatorFunc {
+func GenerateIsValidSignature(sigVerifier func(sig *signatures.Signature) (bool, error)) chaintree.BlockValidatorFunc {
 	isValidSignature := func(tree *dag.Dag, blockWithHeaders *chaintree.BlockWithHeaders) (bool, chaintree.CodedError) {
 		// first determine if there any RECEIVE_TOKEN transactions in here
 		receiveTokens, err := getReceiveTokenPayloads(blockWithHeaders.Transactions)
@@ -105,10 +104,7 @@ func GenerateIsValidSignature(sigVerifier func(sig *extmsgs.Signature) (bool, er
 
 		// we have at least one RECEIVE_TOKEN transaction; make sure Signature is valid for Tip
 		for _, rt := range receiveTokens {
-			sig, err := conversion.ToExternalSignature(rt.Signature)
-			if err != nil {
-				return false, &consensus.ErrorCode{Code: consensus.ErrInvalidSig, Memo: fmt.Sprintf("error converting signature: %v", err)}
-			}
+			sig := rt.Signature
 
 			tip, err := cid.Cast(rt.Tip)
 			if err != nil {

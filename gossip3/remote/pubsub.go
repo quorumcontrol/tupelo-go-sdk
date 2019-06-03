@@ -3,23 +3,24 @@ package remote
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/AsynkronIT/protoactor-go/plugin"
+	"github.com/golang/protobuf/proto"
+	ptypes "github.com/golang/protobuf/ptypes"
+	any "github.com/golang/protobuf/ptypes/any"
 	peer "github.com/libp2p/go-libp2p-peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 	"github.com/quorumcontrol/tupelo-go-sdk/tracing"
 	"go.uber.org/zap"
 )
 
-type PubSubValidator func(context.Context, peer.ID, messages.WireMessage) bool
+type PubSubValidator func(context.Context, peer.ID, proto.Message) bool
 
 type PubSub interface {
-	Broadcast(topic string, msg messages.WireMessage) error
+	Broadcast(topic string, msg proto.Message) error
 	NewSubscriberProps(topic string) *actor.Props
 	RegisterTopicValidator(topic string, validatorFunc PubSubValidator, opts ...pubsub.ValidatorOpt) error
 	UnregisterTopicValidator(topic string)
@@ -47,38 +48,28 @@ func NewNetworkPubSub(host p2p.Node) *NetworkPubSub {
 }
 
 // Broadcast sends the message over the wire to any receivers
-func (nps *NetworkPubSub) Broadcast(topic string, message messages.WireMessage) error {
-	msg, ok := message.(messages.WireMessage)
-	if !ok {
-		return fmt.Errorf("error, message of type %s is not a messages.WireMessage", reflect.TypeOf(msg).String())
-	}
-	if traceable, ok := msg.(tracing.Traceable); ok {
+func (nps *NetworkPubSub) Broadcast(topic string, message proto.Message) error {
+	if traceable, ok := message.(tracing.Traceable); ok {
 		sp := traceable.NewSpan("pubsub-publish")
 		defer sp.Finish()
 	}
-	marshaled, err := msg.MarshalMsg(nil)
+
+	any, err := ptypes.MarshalAny(message)
 	if err != nil {
-		return fmt.Errorf("could not marshal message: %v", err)
+		return fmt.Errorf("could not marshal message to any: %v", err)
 	}
 
-	wd := &WireDelivery{
-		originalMessage: msg,
-		Message:         marshaled,
-		Type:            msg.TypeCode(),
-		Target:          nil, // specifically nil because it's broadcast
-		Sender:          nil, // specifically nil because there is no response possible on broadcast
-	}
-	bits, err := wd.MarshalMsg(nil)
+	marshaled, err := proto.Marshal(any)
 	if err != nil {
-		return fmt.Errorf("error marshaling message: %v", err)
+		return fmt.Errorf("could not marshal any: %v", err)
 	}
 
-	return nps.host.GetPubSub().Publish(topic, bits)
+	return nps.host.GetPubSub().Publish(topic, marshaled)
 }
 
 func (nps *NetworkPubSub) RegisterTopicValidator(topic string, validatorFunc PubSubValidator, opts ...pubsub.ValidatorOpt) error {
 	var wrappedFunc pubsub.Validator = func(ctx context.Context, peer peer.ID, pubsubMsg *pubsub.Message) bool {
-		msg, err := pubsubMessageToWireMessage(pubsubMsg)
+		msg, err := pubsubMessageToProtoMessage(pubsubMsg)
 		if err != nil {
 			nps.log.Errorw("error getting wire message", "err", err)
 			return false
@@ -178,13 +169,13 @@ func (bs *broadcastSubscriber) Receive(actorContext actor.Context) {
 
 func (bs *broadcastSubscriber) handlePubSubMessage(actorContext actor.Context, pubsubMsg *pubsub.Message) {
 	bs.Log.Debugw("received pubsub message", "topic", bs.topicName)
-	msg, err := pubsubMessageToWireMessage(pubsubMsg)
+	msg, err := pubsubMessageToProtoMessage(pubsubMsg)
 	if err != nil {
 		bs.Log.Errorw("error getting wire message", "err", err)
 		return
 	}
 
-	bs.Log.Debugw("converted to wire message", "msg", msg.TypeCode())
+	bs.Log.Debugw("converted to wire message")
 	if traceable, ok := msg.(tracing.Traceable); ok {
 		sp := traceable.NewSpan("pubsub-receive")
 		defer sp.Finish()
@@ -198,15 +189,18 @@ func (bs *broadcastSubscriber) handlePubSubMessage(actorContext actor.Context, p
 	}
 }
 
-func pubsubMessageToWireMessage(pubsubMsg *pubsub.Message) (messages.WireMessage, error) {
-	wd := WireDelivery{}
-	_, err := wd.UnmarshalMsg(pubsubMsg.Data)
+func pubsubMessageToProtoMessage(pubsubMsg *pubsub.Message) (proto.Message, error) {
+	any := &any.Any{}
+	err := proto.Unmarshal(pubsubMsg.Data, any)
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshaling: %v", err)
 	}
-	msg, err := wd.GetMessage()
+
+	dn := &ptypes.DynamicAny{}
+
+	err = ptypes.UnmarshalAny(any, dn)
 	if err != nil {
 		return nil, fmt.Errorf("error getting message: %v", err)
 	}
-	return msg, nil
+	return dn.Message, nil
 }

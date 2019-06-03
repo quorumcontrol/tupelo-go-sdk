@@ -5,8 +5,11 @@ import (
 	"log"
 	"reflect"
 
+	mbridge "github.com/quorumcontrol/messages/build/go/bridge"
+
 	"github.com/AsynkronIT/protoactor-go/actor"
-	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
+	"github.com/golang/protobuf/proto"
+	ptypes "github.com/golang/protobuf/ptypes"
 	"github.com/quorumcontrol/tupelo-go-sdk/tracing"
 )
 
@@ -25,31 +28,30 @@ func newProcess(pid, gateway *actor.PID) actor.Process {
 // Send user message, implements actor.Process.
 func (ref *process) SendUserMessage(pid *actor.PID, message interface{}) {
 	header, msg, sender := actor.UnwrapEnvelope(message)
-	wireMsg, ok := msg.(messages.WireMessage)
+	wireMsg, ok := msg.(proto.Message)
 	if !ok {
-		log.Printf("error sending user message, message doesn't implement messages.WireMessage: %s\n",
+		log.Printf("error sending user message, message doesn't implement proto.Message: %s\n",
 			reflect.TypeOf(msg))
 		return
 	}
 	sendMessage(ref.gateway, pid, header, wireMsg, sender, -1)
 }
 
-func sendMessage(gateway, pid *actor.PID, header actor.ReadonlyMessageHeader, message messages.WireMessage, sender *actor.PID, serializerID int32) {
-	marshaled, err := message.MarshalMsg(nil)
+func sendMessage(gateway, pid *actor.PID, header actor.ReadonlyMessageHeader, message proto.Message, sender *actor.PID, serializerID int32) {
+	marshaled, err := ptypes.MarshalAny(message)
 	if err != nil {
 		panic(fmt.Errorf("could not marshal message: %v", err))
 	}
 
-	wd := &WireDelivery{
-		originalMessage: message,
-		Message:         marshaled,
-		Type:            message.TypeCode(),
-		Target:          messages.ToActorPid(pid),
-		Sender:          messages.ToActorPid(sender),
+	wd := &mbridge.WireDelivery{
+		Message: marshaled,
+		Target:  toActorPid(pid),
+		Sender:  toActorPid(sender),
 	}
 	if header != nil {
 		wd.Header = header.ToMap()
 	}
+
 	wd.Outgoing = true
 
 	if tracing.Enabled {
@@ -59,7 +61,12 @@ func sendMessage(gateway, pid *actor.PID, header actor.ReadonlyMessageHeader, me
 		}
 	}
 
-	actor.EmptyRootContext.Send(gateway, wd)
+	wrapper := &wireDeliveryWrapper{
+		WireDelivery:    wd,
+		originalMessage: message,
+	}
+
+	actor.EmptyRootContext.Send(gateway, wrapper)
 }
 
 func (ref *process) SendSystemMessage(pid *actor.PID, message interface{}) {
@@ -67,19 +74,9 @@ func (ref *process) SendSystemMessage(pid *actor.PID, message interface{}) {
 	switch msg := message.(type) {
 	case *actor.Watch:
 		panic("remote watching unsupported")
-		// rw := &remoteWatch{
-		// 	Watcher: msg.Watcher,
-		// 	Watchee: pid,
-		// }
-		// endpointManager.remoteWatch(rw)
 	case *actor.Unwatch:
 		panic("remote unwatching unsupported")
-		// ruw := &remoteUnwatch{
-		// 	Watcher: msg.Watcher,
-		// 	Watchee: pid,
-		// }
-		// endpointManager.remoteUnwatch(ruw)
-	case messages.WireMessage:
+	case proto.Message:
 		sendMessage(ref.gateway, pid, nil, msg, nil, -1)
 	default:
 		log.Printf("error sending system message, not convertible to WireMessage: %s\n",
@@ -90,4 +87,18 @@ func (ref *process) SendSystemMessage(pid *actor.PID, message interface{}) {
 
 func (ref *process) Stop(pid *actor.PID) {
 	panic("remote stop is unsupported")
+}
+
+func toActorPid(a *actor.PID) *mbridge.ActorPID {
+	if a == nil {
+		return nil
+	}
+	return &mbridge.ActorPID{
+		Address: a.Address,
+		Id:      a.Id,
+	}
+}
+
+func fromActorPid(a *mbridge.ActorPID) *actor.PID {
+	return actor.NewPID(a.Address, a.Id)
 }

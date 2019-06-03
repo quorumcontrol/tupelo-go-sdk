@@ -1,12 +1,11 @@
 package consensus
 
 import (
+	"github.com/quorumcontrol/messages/build/go/signatures"
 	"crypto/ecdsa"
 
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
-
-	extmsgs "github.com/quorumcontrol/tupelo-go-sdk/gossip3/messages"
 )
 
 func init() {
@@ -40,7 +39,7 @@ type AddBlockResponse struct {
 	SignerId  string
 	ChainId   string
 	Tip       *cid.Cid
-	Signature extmsgs.Signature
+	Signature signatures.Signature
 }
 
 type GetDiffNodesRequest struct {
@@ -55,7 +54,7 @@ type GetDiffNodesResponse struct {
 type FeedbackRequest struct {
 	ChainId   string
 	Tip       *cid.Cid
-	Signature extmsgs.Signature
+	Signature signatures.Signature
 }
 
 type TipRequest struct {
@@ -65,10 +64,10 @@ type TipRequest struct {
 type TipResponse struct {
 	ChainId   string
 	Tip       *cid.Cid
-	Signature extmsgs.Signature
+	Signature signatures.Signature
 }
 
 type TipSignature struct {
 	Tip       *cid.Cid
-	Signature extmsgs.Signature
+	Signature signatures.Signature
 }
