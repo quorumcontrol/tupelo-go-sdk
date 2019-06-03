@@ -8,7 +8,6 @@ import (
 	"time"
 
 	ptypes "github.com/golang/protobuf/ptypes"
-	logging "github.com/ipfs/go-log"
 	mbridge "github.com/quorumcontrol/messages/build/go/bridge"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
@@ -22,8 +21,6 @@ import (
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 	"github.com/quorumcontrol/tupelo-go-sdk/tracing"
 )
-
-var logger = logging.Logger("tupeloremote")
 
 const maxBridgeBackoffs = 10
 
@@ -83,11 +80,11 @@ func (bs *bridgeStream) HandleIncoming(s pnet.Stream) {
 				wd := &mbridge.WireDelivery{}
 				err := reader.ReadMsg(wd)
 				if err != nil {
-					logger.Errorf("error reading: %v", err)
+					bs.Log.Errorw("error reading", "err", err)
 					actor.EmptyRootContext.Send(bs.act, internalStreamDied{stream: bs})
 					return
 				}
-				logger.Debugf("received wd: %v", wd)
+				bs.Log.Debugw("received", "wiredelivery", wd)
 				msgChan <- wd
 			}
 		}
@@ -109,7 +106,7 @@ func (bs *bridgeStream) HandleIncoming(s pnet.Stream) {
 				return
 			case wd := <-msgChan:
 				wd.Outgoing = false
-				logger.Debugf("forwarding wd: %v", wd)
+				bs.Log.Debugw("forwarding", "wiredelivery", wd)
 				actor.EmptyRootContext.Send(bs.act, &wireDeliveryWrapper{WireDelivery: wd})
 			}
 		}
@@ -187,14 +184,12 @@ func (b *bridge) NormalState(context actor.Context) {
 	case *wireDeliveryWrapper:
 		context.SetReceiveTimeout(bridgeReceiveTimeout)
 		if msg.Outgoing {
-			logger.Debugf("delivering outgoing %v", msg)
 			b.handleOutgoingWireDelivery(context, msg)
 		} else {
-			logger.Debugf("handling incoming %v", msg)
 			b.handleIncomingWireDelivery(context, msg)
 		}
 	default:
-		logger.Debugf("unknown message received %s", reflect.TypeOf(msg).String())
+		b.Log.Debugw("unknown message received", "type", reflect.TypeOf(msg).String())
 	}
 }
 
