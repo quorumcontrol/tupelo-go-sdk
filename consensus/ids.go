@@ -9,14 +9,16 @@ import (
 )
 
 func RequestID(req *services.AddBlockRequest) []byte {
-	//TODO: fix me and make me canonical
+	//TODO: Right now the Payload includes a "state" section which is a number of
+	// state blocks. Since those are arbitrary, you can change your transactionID
+	// without altering the state transition.
 
 	return crypto.Keccak256(appendMultiple(
 		req.ObjectId,
 		req.PreviousTip,
 		uint64ToBytes(req.Height),
 		req.NewTip,
-		crypto.Keccak256(req.Payload),
+		req.Payload,
 	))
 }
 

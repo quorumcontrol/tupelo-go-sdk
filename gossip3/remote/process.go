@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+
 	mbridge "github.com/quorumcontrol/messages/build/go/bridge"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
-	"github.com/quorumcontrol/tupelo-go-sdk/tracing"
 	"github.com/golang/protobuf/proto"
 	ptypes "github.com/golang/protobuf/ptypes"
-
+	"github.com/quorumcontrol/tupelo-go-sdk/tracing"
 )
 
 type process struct {
@@ -44,15 +44,14 @@ func sendMessage(gateway, pid *actor.PID, header actor.ReadonlyMessageHeader, me
 	}
 
 	wd := &mbridge.WireDelivery{
-		// originalMessage: message,
-		Message:         marshaled,
-		// Type:            message.TypeCode(),
-		Target:          toActorPid(pid),
-		Sender:          toActorPid(sender),
+		Message: marshaled,
+		Target:  toActorPid(pid),
+		Sender:  toActorPid(sender),
 	}
 	if header != nil {
 		wd.Header = header.ToMap()
 	}
+
 	wd.Outgoing = true
 
 	if tracing.Enabled {
@@ -62,7 +61,12 @@ func sendMessage(gateway, pid *actor.PID, header actor.ReadonlyMessageHeader, me
 		}
 	}
 
-	actor.EmptyRootContext.Send(gateway, wd)
+	wrapper := &wireDeliveryWrapper{
+		WireDelivery:    wd,
+		originalMessage: message,
+	}
+
+	actor.EmptyRootContext.Send(gateway, wrapper)
 }
 
 func (ref *process) SendSystemMessage(pid *actor.PID, message interface{}) {
@@ -70,18 +74,8 @@ func (ref *process) SendSystemMessage(pid *actor.PID, message interface{}) {
 	switch msg := message.(type) {
 	case *actor.Watch:
 		panic("remote watching unsupported")
-		// rw := &remoteWatch{
-		// 	Watcher: msg.Watcher,
-		// 	Watchee: pid,
-		// }
-		// endpointManager.remoteWatch(rw)
 	case *actor.Unwatch:
 		panic("remote unwatching unsupported")
-		// ruw := &remoteUnwatch{
-		// 	Watcher: msg.Watcher,
-		// 	Watchee: pid,
-		// }
-		// endpointManager.remoteUnwatch(ruw)
 	case proto.Message:
 		sendMessage(ref.gateway, pid, nil, msg, nil, -1)
 	default:
@@ -94,7 +88,6 @@ func (ref *process) SendSystemMessage(pid *actor.PID, message interface{}) {
 func (ref *process) Stop(pid *actor.PID) {
 	panic("remote stop is unsupported")
 }
-
 
 func toActorPid(a *actor.PID) *mbridge.ActorPID {
 	if a == nil {

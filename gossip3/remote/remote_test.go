@@ -113,67 +113,61 @@ func TestRemoteMessageSending(t *testing.T) {
 		assert.Equal(t, resp.(*services.Pong).Msg, "hi")
 	})
 
-	// t.Run("sending a traceable when tracing is on", func(t *testing.T) {
-	// 	tracing.StartJaeger("test-only")
-	// 	defer tracing.StopJaeger()
-	// 	remotePing := actor.NewPID(types.NewRoutableAddress(host1.Identity(), host3.Identity()).String(), host3Ping.GetId())
-	// 	msg := &services.Ping{Msg: "hi"}
-	// 	msg.StartTrace("test-only-ping")
-	// 	defer msg.StopTrace()
-	// 	resp, err := rootContext.RequestFuture(remotePing, msg, 100*time.Millisecond).Result()
+	t.Run("sending a traceable when tracing is on", func(t *testing.T) {
+		// We *should* have serializable and traceable messages, but we don't.
+		// will take some work in the messages library (probaby with gogo protobuf)
+		// in order to bring those back. Without those, it's really hard to test this functionality.
+		t.Skip("we no longer have any serializable, and traceable messages at the moment.")
+	})
 
-	// 	assert.Nil(t, err)
-	// 	assert.Equal(t, resp.(*services.Pong).Msg, "hi")
-	// })
+	t.Run("when the otherside is closed permanently", func(t *testing.T) {
+		newCtx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 
-	// t.Run("when the otherside is closed permanently", func(t *testing.T) {
-	// 	newCtx, cancel := context.WithCancel(context.Background())
-	// 	defer cancel()
-
-	// 	host4, err := p2p.NewLibP2PHost(newCtx, ts.EcdsaKeys[3], 0)
-	// 	require.Nil(t, err)
-	// 	_, err = host4.Bootstrap(testnotarygroup.BootstrapAddresses(bootstrap))
-	// 	require.Nil(t, err)
-	// 	err = host4.WaitForBootstrap(2, 1*time.Second)
-	// 	require.Nil(t, err)
-	// 	host4Ping, err := rootContext.SpawnNamed(actor.PropsFromFunc(pingFunc), "ping-host4")
-	// 	require.Nil(t, err)
+		host4, err := p2p.NewLibP2PHost(newCtx, ts.EcdsaKeys[3], 0)
+		require.Nil(t, err)
+		_, err = host4.Bootstrap(testnotarygroup.BootstrapAddresses(bootstrap))
+		require.Nil(t, err)
+		err = host4.WaitForBootstrap(2, 1*time.Second)
+		require.Nil(t, err)
+		host4Ping, err := rootContext.SpawnNamed(actor.PropsFromFunc(pingFunc), "ping-host4")
+		require.Nil(t, err)
 		
-	// 	remote4Ping := actor.NewPID(types.NewRoutableAddress(host1.Identity(), host4.Identity()).String(), host4Ping.GetId())
+		remote4Ping := actor.NewPID(types.NewRoutableAddress(host1.Identity(), host4.Identity()).String(), host4Ping.GetId())
 
-	// 	NewRouter(host4)
+		NewRouter(host4)
 
-	// 	resp, err := rootContext.RequestFuture(remote4Ping, &services.Ping{Msg: "hi"}, 100*time.Millisecond).Result()
-	// 	require.Nil(t, err)
-	// 	assert.Equal(t, resp.(*services.Pong).Msg, "hi")
+		resp, err := rootContext.RequestFuture(remote4Ping, &services.Ping{Msg: "hi"}, 100*time.Millisecond).Result()
+		require.Nil(t, err)
+		assert.Equal(t, resp.(*services.Pong).Msg, "hi")
 
-	// 	host4Ping.Stop()
-	// 	cancel()
+		host4Ping.Stop()
+		cancel()
 
-	// 	resp, err = rootContext.RequestFuture(remote4Ping, &services.Ping{Msg: "hi"}, 100*time.Millisecond).Result()
-	// 	assert.NotNil(t, err)
-	// 	assert.Nil(t, resp)
-	// })
+		resp, err = rootContext.RequestFuture(remote4Ping, &services.Ping{Msg: "hi"}, 100*time.Millisecond).Result()
+		assert.NotNil(t, err)
+		assert.Nil(t, resp)
+	})
 
-	// // This test detected a previous race condition where two parties are trying to write to each
-	// // other at the same time. Previously, this caused a race condition where both sides would fail
-	// // to contact each other. We switched over to the separate incoming/outgoing streams in order
-	// // to address that race.
-	// t.Run("when both sides simultaneously start writing", func(t *testing.T) {
+	// This test detected a previous race condition where two parties are trying to write to each
+	// other at the same time. Previously, this caused a race condition where both sides would fail
+	// to contact each other. We switched over to the separate incoming/outgoing streams in order
+	// to address that race.
+	t.Run("when both sides simultaneously start writing", func(t *testing.T) {
 
-	// 	remotePing1 := actor.NewPID(types.NewRoutableAddress(host1.Identity(), host3.Identity()).String(), host3Ping.GetId())
-	// 	remotePing2 := actor.NewPID(types.NewRoutableAddress(host3.Identity(), host1.Identity()).String(), host1Ping.GetId())
+		remotePing1 := actor.NewPID(types.NewRoutableAddress(host1.Identity(), host3.Identity()).String(), host3Ping.GetId())
+		remotePing2 := actor.NewPID(types.NewRoutableAddress(host3.Identity(), host1.Identity()).String(), host1Ping.GetId())
 
-	// 	fut1 := rootContext.RequestFuture(remotePing1, &services.Ping{Msg: "hi"}, 200*time.Millisecond)
-	// 	fut2 := rootContext.RequestFuture(remotePing2, &services.Ping{Msg: "hi"}, 200*time.Millisecond)
+		fut1 := rootContext.RequestFuture(remotePing1, &services.Ping{Msg: "hi"}, 200*time.Millisecond)
+		fut2 := rootContext.RequestFuture(remotePing2, &services.Ping{Msg: "hi"}, 200*time.Millisecond)
 
-	// 	resp1, err := fut1.Result()
-	// 	require.Nil(t, err)
-	// 	assert.Equal(t, resp1.(*services.Pong).Msg, "hi")
+		resp1, err := fut1.Result()
+		require.Nil(t, err)
+		assert.Equal(t, resp1.(*services.Pong).Msg, "hi")
 
-	// 	resp2, err := fut2.Result()
-	// 	require.Nil(t, err)
-	// 	assert.Equal(t, resp2.(*services.Pong).Msg, "hi")
-	// })
+		resp2, err := fut2.Result()
+		require.Nil(t, err)
+		assert.Equal(t, resp2.(*services.Pong).Msg, "hi")
+	})
 
 }
