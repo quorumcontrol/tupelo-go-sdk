@@ -141,7 +141,7 @@ func GenerateIsValidSignature(sigVerifier func(sig *extmsgs.Signature) (bool, er
 }
 
 func isTokenBurn(tokenName string, burnAmount uint64, tx *transactions.Transaction) bool {
-	amount := uint64(0)
+	var amount uint64
 	if burnAmount == 0 {
 		amount = 1
 	} else {
