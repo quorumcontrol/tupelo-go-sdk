@@ -15,8 +15,6 @@ import (
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/messages/build/go/transactions"
-
-	"github.com/quorumcontrol/tupelo-go-sdk/conversion"
 )
 
 func getReceiveTokenPayloads(txns []*transactions.Transaction) ([]*transactions.ReceiveTokenPayload, error) {
@@ -106,10 +104,7 @@ func GenerateIsValidSignature(sigVerifier func(sig *signatures.Signature) (bool,
 
 		// we have at least one RECEIVE_TOKEN transaction; make sure Signature is valid for Tip
 		for _, rt := range receiveTokens {
-			sig, err := conversion.ToExternalSignature(rt.Signature)
-			if err != nil {
-				return false, &consensus.ErrorCode{Code: consensus.ErrInvalidSig, Memo: fmt.Sprintf("error converting signature: %v", err)}
-			}
+			sig := rt.Signature
 
 			tip, err := cid.Cast(rt.Tip)
 			if err != nil {
