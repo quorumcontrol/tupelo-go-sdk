@@ -279,7 +279,9 @@ func findFirstLinkedNode(tree *dag.Dag, parentNode map[string]interface{}) (key 
 	return "", nil, fmt.Errorf("no linked nodes were found in the DAG")
 }
 
-func getSenderDagFromReceive(payload *transactions.ReceiveTokenPayload) (*dag.Dag, chaintree.CodedError) {
+// GetSenderDagFromReceive takes the receive coin payload and returns the SendToken dag that
+// was included in the ReceiveTokenPayload
+func GetSenderDagFromReceive(payload *transactions.ReceiveTokenPayload) (*dag.Dag, chaintree.CodedError) {
 	tipCid, err := cid.Cast(payload.Tip)
 	if err != nil {
 		return nil, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error casting tip to CID: %v", err)}
@@ -311,7 +313,9 @@ func getSenderDagFromReceive(payload *transactions.ReceiveTokenPayload) (*dag.Da
 	return senderDag, nil
 }
 
-func getTokenNameFromReceive(senderDag *dag.Dag) (string, chaintree.CodedError) {
+// GetTokenNameFromReceive takes the SendToken that was included in a ReceiveTokenPayload
+// and returns the name of the sent token.
+func GetTokenNameFromReceive(senderDag *dag.Dag) (string, chaintree.CodedError) {
 	treePath, err := DecodePath(TreePathForTokens)
 	if err != nil {
 		return "", &ErrorCode{Code: 999, Memo: fmt.Sprintf("error decoding tree path for tokens: %v", err)}
@@ -339,7 +343,9 @@ func getTokenNameFromReceive(senderDag *dag.Dag) (string, chaintree.CodedError) 
 	return tokenName, nil
 }
 
-func getSendTokenFromReceive(senderDag *dag.Dag, tokenName string) (*TokenSend, chaintree.CodedError) {
+// GetSendTokenFromReceive takes DAG that is part of the ReceiveTokenPayload and returns 
+// The TokenSend for the specified tokenName
+func GetSendTokenFromReceive(senderDag *dag.Dag, tokenName string) (*TokenSend, chaintree.CodedError) {
 	treePath, err := DecodePath(TreePathForTokens)
 	if err != nil {
 		return nil, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error decoding tree path for tokens: %v", err)}
@@ -390,7 +396,7 @@ func ReceiveTokenTransaction(_ string, tree *dag.Dag, txn *transactions.Transact
 		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error casting tip to CID: %v", err)}
 	}
 
-	senderDag, codedErr := getSenderDagFromReceive(payload)
+	senderDag, codedErr := GetSenderDagFromReceive(payload)
 	if codedErr != nil {
 		return nil, false, codedErr
 	}
@@ -400,12 +406,12 @@ func ReceiveTokenTransaction(_ string, tree *dag.Dag, txn *transactions.Transact
 		return nil, false, &ErrorCode{Code: 999, Memo: "invalid tip and/or leaves"}
 	}
 
-	tokenName, codedErr := getTokenNameFromReceive(senderDag)
+	tokenName, codedErr := GetTokenNameFromReceive(senderDag)
 	if codedErr != nil {
 		return nil, false, codedErr
 	}
 
-	tokenSend, codedErr := getSendTokenFromReceive(senderDag, tokenName)
+	tokenSend, codedErr := GetSendTokenFromReceive(senderDag, tokenName)
 	if codedErr != nil {
 		return nil, false, codedErr
 	}
