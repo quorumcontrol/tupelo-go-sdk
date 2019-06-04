@@ -1,14 +1,15 @@
 package client
 
 import (
-	"github.com/quorumcontrol/messages/build/go/services"
-	"github.com/quorumcontrol/messages/build/go/signatures"
 	"bytes"
 	"crypto/ecdsa"
 	"fmt"
 	"reflect"
 	"strconv"
 	"time"
+
+	"github.com/quorumcontrol/messages/build/go/services"
+	"github.com/quorumcontrol/messages/build/go/signatures"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/AsynkronIT/protoactor-go/eventstream"
@@ -26,10 +27,6 @@ import (
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/remote"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
 )
-
-// TransactionBroadcastTopic is the topic from which clients
-// broadcast their transactions to the NotaryGroup
-const TransactionBroadcastTopic = "tupelo-transaction-broadcast"
 
 // How many times to attempt PlayTransactions before giving up.
 // 10 is the library's default, but this makes it explicit.
@@ -182,7 +179,7 @@ func (c *Client) Subscribe(trans *services.AddBlockRequest, timeout time.Duratio
 
 // SendTransaction sends a transaction to a signer.
 func (c *Client) SendTransaction(trans *services.AddBlockRequest) error {
-	return c.pubsub.Broadcast(TransactionBroadcastTopic, trans)
+	return c.pubsub.Broadcast(c.Group.Config().TransactionTopic, trans)
 }
 
 // PlayTransactions plays transactions in chain tree.

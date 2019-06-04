@@ -20,11 +20,20 @@ type ValidatorGenerator func(ctx context.Context, notaryGroup *NotaryGroup) (cha
 // Config is the simplest thing that could work for now
 // it is just an in-memory only configuration for the notary group.
 type Config struct {
-	ID                  string
-	TransactionToken    string
-	BurnAmount          uint64
+	// ID of the notary group (generally a DID)
+	ID string
+	// TransactionToken is the token used for transaction fees (in the form <did>/<tokenName>)
+	TransactionToken string
+	// BurnAmount is the amount of TransactionToken that must be burned for the HasBurn block validator to pass
+	BurnAmount uint64
+	// TransactionTopic is the topic used to send AddBlockRequests to the notary group
+	TransactionTopic string
+	// CommitTopic is the topic used to spread the CurrentStates (to both signers and clients)
+	CommitTopic string
+	// ValidatorGenerators is a slice of generators for chaintree.BlockValidatorFuncs (see ValidatorGenerator)
 	ValidatorGenerators []ValidatorGenerator
-	Transactions        map[transactions.Transaction_Type]chaintree.TransactorFunc
+	// Transactions is the map of all supported transactions by this notary group.
+	Transactions map[transactions.Transaction_Type]chaintree.TransactorFunc
 }
 
 func (c *Config) blockValidators(ctx context.Context, ng *NotaryGroup) ([]chaintree.BlockValidatorFunc, error) {
@@ -59,6 +68,8 @@ func DefaultConfig() *Config {
 			WrapStatelessValidator(IsOwner),
 			WrapStatelessValidator(IsTokenRecipient),
 		},
-		Transactions: consensus.DefaultTransactors,
+		TransactionTopic: "tupelo-transaction-broadcast",
+		CommitTopic:      "tupelo-commits",
+		Transactions:     consensus.DefaultTransactors,
 	}
 }
