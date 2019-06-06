@@ -1,0 +1,15 @@
+# Comments are supported
+
+id = "did:tupelo:exampleonly"
+transactionToken = "sometoken"
+burnAmount = 100
+transactionTopic = "tupelo-pubsub-topics"
+commitTopic = "tupelo-pubsub-commits"
+validatorGenerators = [
+    "ISOWNER",
+    "ISRECIPIENT",
+    "HASBURN",
+]
+transactions = [
+    "SETDATA",
+]
