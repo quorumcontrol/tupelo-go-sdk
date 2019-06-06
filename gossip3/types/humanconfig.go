@@ -11,7 +11,7 @@ import (
 
 func init() {
 	for enum, fn := range consensus.DefaultTransactors {
-		RegisterTransactor(transactions.Transaction_Type_name[int32(enum)], fn)
+		mustRegisterTransactor(transactions.Transaction_Type_name[int32(enum)], fn)
 	}
 }
 
@@ -32,6 +32,13 @@ func RegisterTransactor(name string, fn chaintree.TransactorFunc) error {
 	return nil
 }
 
+func mustRegisterTransactor(name string, fn chaintree.TransactorFunc) {
+	err := RegisterTransactor(name, fn)
+	if err != nil {
+		panic(err)
+	}
+}
+
 // validatorGeneratorRegistry is used for human-readable configs to specify what validators
 // should be used for a notary group.
 var validatorGeneratorRegistry = make(map[string]ValidatorGenerator)
@@ -45,6 +52,13 @@ func RegisterValidatorGenerator(name string, fn ValidatorGenerator) error {
 	}
 	validatorGeneratorRegistry[name] = fn
 	return nil
+}
+
+func mustRegisterValidatorGenerator(name string, fn ValidatorGenerator) {
+	err := RegisterValidatorGenerator(name, fn)
+	if err != nil {
+		panic(err)
+	}
 }
 
 // HumanConfig is used for parsing an ondisk configuration into the application-used Config
