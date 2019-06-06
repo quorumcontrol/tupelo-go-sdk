@@ -20,3 +20,12 @@ func TestTomlLoading(t *testing.T) {
 	require.Equal(t, c.TransactionTopic, "tupelo-pubsub-topics")
 	require.Equal(t, c.CommitTopic, "tupelo-pubsub-commits")
 }
+
+func TestTomLoadingInvalidGenerator(t *testing.T) {
+	tomlStr := `
+	transactions = ["somethingnotthere"]
+	`
+	_, err := TomlToConfig(tomlStr)
+	t.Logf("[good] error: %v", err)
+	require.NotNil(t, err)
+}
