@@ -10,6 +10,15 @@ import (
 	"github.com/quorumcontrol/messages/build/go/transactions"
 )
 
+var defaultGenerators []ValidatorGenerator
+
+func init() {
+	defaultGenerators = []ValidatorGenerator{
+		WrapStatelessValidator(IsOwner),
+		WrapStatelessValidator(IsTokenRecipient),
+	}
+}
+
 // ValidatorGenerator is a higher order function that is used to generate a chaintree.BlockValidator that knows
 // about the context it's being executed in. Specifically this is useful when the BlockValidator needs
 // to know things about the notary group (like the signers) or a config (like a token necessary for transactions)
@@ -64,12 +73,9 @@ func WrapStatelessValidator(fn chaintree.BlockValidatorFunc) ValidatorGenerator 
 // it will be special cased over in tupelo and then migrated to this format.
 func DefaultConfig() *Config {
 	return &Config{
-		ValidatorGenerators: []ValidatorGenerator{
-			WrapStatelessValidator(IsOwner),
-			WrapStatelessValidator(IsTokenRecipient),
-		},
-		TransactionTopic: "tupelo-transaction-broadcast",
-		CommitTopic:      "tupelo-commits",
-		Transactions:     consensus.DefaultTransactors,
+		ValidatorGenerators: defaultGenerators,
+		TransactionTopic:    "tupelo-transaction-broadcast",
+		CommitTopic:         "tupelo-commits",
+		Transactions:        consensus.DefaultTransactors,
 	}
 }
