@@ -87,7 +87,7 @@ type HumanConfig struct {
 	Transactions []string
 }
 
-func humanConfigToConfig(hc *HumanConfig) (*Config, error) {
+func HumanConfigToConfig(hc *HumanConfig) (*Config, error) {
 	c := &Config{
 		ID:               hc.ID,
 		TransactionToken: hc.TransactionToken,
@@ -138,5 +138,5 @@ func TomlToConfig(tomlBytes string) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error decoding toml: %v", err)
 	}
-	return humanConfigToConfig(&hc)
+	return HumanConfigToConfig(&hc)
 }
