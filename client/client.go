@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/messages/build/go/services"
 	"github.com/quorumcontrol/messages/build/go/signatures"
 
@@ -353,6 +354,10 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 	}
 
 	return resp, nil
+}
+
+func (c *Client) TokenPayloadForTransaction(tree *dag.Dag, tokenName *consensus.TokenName, sendTokenTxId string, sendTxSig *signatures.Signature) (*transactions.TokenPayload, error) {
+	return consensus.TokenPayloadForTransaction(tree, tokenName, sendTokenTxId, sendTxSig)
 }
 
 func getRoot(sct *consensus.SignedChainTree) (*chaintree.RootNode, error) {

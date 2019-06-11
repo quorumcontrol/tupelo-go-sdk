@@ -6,6 +6,7 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
+	"github.com/quorumcontrol/messages/build/go/signatures"
 	"github.com/quorumcontrol/storage"
 
 	"github.com/quorumcontrol/chaintree/chaintree"
@@ -127,6 +128,11 @@ type TokenName struct {
 
 func (tn *TokenName) String() string {
 	return strings.Join([]string{tn.ChainTreeDID, tn.LocalName}, ":")
+}
+
+func (tn *TokenName) IsCanonical() bool {
+	// TODO: Better DID check than non-blank string?
+	return tn.ChainTreeDID != "" && tn.LocalName != ""
 }
 
 func tokenNameFromString(tokenName string) TokenName {
@@ -259,6 +265,85 @@ func SendTokenTransaction(chainTreeDID string, tree *dag.Dag, txn *transactions.
 	}
 
 	return newTree, true, nil
+}
+
+func allSendTokenNodes(tree *dag.Dag, tokenName string, sendNodeId cid.Cid) ([]*cbornode.Node, error) {
+	sendTokenNode, codedErr := tree.Get(sendNodeId)
+	if codedErr != nil {
+		return nil, fmt.Errorf("error getting send token node: %v", codedErr)
+	}
+
+	tokenPath, err := TokenPath(tokenName)
+	if err != nil {
+		return nil, err
+	}
+	tokenPath = append([]string{chaintree.TreeLabel}, tokenPath...)
+	tokenPath = append(tokenPath, TokenSendLabel)
+
+	tokenSendNodes, codedErr := tree.NodesForPath(tokenPath)
+	if codedErr != nil {
+		return nil, codedErr
+	}
+
+	tokenSendNodes = append(tokenSendNodes, sendTokenNode)
+
+	return tokenSendNodes, nil
+}
+
+func serializeNodes(nodes []*cbornode.Node) [][]byte {
+	var bytes [][]byte
+	for _, node := range nodes {
+		bytes = append(bytes, node.RawData())
+	}
+	return bytes
+}
+
+func TokenPayloadForTransaction(tree *dag.Dag, tokenName *TokenName, sendTokenTxId string, sendTxSig *signatures.Signature) (*transactions.TokenPayload, error) {
+	if !tokenName.IsCanonical() {
+		return nil, fmt.Errorf("token name must be canonical (i.e. start with chaintree DID)")
+	}
+
+	tokenSends, err := TokenTransactionCidsForType(tree, tokenName.String(), TokenSendLabel)
+	if err != nil {
+		return nil, err
+	}
+
+	tokenSendTx := cid.Undef
+	for _, sendTxCid := range tokenSends {
+		sendTxNode, err := tree.Get(sendTxCid)
+		if err != nil {
+			return nil, err
+		}
+
+		sendTxNodeObj, err := nodestore.CborNodeToObj(sendTxNode)
+		if err != nil {
+			return nil, err
+		}
+
+		sendTxNodeMap := sendTxNodeObj.(map[string]interface{})
+		if sendTxNodeMap["id"] == sendTokenTxId {
+			tokenSendTx = sendTxCid
+			break
+		}
+	}
+
+	if !tokenSendTx.Defined() {
+		return nil, fmt.Errorf("send token transaction not found for ID: %s", sendTokenTxId)
+	}
+
+	tokenNodes, err := allSendTokenNodes(tree, tokenName.String(), tokenSendTx)
+	if err != nil {
+		return nil, err
+	}
+
+	tokenPayload := &transactions.TokenPayload{
+		TransactionId: sendTokenTxId,
+		Tip:           tree.Tip.String(),
+		Signature:     sendTxSig,
+		Leaves:        serializeNodes(tokenNodes),
+	}
+
+	return tokenPayload, nil
 }
 
 // Returns the first node in tree linked to by a value of parentNode
