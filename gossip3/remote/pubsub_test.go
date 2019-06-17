@@ -48,10 +48,10 @@ func TestPubSub(t *testing.T) {
 	_, err = nodeB.Bootstrap(bootstrapAddresses(bootstrapper))
 	require.Nil(t, err)
 
-	err = nodeA.WaitForBootstrap(2, 1*time.Second)
+	err = nodeA.WaitForBootstrap(2, 5*time.Second)
 	require.Nil(t, err)
 
-	err = nodeB.WaitForBootstrap(2, 1*time.Second)
+	err = nodeB.WaitForBootstrap(2, 5*time.Second)
 	require.Nil(t, err)
 
 	actorContext := actor.EmptyRootContext
