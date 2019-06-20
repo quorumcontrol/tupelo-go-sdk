@@ -64,22 +64,29 @@ func NewTestTree(t testing.TB, tree map[string]interface{}) *dag.Dag {
 }
 
 func TestNewTreeLedger(t *testing.T) {
-	ledger := NewTreeLedger(nil, "test-token")
-	assert.Equal(t, "test-token", ledger.tokenName)
+	ledger := NewTreeLedger(nil, &TokenName{ChainTreeDID: "fake-did", LocalName: "test-token"})
+
+	assert.Equal(t, "test-token", ledger.tokenName.LocalName)
+	assert.Equal(t, "fake-did:test-token", ledger.tokenName.String())
+
+	// TODO: Use a real DAG and test more things
+	// bal, err := ledger.Balance()
+	// require.Nil(t, err)
+	// assert.Zero(t, bal)
 }
 
 func TestTreeLedger_tokenPath(t *testing.T) {
-	ledger := NewTreeLedger(nil, "test-token")
+	ledger := NewTreeLedger(nil, &TokenName{ChainTreeDID: "fake-did", LocalName: "test-token"})
 	tokenPath, err := ledger.tokenPath()
 	require.Nil(t, err)
-	assert.Equal(t, []string{"_tupelo", "tokens", "test-token"}, tokenPath)
+	assert.Equal(t, []string{"_tupelo", "tokens", "fake-did:test-token"}, tokenPath)
 }
 
 func TestTreeLedger_tokenTransactionCidsForType(t *testing.T) {
 	testTreeNodes := map[string]interface{}{
 		"_tupelo": map[string]interface{}{
 			"tokens": map[string]interface{}{
-				"test-token": map[string]interface{}{
+				"fake-did:test-token": map[string]interface{}{
 					TokenMintLabel: []map[string]interface{}{
 						{"amount": 1},
 						{"amount": 2},
@@ -98,7 +105,7 @@ func TestTreeLedger_tokenTransactionCidsForType(t *testing.T) {
 	}
 	testTree := NewTestTree(t, testTreeNodes)
 
-	ledger := NewTreeLedger(testTree, "test-token")
+	ledger := NewTreeLedger(testTree, &TokenName{ChainTreeDID: "fake-did", LocalName: "test-token"})
 
 	mintTransactions, err := ledger.tokenTransactionCidsForType(TokenMintLabel)
 	require.Nil(t, err)
@@ -117,7 +124,7 @@ func TestTreeLedger_tokenTransactionCids(t *testing.T) {
 	testTreeNodes := map[string]interface{}{
 		"_tupelo": map[string]interface{}{
 			"tokens": map[string]interface{}{
-				"test-token": map[string]interface{}{
+				"fake-did:test-token": map[string]interface{}{
 					TokenMintLabel: []map[string]interface{}{
 						{"amount": 1},
 						{"amount": 2},
@@ -136,7 +143,7 @@ func TestTreeLedger_tokenTransactionCids(t *testing.T) {
 	}
 	testTree := NewTestTree(t, testTreeNodes)
 
-	ledger := NewTreeLedger(testTree, "test-token")
+	ledger := NewTreeLedger(testTree, &TokenName{ChainTreeDID: "fake-did", LocalName: "test-token"})
 
 	transactions, err := ledger.tokenTransactionCids()
 	require.Nil(t, err)
@@ -151,7 +158,7 @@ func TestTreeLedger_sumTokenTransactions(t *testing.T) {
 	testTreeNodes := map[string]interface{}{
 		"_tupelo": map[string]interface{}{
 			"tokens": map[string]interface{}{
-				"test-token": map[string]interface{}{
+				"fake-did:test-token": map[string]interface{}{
 					TokenMintLabel: []map[string]interface{}{
 						{"amount": 1},
 						{"amount": 2},
@@ -170,7 +177,7 @@ func TestTreeLedger_sumTokenTransactions(t *testing.T) {
 	}
 	testTree := NewTestTree(t, testTreeNodes)
 
-	ledger := NewTreeLedger(testTree, "test-token")
+	ledger := NewTreeLedger(testTree, &TokenName{ChainTreeDID: "fake-did", LocalName: "test-token"})
 
 	transactionCids, err := ledger.tokenTransactionCidsForType(TokenMintLabel)
 	require.Nil(t, err)
@@ -203,14 +210,14 @@ func TestTreeLedger_Balance(t *testing.T) {
 	}{
 		{"existing token", "test-token", 32, nil},
 		{"non-existent token", "non-existent", 0, fmt.Errorf(
-			"error resolving token balance: path elements remaining: [non-existent balance]")},
+			"error resolving token balance: path elements remaining: [fake-did:non-existent balance]")},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			testTreeNodes := map[string]interface{}{
 				"_tupelo": map[string]interface{}{
 					"tokens": map[string]interface{}{
-						"test-token": map[string]interface{}{
+						"fake-did:test-token": map[string]interface{}{
 							TokenBalanceLabel: uint64(32),
 							TokenMintLabel: []map[string]interface{}{
 								{"amount": 1},
@@ -229,7 +236,7 @@ func TestTreeLedger_Balance(t *testing.T) {
 				},
 			}
 			testTree := NewTestTree(t, testTreeNodes)
-			ledger := NewTreeLedger(testTree, tc.token)
+			ledger := NewTreeLedger(testTree, &TokenName{ChainTreeDID: "fake-did", LocalName: tc.token})
 
 			balance, err := ledger.Balance()
 
@@ -243,7 +250,7 @@ func TestTreeLedger_TokenExists(t *testing.T) {
 	testTreeNodes := map[string]interface{}{
 		"_tupelo": map[string]interface{}{
 			"tokens": map[string]interface{}{
-				"test-token": map[string]interface{}{
+				"fake-did:test-token": map[string]interface{}{
 					TokenMintLabel: []map[string]interface{}{
 						{"amount": 1},
 						{"amount": 2},
@@ -262,14 +269,14 @@ func TestTreeLedger_TokenExists(t *testing.T) {
 	}
 	testTree := NewTestTree(t, testTreeNodes)
 
-	ledger := NewTreeLedger(testTree, "test-token")
+	ledger := NewTreeLedger(testTree, &TokenName{ChainTreeDID: "fake-did", LocalName: "test-token"})
 
 	testTokenExists, err := ledger.TokenExists()
 	require.Nil(t, err)
 
 	assert.True(t, testTokenExists)
 
-	ledger = NewTreeLedger(testTree, "other")
+	ledger = NewTreeLedger(testTree, &TokenName{ChainTreeDID: "fake-did", LocalName: "other"})
 
 	otherTokenExists, err := ledger.TokenExists()
 	require.Nil(t, err)
@@ -281,7 +288,7 @@ func TestTreeLedger_createToken(t *testing.T) {
 	testTreeNodes := map[string]interface{}{
 		"_tupelo": map[string]interface{}{
 			"tokens": map[string]interface{}{
-				"test-token": map[string]interface{}{
+				"fake-did:test-token": map[string]interface{}{
 					TokenMintLabel: []map[string]interface{}{
 						{"amount": 1},
 						{"amount": 2},
@@ -300,7 +307,7 @@ func TestTreeLedger_createToken(t *testing.T) {
 	}
 	testTree := NewTestTree(t, testTreeNodes)
 
-	ledger := NewTreeLedger(testTree, "other")
+	ledger := NewTreeLedger(testTree, &TokenName{ChainTreeDID: "fake-did", LocalName: "other"})
 
 	otherTokenExists, err := ledger.TokenExists()
 	require.Nil(t, err)
@@ -310,7 +317,7 @@ func TestTreeLedger_createToken(t *testing.T) {
 	newTree, err := ledger.createToken()
 	require.Nil(t, err)
 
-	ledger = NewTreeLedger(newTree, "other")
+	ledger = NewTreeLedger(newTree, &TokenName{ChainTreeDID: "fake-did", LocalName: "other"})
 
 	otherTokenExists, err = ledger.TokenExists()
 	require.Nil(t, err)
@@ -327,7 +334,7 @@ func TestTreeLedger_EstablishToken(t *testing.T) {
 	testTreeNodes := map[string]interface{}{
 		"_tupelo": map[string]interface{}{
 			"tokens": map[string]interface{}{
-				"test-token": map[string]interface{}{
+				"fake-did:test-token": map[string]interface{}{
 					TokenMintLabel: []map[string]interface{}{
 						{"amount": 1},
 						{"amount": 2},
@@ -346,7 +353,7 @@ func TestTreeLedger_EstablishToken(t *testing.T) {
 	}
 	testTree := NewTestTree(t, testTreeNodes)
 
-	ledger := NewTreeLedger(testTree, "other")
+	ledger := NewTreeLedger(testTree, &TokenName{ChainTreeDID: "fake-did", LocalName: "other"})
 
 	otherTokenExists, err := ledger.TokenExists()
 	require.Nil(t, err)
@@ -356,7 +363,7 @@ func TestTreeLedger_EstablishToken(t *testing.T) {
 	newTree, err := ledger.EstablishToken(transactions.TokenMonetaryPolicy{Maximum: uint64(42)})
 	require.Nil(t, err)
 
-	ledger = NewTreeLedger(newTree, "other")
+	ledger = NewTreeLedger(newTree, &TokenName{ChainTreeDID: "fake-did", LocalName: "other"})
 
 	otherTokenExists, err = ledger.TokenExists()
 	require.Nil(t, err)
@@ -372,7 +379,7 @@ func TestTreeLedger_MintToken(t *testing.T) {
 	testTreeNodes := map[string]interface{}{
 		"_tupelo": map[string]interface{}{
 			"tokens": map[string]interface{}{
-				"test-token": map[string]interface{}{
+				"fake-did:test-token": map[string]interface{}{
 					MonetaryPolicyLabel: transactions.TokenMonetaryPolicy{Maximum: uint64(100)},
 					TokenBalanceLabel:   uint64(10),
 					TokenMintLabel: []map[string]interface{}{
@@ -393,12 +400,12 @@ func TestTreeLedger_MintToken(t *testing.T) {
 	}
 	testTree := NewTestTree(t, testTreeNodes)
 
-	ledger := NewTreeLedger(testTree, "test-token")
+	ledger := NewTreeLedger(testTree, &TokenName{ChainTreeDID: "fake-did", LocalName: "test-token"})
 
 	newTree, err := ledger.MintToken(uint64(4))
 	require.Nil(t, err)
 
-	ledger = NewTreeLedger(newTree, "test-token")
+	ledger = NewTreeLedger(newTree, &TokenName{ChainTreeDID: "fake-did", LocalName: "test-token"})
 
 	balance, err := ledger.Balance()
 	require.Nil(t, err)
@@ -410,7 +417,7 @@ func TestTreeLedger_SendToken(t *testing.T) {
 	testTreeNodes := map[string]interface{}{
 		"_tupelo": map[string]interface{}{
 			"tokens": map[string]interface{}{
-				"test-token": map[string]interface{}{
+				"fake-did:test-token": map[string]interface{}{
 					TokenBalanceLabel: uint64(10),
 					TokenMintLabel: []map[string]interface{}{
 						{"amount": 1},
@@ -430,12 +437,12 @@ func TestTreeLedger_SendToken(t *testing.T) {
 	}
 	testTree := NewTestTree(t, testTreeNodes)
 
-	ledger := NewTreeLedger(testTree, "test-token")
+	ledger := NewTreeLedger(testTree, &TokenName{ChainTreeDID: "fake-did", LocalName: "test-token"})
 
 	newTree, err := ledger.SendToken("test-tx-id", "did:tupelo:testchaintree", uint64(5))
 	require.Nil(t, err)
 
-	ledger = NewTreeLedger(newTree, "test-token")
+	ledger = NewTreeLedger(newTree, &TokenName{ChainTreeDID: "fake-did", LocalName: "test-token"})
 
 	balance, err := ledger.Balance()
 	require.Nil(t, err)
@@ -452,12 +459,12 @@ func TestTreeLedger_ReceiveToken(t *testing.T) {
 
 	recipientTree := NewTestTree(t, recipientTreeNodes)
 
-	recipientLedger := NewTreeLedger(recipientTree, "test-token")
+	recipientLedger := NewTreeLedger(recipientTree, &TokenName{ChainTreeDID: "fake-did", LocalName: "test-token"})
 
 	recipientTree, err := recipientLedger.ReceiveToken("test-send-token-2", uint64(5))
 	require.Nil(t, err)
 
-	recipientLedger = NewTreeLedger(recipientTree, "test-token")
+	recipientLedger = NewTreeLedger(recipientTree, &TokenName{ChainTreeDID: "fake-did", LocalName: "test-token"})
 
 	balance, err := recipientLedger.Balance()
 	require.Nil(t, err)

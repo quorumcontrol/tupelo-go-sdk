@@ -552,13 +552,17 @@ func TestReceiveToken(t *testing.T) {
 
 	senderTree, err := senderChainTree.Tree()
 	require.Nil(t, err)
-	senderLedger := consensus.NewTreeLedger(senderTree, tokenFullName2)
+
+	tokenCanonicalName2, err := consensus.CanonicalTokenName(senderTree, treeDID, tokenName2, true)
+	require.Nil(t, err)
+
+	senderLedger := consensus.NewTreeLedger(senderTree, tokenCanonicalName2)
 	senderBalance, err := senderLedger.Balance()
 	require.Nil(t, err)
 
 	recipientTree, err := recipientChainTree.ChainTree.Tree()
 	require.Nil(t, err)
-	recipientLedger := consensus.NewTreeLedger(recipientTree, tokenFullName2)
+	recipientLedger := consensus.NewTreeLedger(recipientTree, tokenCanonicalName2)
 	recipientBalance, err := recipientLedger.Balance()
 	require.Nil(t, err)
 

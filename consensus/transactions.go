@@ -200,7 +200,7 @@ func EstablishTokenTransaction(chainTreeDID string, tree *dag.Dag, txn *transact
 		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting canonical token name for %s: %v", payload.Name, err)}
 	}
 
-	ledger := NewTreeLedger(tree, tokenName.String())
+	ledger := NewTreeLedger(tree, tokenName)
 
 	tokenExists, err := ledger.TokenExists()
 	if err != nil {
@@ -236,7 +236,7 @@ func MintTokenTransaction(chainTreeDID string, tree *dag.Dag, txn *transactions.
 		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting canonical token name for %s: %v", payload.Name, err)}
 	}
 
-	ledger := NewTreeLedger(tree, tokenName.String())
+	ledger := NewTreeLedger(tree, tokenName)
 
 	newTree, err = ledger.MintToken(payload.Amount)
 	if err != nil {
@@ -257,7 +257,7 @@ func SendTokenTransaction(chainTreeDID string, tree *dag.Dag, txn *transactions.
 		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error getting canonical token name for %s: %v", payload.Name, err)}
 	}
 
-	ledger := NewTreeLedger(tree, tokenName.String())
+	ledger := NewTreeLedger(tree, tokenName)
 
 	newTree, err = ledger.SendToken(payload.Id, payload.Destination, payload.Amount)
 	if err != nil {
@@ -267,8 +267,8 @@ func SendTokenTransaction(chainTreeDID string, tree *dag.Dag, txn *transactions.
 	return newTree, true, nil
 }
 
-func allSendTokenNodes(tree *dag.Dag, tokenName string, sendNodeId cid.Cid) ([]*cbornode.Node, error) {
-	sendTokenNode, codedErr := tree.Get(sendNodeId)
+func allSendTokenNodes(chain *chaintree.ChainTree, tokenName *TokenName, sendNodeId cid.Cid) ([]*cbornode.Node, error) {
+	sendTokenNode, codedErr := chain.Dag.Get(sendNodeId)
 	if codedErr != nil {
 		return nil, fmt.Errorf("error getting send token node: %v", codedErr)
 	}
@@ -280,7 +280,7 @@ func allSendTokenNodes(tree *dag.Dag, tokenName string, sendNodeId cid.Cid) ([]*
 	tokenPath = append([]string{chaintree.TreeLabel}, tokenPath...)
 	tokenPath = append(tokenPath, TokenSendLabel)
 
-	tokenSendNodes, codedErr := tree.NodesForPath(tokenPath)
+	tokenSendNodes, codedErr := chain.Dag.NodesForPath(tokenPath)
 	if codedErr != nil {
 		return nil, codedErr
 	}
@@ -298,12 +298,17 @@ func serializeNodes(nodes []*cbornode.Node) [][]byte {
 	return bytes
 }
 
-func TokenPayloadForTransaction(tree *dag.Dag, tokenName *TokenName, sendTokenTxId string, sendTxSig *signatures.Signature) (*transactions.TokenPayload, error) {
+func TokenPayloadForTransaction(chain *chaintree.ChainTree, tokenName *TokenName, sendTokenTxId string, sendTxSig *signatures.Signature) (*transactions.TokenPayload, error) {
 	if !tokenName.IsCanonical() {
 		return nil, fmt.Errorf("token name must be canonical (i.e. start with chaintree DID)")
 	}
 
-	tokenSends, err := TokenTransactionCidsForType(tree, tokenName.String(), TokenSendLabel)
+	tree, err := chain.Tree()
+	if err != nil {
+		return nil, err
+	}
+
+	tokenSends, err := TokenTransactionCidsForType(tree, tokenName, TokenSendLabel)
 	if err != nil {
 		return nil, err
 	}
@@ -331,14 +336,14 @@ func TokenPayloadForTransaction(tree *dag.Dag, tokenName *TokenName, sendTokenTx
 		return nil, fmt.Errorf("send token transaction not found for ID: %s", sendTokenTxId)
 	}
 
-	tokenNodes, err := allSendTokenNodes(tree, tokenName.String(), tokenSendTx)
+	tokenNodes, err := allSendTokenNodes(chain, tokenName, tokenSendTx)
 	if err != nil {
 		return nil, err
 	}
 
 	tokenPayload := &transactions.TokenPayload{
 		TransactionId: sendTokenTxId,
-		Tip:           tree.Tip.String(),
+		Tip:           chain.Dag.Tip.String(),
 		Signature:     sendTxSig,
 		Leaves:        serializeNodes(tokenNodes),
 	}
@@ -400,44 +405,46 @@ func GetSenderDagFromReceive(payload *transactions.ReceiveTokenPayload) (*dag.Da
 
 // GetTokenNameFromReceive takes the SendToken that was included in a ReceiveTokenPayload
 // and returns the name of the sent token.
-func GetTokenNameFromReceive(senderDag *dag.Dag) (string, chaintree.CodedError) {
-	treePath, err := DecodePath(TreePathForTokens)
-	if err != nil {
-		return "", &ErrorCode{Code: 999, Memo: fmt.Sprintf("error decoding tree path for tokens: %v", err)}
-	}
-	tokensPath := append([]string{"tree"}, treePath...)
-
-	uncastTokens, remaining, err := senderDag.Resolve(tokensPath)
-	if err != nil {
-		return "", &ErrorCode{Code: 999, Memo: fmt.Sprintf("error resolving tokens: %v", err)}
-	}
-	if len(remaining) > 0 {
-		return "", &ErrorCode{Code: 999, Memo: fmt.Sprintf("error resolving tokens: remaining path elements: %v", remaining)}
-	}
-
-	tokens, ok := uncastTokens.(map[string]interface{})
-	if !ok {
-		return "", &ErrorCode{Code: 999, Memo: "error casting tokens map"}
-	}
-
-	tokenName, _, err := findFirstLinkedNode(senderDag, tokens)
-	if err != nil {
-		return "", &ErrorCode{Code: 999, Memo: fmt.Sprintf("error finding token node: %v", err)}
-	}
-
-	return tokenName, nil
-}
-
-// GetSendTokenFromReceive takes DAG that is part of the ReceiveTokenPayload and returns 
-// The TokenSend for the specified tokenName
-func GetSendTokenFromReceive(senderDag *dag.Dag, tokenName string) (*TokenSend, chaintree.CodedError) {
+func GetTokenNameFromReceive(senderDag *dag.Dag) (*TokenName, chaintree.CodedError) {
 	treePath, err := DecodePath(TreePathForTokens)
 	if err != nil {
 		return nil, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error decoding tree path for tokens: %v", err)}
 	}
 	tokensPath := append([]string{"tree"}, treePath...)
 
-	tokenSendsPath := append(tokensPath, tokenName, TokenSendLabel)
+	uncastTokens, remaining, err := senderDag.Resolve(tokensPath)
+	if err != nil {
+		return nil, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error resolving tokens: %v", err)}
+	}
+	if len(remaining) > 0 {
+		return nil, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error resolving tokens: remaining path elements: %v", remaining)}
+	}
+
+	tokens, ok := uncastTokens.(map[string]interface{})
+	if !ok {
+		return nil, &ErrorCode{Code: 999, Memo: "error casting tokens map"}
+	}
+
+	tokenName, _, err := findFirstLinkedNode(senderDag, tokens)
+	if err != nil {
+		return nil, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error finding token node: %v", err)}
+	}
+
+	tn := tokenNameFromString(tokenName)
+
+	return &tn, nil
+}
+
+// GetSendTokenFromReceive takes DAG that is part of the ReceiveTokenPayload and returns 
+// The TokenSend for the specified tokenName
+func GetSendTokenFromReceive(senderDag *dag.Dag, tokenName *TokenName) (*TokenSend, chaintree.CodedError) {
+	treePath, err := DecodePath(TreePathForTokens)
+	if err != nil {
+		return nil, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error decoding tree path for tokens: %v", err)}
+	}
+	tokensPath := append([]string{"tree"}, treePath...)
+
+	tokenSendsPath := append(tokensPath, tokenName.String(), TokenSendLabel)
 	uncastTokenSends, remaining, err := senderDag.Resolve(tokenSendsPath)
 	if err != nil {
 		return nil, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error resolving token sends: %v", err)}
