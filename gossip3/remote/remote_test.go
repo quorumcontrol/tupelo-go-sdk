@@ -66,11 +66,11 @@ func TestRemoteMessageSending(t *testing.T) {
 	_, err = host3.Bootstrap(testnotarygroup.BootstrapAddresses(bootstrap))
 	require.Nil(t, err)
 
-	err = host1.WaitForBootstrap(1, 1*time.Second)
+	err = host1.WaitForBootstrap(1, 5*time.Second)
 	require.Nil(t, err)
-	err = host2.WaitForBootstrap(1, 1*time.Second)
+	err = host2.WaitForBootstrap(1, 5*time.Second)
 	require.Nil(t, err)
-	err = host3.WaitForBootstrap(1, 1*time.Second)
+	err = host3.WaitForBootstrap(1, 5*time.Second)
 	require.Nil(t, err)
 
 	t.Logf("host1: %s / host2: %s / host3: %s", host1.Identity(), host2.Identity(), host3.Identity())
@@ -128,7 +128,7 @@ func TestRemoteMessageSending(t *testing.T) {
 		require.Nil(t, err)
 		_, err = host4.Bootstrap(testnotarygroup.BootstrapAddresses(bootstrap))
 		require.Nil(t, err)
-		err = host4.WaitForBootstrap(2, 1*time.Second)
+		err = host4.WaitForBootstrap(2, 5*time.Second)
 		require.Nil(t, err)
 		host4Ping, err := rootContext.SpawnNamed(actor.PropsFromFunc(pingFunc), "ping-host4")
 		require.Nil(t, err)

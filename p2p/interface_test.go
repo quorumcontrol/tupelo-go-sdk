@@ -115,7 +115,7 @@ func PeerDiscovery(t *testing.T, generator nodeGenerator) {
 }
 
 func PubSubTest(t *testing.T, generator nodeGenerator) {
-	ctx, timeoutCancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, timeoutCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer timeoutCancel()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
