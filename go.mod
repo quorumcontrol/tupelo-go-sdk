@@ -25,19 +25,10 @@ require (
 	github.com/libp2p/go-libp2p-circuit v0.1.0
 	github.com/libp2p/go-libp2p-connmgr v0.1.0
 	github.com/libp2p/go-libp2p-core v0.0.4
-	github.com/libp2p/go-libp2p-crypto v0.1.0
 	github.com/libp2p/go-libp2p-discovery v0.1.0
-	github.com/libp2p/go-libp2p-host v0.0.3
-	github.com/libp2p/go-libp2p-interface-connmgr v0.0.5 // indirect
 	github.com/libp2p/go-libp2p-kad-dht v0.1.1
-	github.com/libp2p/go-libp2p-metrics v0.1.0
-	github.com/libp2p/go-libp2p-net v0.1.0
-	github.com/libp2p/go-libp2p-peer v0.2.0
-	github.com/libp2p/go-libp2p-peerstore v0.1.2-0.20190621130618-cfa9bb890c1a
 	github.com/libp2p/go-libp2p-pnet v0.1.0
-	github.com/libp2p/go-libp2p-protocol v0.1.0
 	github.com/libp2p/go-libp2p-pubsub v0.1.0
-	github.com/libp2p/go-libp2p-routing v0.1.0
 	github.com/libp2p/go-libp2p-swarm v0.1.0
 	github.com/multiformats/go-multiaddr v0.0.4
 	github.com/opentracing/opentracing-go v1.1.0
