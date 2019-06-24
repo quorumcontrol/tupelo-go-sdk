@@ -3,9 +3,8 @@ package consensus
 import (
 	"fmt"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
-	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/typecaster"
 	"github.com/quorumcontrol/messages/build/go/transactions"
@@ -31,7 +30,7 @@ type TokenLedger interface {
 }
 
 type TreeLedger struct {
-	tokenName string
+	tokenName *TokenName
 	tree      *dag.Dag
 }
 
@@ -45,14 +44,14 @@ type Token struct {
 	Balance        uint64
 }
 
-func NewTreeLedger(tree *dag.Dag, tokenName string) *TreeLedger {
+func NewTreeLedger(tree *dag.Dag, tokenName *TokenName) *TreeLedger {
 	return &TreeLedger{
 		tokenName: tokenName,
 		tree:      tree,
 	}
 }
 
-func TokenPath(tokenName string) ([]string, error) {
+func TokenPath(tokenName *TokenName) ([]string, error) {
 	l := NewTreeLedger(nil, tokenName)
 	return l.tokenPath()
 }
@@ -62,16 +61,16 @@ func (l *TreeLedger) tokenPath() ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error, unable to decode tree path for tokens: %v", err)
 	}
-	return append(rootTokenPath, l.tokenName), nil
+	return append(rootTokenPath, l.tokenName.String()), nil
 }
 
-func TokenTransactionCidsForType(tree *dag.Dag, tokenName string, txType string) ([]cid.Cid, error) {
+func TokenTransactionCidsForType(tree *dag.Dag, tokenName *TokenName, txType string) ([]cid.Cid, error) {
 	treePathForTokens, err := DecodePath(TreePathForTokens)
 	if err != nil {
 		return nil, fmt.Errorf("error, unable to decode tree path for tokens: %v", err)
 	}
-	path := append([]string{chaintree.TreeLabel}, treePathForTokens...)
-	path = append(path, tokenName, txType)
+
+	path := append(treePathForTokens, tokenName.String(), txType)
 	return transactionCidsForPath(tree, path)
 }
 

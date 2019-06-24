@@ -13,15 +13,16 @@ import (
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/AsynkronIT/protoactor-go/eventstream"
-	retry "github.com/avast/retry-go"
+	"github.com/avast/retry-go"
 	lru "github.com/hashicorp/golang-lru"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/messages/build/go/transactions"
 	"go.uber.org/zap"
 
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/safewrap"
+
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/remote"
@@ -182,7 +183,7 @@ func (c *Client) SendTransaction(trans *services.AddBlockRequest) error {
 	return c.pubsub.Broadcast(c.Group.Config().TransactionTopic, trans)
 }
 
-// PlayTransactions plays transactions in chain tree.
+
 func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*transactions.Transaction) (*consensus.AddBlockResponse, error) {
 	sw := safewrap.SafeWrap{}
 
@@ -293,6 +294,9 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 	return addResponse, nil
 }
 
+// PlayTransactions plays transactions in chain tree.
+// It retries on timeouts so most of the logic in here is for retries and the meat of the
+// transaction-playing code is in attemptPlayTransactions.
 func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*transactions.Transaction) (*consensus.AddBlockResponse, error) {
 	var (
 		resp *consensus.AddBlockResponse
@@ -353,6 +357,10 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 	}
 
 	return resp, nil
+}
+
+func (c *Client) TokenPayloadForTransaction(chain *chaintree.ChainTree, tokenName *consensus.TokenName, sendTokenTxId string, sendTxSig *signatures.Signature) (*transactions.TokenPayload, error) {
+	return consensus.TokenPayloadForTransaction(chain, tokenName, sendTokenTxId, sendTxSig)
 }
 
 func getRoot(sct *consensus.SignedChainTree) (*chaintree.RootNode, error) {

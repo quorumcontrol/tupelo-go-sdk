@@ -642,8 +642,8 @@ github.com/prometheus/procfs v0.0.0-20190416084830-8368d24ba045 h1:Raos9GP+3BlCB
 github.com/prometheus/procfs v0.0.0-20190416084830-8368d24ba045/go.mod h1:TjEm7ze935MbeOT/UhFTIMYKhuLP4wbCsTZCD3I8kEA=
 github.com/prometheus/procfs v0.0.0-20190425082905-87a4384529e0 h1:c8R11WC8m7KNMkTv/0+Be8vvwo4I3/Ut9AC2FW8fX3U=
 github.com/prometheus/procfs v0.0.0-20190425082905-87a4384529e0/go.mod h1:TjEm7ze935MbeOT/UhFTIMYKhuLP4wbCsTZCD3I8kEA=
-github.com/quorumcontrol/chaintree v0.0.0-20190530190017-53765d7c259c h1:CZlTUDjlNlhYD0S+avPNroj/o36jd2HJyez5I+eoJFE=
-github.com/quorumcontrol/chaintree v0.0.0-20190530190017-53765d7c259c/go.mod h1:ArT6IHCFvT+CBJavEW/adlW0eXbBO6jKkE8l02dawjU=
+github.com/quorumcontrol/chaintree v0.0.0-20190620141948-3938753d0308 h1:s1Auur6J/Cqu6nio8smVyq8RrCqUTKYKWOE+R87qSNU=
+github.com/quorumcontrol/chaintree v0.0.0-20190620141948-3938753d0308/go.mod h1:ArT6IHCFvT+CBJavEW/adlW0eXbBO6jKkE8l02dawjU=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190530182608-30c127bffefb h1:x/0eUSPARsrbdV1R/3vJWIT8P3EhUaF1AIYPu9L4TKg=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190530182608-30c127bffefb/go.mod h1:b8jDN8PulcGcRJ2pQc0lbC3tPaOspGHoBIbPxfB7Jqg=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190603192428-dcb5ad7a31ca h1:BOFMjEPmEk07alkYO+OtmjqvZtr0MSbJX0cR8Pf/i/g=
