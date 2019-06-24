@@ -24,7 +24,7 @@ require (
 	github.com/libp2p/go-libp2p v0.1.1
 	github.com/libp2p/go-libp2p-circuit v0.1.0
 	github.com/libp2p/go-libp2p-connmgr v0.1.0
-	github.com/libp2p/go-libp2p-core v0.0.4
+	github.com/libp2p/go-libp2p-core v0.0.4 // This actualy gets moved down to v0.0.3 via a replace below ( see: https://github.com/ipfs/go-ipfs/commit/a7f8d69008347e55abd08666b00a234e83fc0ff4#diff-37aff102a57d3d7b797f152915a6dc16R117 )
 	github.com/libp2p/go-libp2p-discovery v0.1.0
 	github.com/libp2p/go-libp2p-kad-dht v0.1.1
 	github.com/libp2p/go-libp2p-pnet v0.1.0
