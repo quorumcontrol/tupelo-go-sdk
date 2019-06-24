@@ -257,21 +257,19 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 	c.log.Debugw("sending transaction", "height", transaction.Height, "chainTreeId", chainId)
 	err = c.SendTransaction(&transaction)
 	if err != nil {
-		panic(fmt.Errorf("error sending transaction %v", err))
+		return nil, fmt.Errorf("error sending transaction %v", err)
 	}
 
 	c.log.Debugw("waiting on transaction to complete", "height", transaction.Height,
 		"chainTreeId", chainId)
 
 	uncastResp, err := fut.Result()
-	c.log.Debugw("finished waiting on transaction", "error", err)
 	if err != nil {
 		if err == actor.ErrTimeout {
 			c.log.Debugw("transaction failed due to timeout", "error", err, "height", transaction.Height,
 				"chainTreeId", chainId)
 			return nil, fmt.Errorf(ErrorTimeout)
 		}
-
 		c.log.Debugw("transaction failed", "error", err, "height", transaction.Height,
 			"chainTreeId", chainId)
 		return nil, fmt.Errorf("error response: %v", err)
@@ -289,12 +287,14 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 	case *signatures.CurrentState:
 		resp = respVal
 	default:
+		c.log.Debugw("transaction resulted in an unrecognized response type", "response", respVal)
 		return nil, fmt.Errorf("error unrecognized response type: %T", respVal)
 	}
 
 	if !bytes.Equal(resp.Signature.NewTip, expectedTip.Bytes()) {
 		respCid, _ := cid.Cast(resp.Signature.NewTip)
-		return nil, fmt.Errorf("error, tree updated to different tip - expected: %v - received: %v", expectedTip.String(), respCid.String())
+		return nil, fmt.Errorf("error, tree updated to different tip - expected: %v - received: %v",
+			expectedTip.String(), respCid.String())
 	}
 
 	tree.ChainTree = newChainTree
