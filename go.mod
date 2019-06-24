@@ -32,10 +32,10 @@ require (
 	github.com/libp2p/go-libp2p-swarm v0.1.0
 	github.com/multiformats/go-multiaddr v0.0.4
 	github.com/opentracing/opentracing-go v1.1.0
-	github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829
-	github.com/quorumcontrol/chaintree v0.0.0-20190620141948-3938753d0308
+	github.com/prometheus/client_golang v0.9.3
+	github.com/quorumcontrol/chaintree v0.0.0-20190624152451-31c150abdde2
 	github.com/quorumcontrol/messages/build/go v0.0.0-20190603192428-dcb5ad7a31ca
-	github.com/quorumcontrol/storage v1.1.2
+	github.com/quorumcontrol/storage v1.1.3
 	github.com/santhosh-tekuri/jsonschema v1.2.4 // indirect
 	github.com/stretchr/testify v1.3.0
 	github.com/uber-go/atomic v1.3.2 // indirect
