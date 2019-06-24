@@ -8,14 +8,13 @@ import (
 	"sync"
 	"time"
 
-	inet "github.com/libp2p/go-libp2p-net"
+	"github.com/libp2p/go-libp2p-core/network"
 
 	logging "github.com/ipfs/go-log"
 	host "github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	peer "github.com/libp2p/go-libp2p-peer"
-	pstore "github.com/libp2p/go-libp2p-peerstore"
-	routing "github.com/libp2p/go-libp2p-routing"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
@@ -48,7 +47,7 @@ type Bootstrapper struct {
 	// MinPeerThreshold is the number of connections it attempts to maintain.
 	MinPeerThreshold int
 	// Peers to connect to if we fall below the threshold.
-	bootstrapPeers []pstore.PeerInfo
+	bootstrapPeers []peer.AddrInfo
 	// Period is the interval at which it periodically checks to see
 	// if the threshold is maintained.
 	Period time.Duration
@@ -57,8 +56,8 @@ type Bootstrapper struct {
 
 	// Dependencies
 	h host.Host
-	d inet.Dialer
-	r routing.IpfsRouting
+	d network.Dialer
+	r routing.Routing
 	// Does the work. Usually Bootstrapper.bootstrap. Argument is a slice of
 	// currently-connected peers (so it won't attempt to reconnect).
 	Bootstrap func([]peer.ID)
@@ -72,7 +71,7 @@ type Bootstrapper struct {
 
 // NewBootstrapper returns a new Bootstrapper that will attempt to keep connected
 // to the network by connecting to the given bootstrap peers.
-func NewBootstrapper(bootstrapPeers []pstore.PeerInfo, h host.Host, d inet.Dialer, r routing.IpfsRouting, minPeer int, period time.Duration) *Bootstrapper {
+func NewBootstrapper(bootstrapPeers []peer.AddrInfo, h host.Host, d network.Dialer, r routing.Routing, minPeer int, period time.Duration) *Bootstrapper {
 	b := &Bootstrapper{
 		MinPeerThreshold:  minPeer,
 		bootstrapPeers:    bootstrapPeers,
@@ -139,7 +138,7 @@ func (b *Bootstrapper) bootstrap(currentPeers []peer.ID) {
 		// DHT Bootstrap is a persistent process so only do this once.
 		if !b.dhtBootStarted {
 			b.dhtBootStarted = true
-			err := b.bootstrapIpfsRouting()
+			err := b.bootstrapRouting()
 			if err != nil {
 				logBootstrap.Warningf("got error trying to bootstrap Routing: %s. Peer discovery may suffer.", err.Error())
 			}
@@ -179,7 +178,7 @@ func hasPID(pids []peer.ID, pid peer.ID) bool {
 	return false
 }
 
-func (b *Bootstrapper) bootstrapIpfsRouting() error {
+func (b *Bootstrapper) bootstrapRouting() error {
 	dht, ok := b.r.(*dht.IpfsDHT)
 	if !ok {
 		// No bootstrapping to do exit quietly.
@@ -199,15 +198,15 @@ func BootstrapNodes() []string {
 	return defaultBootstrapNodes
 }
 
-func convertPeers(peers []string) []pstore.PeerInfo {
-	pinfos := make([]pstore.PeerInfo, len(peers))
-	for i, peer := range peers {
-		maddr := ma.StringCast(peer)
-		p, err := pstore.InfoFromP2pAddr(maddr)
+func convertPeers(peers []string) []peer.AddrInfo {
+	pinfos := make([]peer.AddrInfo, len(peers))
+	for i, p := range peers {
+		maddr := ma.StringCast(p)
+		ai, err := peer.AddrInfoFromP2pAddr(maddr)
 		if err != nil {
 			log.Fatal(err)
 		}
-		pinfos[i] = *p
+		pinfos[i] = *ai
 	}
 	return pinfos
 }

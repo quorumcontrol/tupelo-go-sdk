@@ -6,11 +6,11 @@ import (
 	"io"
 	"time"
 
-	net "github.com/libp2p/go-libp2p-net"
-	peer "github.com/libp2p/go-libp2p-peer"
-	protocol "github.com/libp2p/go-libp2p-protocol"
+	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/libp2p/go-libp2p-core/protocol"
 )
 
 // Node is the interface any p2p host must implement to be used
@@ -22,9 +22,9 @@ type Node interface {
 	Addresses() []ma.Multiaddr
 	Bootstrap(peers []string) (io.Closer, error)
 	WaitForBootstrap(peerCount int, timeout time.Duration) error
-	SetStreamHandler(protocol protocol.ID, handler net.StreamHandler)
-	NewStream(ctx context.Context, publicKey *ecdsa.PublicKey, protocol protocol.ID) (net.Stream, error)
-	NewStreamWithPeerID(ctx context.Context, peerID peer.ID, protocol protocol.ID) (net.Stream, error)
+	SetStreamHandler(protocol protocol.ID, handler network.StreamHandler)
+	NewStream(ctx context.Context, publicKey *ecdsa.PublicKey, protocol protocol.ID) (network.Stream, error)
+	NewStreamWithPeerID(ctx context.Context, peerID peer.ID, protocol protocol.ID) (network.Stream, error)
 	Send(publicKey *ecdsa.PublicKey, protocol protocol.ID, payload []byte) error
 	SendAndReceive(publicKey *ecdsa.PublicKey, protocol protocol.ID, payload []byte) ([]byte, error)
 	GetPubSub() *pubsub.PubSub

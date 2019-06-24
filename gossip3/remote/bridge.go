@@ -13,8 +13,8 @@ import (
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/AsynkronIT/protoactor-go/plugin"
 	"github.com/gogo/protobuf/io"
-	pnet "github.com/libp2p/go-libp2p-net"
-	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/opentracing/opentracing-go"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
@@ -32,7 +32,7 @@ type bridgeStream struct {
 	middleware.LogAwareHolder
 
 	host   p2p.Node
-	stream pnet.Stream
+	stream network.Stream
 	act    *actor.PID
 	ctx    gocontext.Context
 	cancel gocontext.CancelFunc
@@ -54,7 +54,7 @@ func (bs *bridgeStream) SetupOutgoing(remoteAddress peer.ID) error {
 	return nil
 }
 
-func (bs *bridgeStream) HandleIncoming(s pnet.Stream) {
+func (bs *bridgeStream) HandleIncoming(s network.Stream) {
 	msgChan := make(chan *mbridge.WireDelivery)
 	bs.stream = s
 
@@ -176,7 +176,7 @@ func (b *bridge) NormalState(context actor.Context) {
 		context.Self().Poison()
 	case *actor.Stopped:
 		b.clearStreams()
-	case pnet.Stream:
+	case network.Stream:
 		context.SetReceiveTimeout(bridgeReceiveTimeout)
 		b.handleIncomingStream(context, msg)
 	case *internalStreamDied:
@@ -204,7 +204,7 @@ func (b *bridge) TerminatedState(context actor.Context) {
 	}
 }
 
-func (b *bridge) handleIncomingStream(context actor.Context, stream pnet.Stream) {
+func (b *bridge) handleIncomingStream(context actor.Context, stream network.Stream) {
 	remote := stream.Conn().RemotePeer()
 	b.Log.Debugw("handling incoming stream", "peer", remote)
 	if remote != b.remoteAddress {

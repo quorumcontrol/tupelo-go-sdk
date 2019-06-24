@@ -7,10 +7,11 @@ import (
 
 	"sync/atomic"
 
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/AsynkronIT/protoactor-go/eventstream"
 	discovery "github.com/libp2p/go-libp2p-discovery"
-	inet "github.com/libp2p/go-libp2p-net"
-	pstore "github.com/libp2p/go-libp2p-peerstore"
+	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peerstore"
 )
 
 const (
@@ -90,14 +91,14 @@ func (td *tupeloDiscoverer) findPeers(ctx context.Context) error {
 	return nil
 }
 
-func (td *tupeloDiscoverer) handleNewPeerInfo(ctx context.Context, p pstore.PeerInfo) {
+func (td *tupeloDiscoverer) handleNewPeerInfo(ctx context.Context, p peer.AddrInfo) {
 	if p.ID == "" {
 		return // empty id
 	}
 
 	host := td.host.host
 
-	if host.Network().Connectedness(p.ID) == inet.Connected {
+	if host.Network().Connectedness(p.ID) == network.Connected {
 		log.Debugf("already connected peer %s", td.namespace)
 		numConnected := atomic.AddUint64(&td.connected, uint64(1))
 		td.events.Publish(&DiscoveryEvent{
@@ -113,7 +114,7 @@ func (td *tupeloDiscoverer) handleNewPeerInfo(ctx context.Context, p pstore.Peer
 	// do the connection async because connect can hang
 	go func() {
 		// not actually positive that TTL is correct, but it seemed the most appropriate
-		host.Peerstore().AddAddrs(p.ID, p.Addrs, pstore.ProviderAddrTTL)
+		host.Peerstore().AddAddrs(p.ID, p.Addrs, peerstore.ProviderAddrTTL)
 		if err := host.Connect(ctx, p); err != nil {
 			log.Errorf("error connecting to  %s %v: %v", p.ID, p, err)
 		}
