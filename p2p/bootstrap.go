@@ -11,7 +11,7 @@ import (
 	inet "github.com/libp2p/go-libp2p-net"
 
 	logging "github.com/ipfs/go-log"
-	host "github.com/libp2p/go-libp2p-host"
+	host "github.com/libp2p/go-libp2p-core/host"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	peer "github.com/libp2p/go-libp2p-peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
