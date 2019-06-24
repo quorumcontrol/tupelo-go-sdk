@@ -6,11 +6,11 @@ import (
 	"net"
 	"os"
 
+	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/ethereum/go-ethereum/crypto"
 	ds "github.com/ipfs/go-datastore"
 	dsync "github.com/ipfs/go-datastore/sync"
 	circuit "github.com/libp2p/go-libp2p-circuit"
-	metrics "github.com/libp2p/go-libp2p-metrics"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
 

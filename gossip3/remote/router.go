@@ -6,8 +6,8 @@ import (
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/AsynkronIT/protoactor-go/plugin"
-	pnet "github.com/libp2p/go-libp2p-net"
-	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/opentracing/opentracing-go"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
@@ -57,10 +57,10 @@ func (r *router) Receive(context actor.Context) {
 		// instead create a closure which has just the PID
 		// of the router and uses the root context to send the streams
 		routerActor := context.Self()
-		r.host.SetStreamHandler(p2pProtocol, func(s pnet.Stream) {
+		r.host.SetStreamHandler(p2pProtocol, func(s network.Stream) {
 			actor.EmptyRootContext.Send(routerActor, s)
 		})
-	case pnet.Stream:
+	case network.Stream:
 		remoteGateway := msg.Conn().RemotePeer().Pretty()
 		handler, ok := r.bridges[remoteGateway]
 		if !ok {

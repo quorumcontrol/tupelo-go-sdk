@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	net "github.com/libp2p/go-libp2p-net"
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -56,7 +56,7 @@ func SendTest(t *testing.T, generator nodeGenerator) {
 
 	msgs := make(chan []byte, 1)
 
-	nodeB.SetStreamHandler("test/protocol", func(s net.Stream) {
+	nodeB.SetStreamHandler("test/protocol", func(s network.Stream) {
 		defer s.Close()
 		data, err := ioutil.ReadAll(s)
 		require.Nil(t, err)
@@ -81,7 +81,7 @@ func SendAndReceiveTest(t *testing.T, generator nodeGenerator) {
 	err = nodeA.WaitForBootstrap(1, 1*time.Second)
 	require.Nil(t, err)
 
-	nodeB.SetStreamHandler("test/protocol", func(s net.Stream) {
+	nodeB.SetStreamHandler("test/protocol", func(s network.Stream) {
 		defer s.Close()
 		data, err := ioutil.ReadAll(s)
 		require.Nil(t, err)

@@ -12,17 +12,17 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p"
-	libp2pcrypto "github.com/libp2p/go-libp2p-crypto"
-	host "github.com/libp2p/go-libp2p-host"
+	host "github.com/libp2p/go-libp2p-core/host"
+	metrics "github.com/libp2p/go-libp2p-core/metrics"
+	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
-	metrics "github.com/libp2p/go-libp2p-metrics"
-	net "github.com/libp2p/go-libp2p-net"
-	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
 	pnet "github.com/libp2p/go-libp2p-pnet"
-	protocol "github.com/libp2p/go-libp2p-protocol"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	routing "github.com/libp2p/go-libp2p-routing"
+	"github.com/libp2p/go-libp2p-core/routing"
 	swarm "github.com/libp2p/go-libp2p-swarm"
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
@@ -315,11 +315,11 @@ func (h *LibP2PHost) WaitForDiscovery(namespace string, num int, duration time.D
 	return discoverer.waitForNumber(num, duration)
 }
 
-func (h *LibP2PHost) SetStreamHandler(protocol protocol.ID, handler net.StreamHandler) {
+func (h *LibP2PHost) SetStreamHandler(protocol protocol.ID, handler network.StreamHandler) {
 	h.host.SetStreamHandler(protocol, handler)
 }
 
-func (h *LibP2PHost) NewStream(ctx context.Context, publicKey *ecdsa.PublicKey, protocol protocol.ID) (net.Stream, error) {
+func (h *LibP2PHost) NewStream(ctx context.Context, publicKey *ecdsa.PublicKey, protocol protocol.ID) (network.Stream, error) {
 	peerID, err := peer.IDFromPublicKey(p2pPublicKeyFromEcdsaPublic(publicKey))
 	if err != nil {
 		return nil, fmt.Errorf("Could not convert public key to peer id: %v", err)
@@ -327,7 +327,7 @@ func (h *LibP2PHost) NewStream(ctx context.Context, publicKey *ecdsa.PublicKey, 
 	return h.NewStreamWithPeerID(ctx, peerID, protocol)
 }
 
-func (h *LibP2PHost) NewStreamWithPeerID(ctx context.Context, peerID peer.ID, protocol protocol.ID) (net.Stream, error) {
+func (h *LibP2PHost) NewStreamWithPeerID(ctx context.Context, peerID peer.ID, protocol protocol.ID) (network.Stream, error) {
 	stream, err := h.host.NewStream(ctx, peerID, protocol)
 
 	switch err {
