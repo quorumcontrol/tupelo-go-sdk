@@ -90,11 +90,17 @@ func (c *Client) subscriptionReceive(actorContext actor.Context) {
 			panic(fmt.Errorf("error spawning pubsub: %v", err))
 		}
 	case *signatures.CurrentState:
+		if msg.Signature == nil {
+			c.log.Errorw("received signatures.CurrentState message without signature")
+			return
+		}
+
 		heightString := strconv.FormatUint(msg.Signature.Height, 10)
 		//TODO: this needs to check the validity of the signature
 		existed, _ := c.cache.ContainsOrAdd(heightString, msg)
 		if !existed {
-			c.log.Debugw("publishing current state", "objectID", string(msg.Signature.ObjectId), "height", heightString)
+			c.log.Debugw("publishing current state", "objectID", string(msg.Signature.ObjectId),
+				"height", heightString)
 			c.stream.Publish(msg)
 		}
 	default:
