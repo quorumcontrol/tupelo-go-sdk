@@ -3,11 +3,13 @@ package consensus
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/log"
 	cid "github.com/ipfs/go-cid"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/nodestore"
+	"github.com/quorumcontrol/chaintree/typecaster"
 	"github.com/quorumcontrol/messages/build/go/transactions"
 	"github.com/quorumcontrol/storage"
 )
@@ -47,6 +49,26 @@ func (sct *SignedChainTree) IsGenesis() bool {
 	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
 	newEmpty := NewEmptyTree(sct.MustId(), store)
 	return newEmpty.Tip.Equals(sct.Tip())
+}
+
+func (sct *SignedChainTree) Authentications() ([]string, error) {
+	uncastAuths, _, err := sct.ChainTree.Dag.Resolve(strings.Split("tree/"+TreePathForAuthentications, "/"))
+	if err != nil {
+		return nil, err
+	}
+
+	// If there are no authentications then the Chain Tree is still owned by its genesis key
+	if uncastAuths == nil {
+		return []string{DidToAddr(sct.MustId())}, nil
+	}
+
+	auths := make([]string, len(uncastAuths.([]interface{})))
+
+	err = typecaster.ToType(uncastAuths, &auths)
+	if err != nil {
+		return nil, fmt.Errorf("error casting SignedChainTree auths: %v", err)
+	}
+	return auths, nil
 }
 
 func NewSignedChainTree(key ecdsa.PublicKey, nodeStore nodestore.NodeStore) (*SignedChainTree, error) {
