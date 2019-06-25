@@ -43,3 +43,44 @@ func TestSignedChainTree_IsGenesis(t *testing.T) {
 	require.False(t, newTree.IsGenesis())
 
 }
+
+func TestSignedChainTree_Authentications(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	nodeStore := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+
+	newTree, err := NewSignedChainTree(key.PublicKey, nodeStore)
+	require.Nil(t, err)
+
+	auths, err := newTree.Authentications()
+	require.Nil(t, err)
+	addr := crypto.PubkeyToAddress(key.PublicKey).String()
+	require.Equal(t, auths, []string{addr})
+
+	// Change key and test addrs
+	newKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	newAddr := crypto.PubkeyToAddress(newKey.PublicKey).String()
+
+	txn, err := chaintree.NewSetOwnershipTransaction([]string{newAddr})
+	assert.Nil(t, err)
+
+	unsignedBlock := chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       0,
+			Transactions: []*transactions.Transaction{txn},
+		},
+	}
+
+	blockWithHeaders, err := SignBlock(&unsignedBlock, newKey)
+	require.Nil(t, err)
+
+	isValid, err := newTree.ChainTree.ProcessBlock(blockWithHeaders)
+	require.Nil(t, err)
+	require.True(t, isValid)
+
+	newAuths, err := newTree.Authentications()
+	require.Nil(t, err)
+	require.Equal(t, newAuths, []string{newAddr})
+}
