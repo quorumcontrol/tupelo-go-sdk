@@ -183,7 +183,6 @@ func (c *Client) SendTransaction(trans *services.AddBlockRequest) error {
 	return c.pubsub.Broadcast(c.Group.Config().TransactionTopic, trans)
 }
 
-
 func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*transactions.Transaction) (*consensus.AddBlockResponse, error) {
 	sw := safewrap.SafeWrap{}
 
@@ -230,32 +229,51 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 	}
 
 	expectedTip := newChainTree.Dag.Tip
+	chainId, err := tree.Id()
+	if err != nil {
+		return nil, err
+	}
 
 	transaction := services.AddBlockRequest{
 		PreviousTip: storedTip.Bytes(),
 		Height:      blockWithHeaders.Height,
 		Payload:     sw.WrapObject(blockWithHeaders).RawData(),
 		NewTip:      expectedTip.Bytes(),
-		ObjectId:    []byte(tree.MustId()),
+		ObjectId:    []byte(chainId),
 		State:       nodesToBytes(nodes),
 	}
 
 	fut := c.Subscribe(&transaction, 10*time.Second)
 
 	time.Sleep(100 * time.Millisecond)
+	c.log.Debugw("sending transaction", "height", transaction.Height, "chainTreeId", chainId)
 	err = c.SendTransaction(&transaction)
 	if err != nil {
 		panic(fmt.Errorf("error sending transaction %v", err))
 	}
 
+	c.log.Debugw("waiting on transaction to complete", "height", transaction.Height,
+		"chainTreeId", chainId)
+
 	uncastResp, err := fut.Result()
 	if err != nil {
+		if err == actor.ErrTimeout {
+			c.log.Debugw("transaction failed due to timeout", "error", err, "height", transaction.Height,
+				"chainTreeId", chainId)
+			return nil, fmt.Errorf(ErrorTimeout)
+		}
+
+		c.log.Debugw("transaction failed", "error", err, "height", transaction.Height,
+			"chainTreeId", chainId)
 		return nil, fmt.Errorf("error response: %v", err)
 	}
-
 	if uncastResp == nil {
+		c.log.Debugw("transaction timed out", "height", transaction.Height, "chainTreeId", chainId)
 		return nil, fmt.Errorf(ErrorTimeout)
 	}
+
+	c.log.Debugw("transaction completed successfully", "height", transaction.Height,
+		"chainTreeId", chainId)
 
 	var resp *signatures.CurrentState
 	switch respVal := uncastResp.(type) {
