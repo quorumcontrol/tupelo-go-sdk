@@ -27,7 +27,7 @@ lint: $(FIRSTGOPATH)/bin/golangci-lint build
 	$(FIRSTGOPATH)/bin/golangci-lint run --build-tags integration
 
 test: $(gosources) go.mod go.sum $(FIRSTGOPATH)/bin/gotestsum
-	gotestsum -- -run $(TESTS_TO_RUN)
+	gotestsum -- -run $(TESTS_TO_RUN) ./...
 
 ci-test: $(gosources) go.mod go.sum $(FIRSTGOPATH)/bin/gotestsum
 	mkdir -p test_results/unit_tests
