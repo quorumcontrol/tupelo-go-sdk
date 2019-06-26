@@ -283,8 +283,6 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 
 	var resp *signatures.CurrentState
 	switch respVal := uncastResp.(type) {
-	case error:
-		return nil, fmt.Errorf("error response: %v", respVal)
 	case *signatures.CurrentState:
 		resp = respVal
 	default:
