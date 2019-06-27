@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"fmt"
 	"strings"
@@ -11,7 +12,6 @@ import (
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/typecaster"
 	"github.com/quorumcontrol/messages/build/go/transactions"
-	"github.com/quorumcontrol/storage"
 )
 
 var DefaultTransactors = map[transactions.Transaction_Type]chaintree.TransactorFunc{
@@ -30,11 +30,11 @@ type SignedChainTree struct {
 }
 
 func (sct *SignedChainTree) Id() (string, error) {
-	return sct.ChainTree.Id()
+	return sct.ChainTree.Id(context.Background())
 }
 
 func (sct *SignedChainTree) MustId() string {
-	id, err := sct.ChainTree.Id()
+	id, err := sct.ChainTree.Id(context.Background())
 	if err != nil {
 		log.Error("error getting id from chaintree: %v", id)
 	}
@@ -46,13 +46,13 @@ func (sct *SignedChainTree) Tip() cid.Cid {
 }
 
 func (sct *SignedChainTree) IsGenesis() bool {
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store := nodestore.MustMemoryStore(context.Background())
 	newEmpty := NewEmptyTree(sct.MustId(), store)
 	return newEmpty.Tip.Equals(sct.Tip())
 }
 
 func (sct *SignedChainTree) Authentications() ([]string, error) {
-	uncastAuths, _, err := sct.ChainTree.Dag.Resolve(strings.Split("tree/"+TreePathForAuthentications, "/"))
+	uncastAuths, _, err := sct.ChainTree.Dag.Resolve(context.Background(), strings.Split("tree/"+TreePathForAuthentications, "/"))
 	if err != nil {
 		return nil, err
 	}
@@ -71,10 +71,11 @@ func (sct *SignedChainTree) Authentications() ([]string, error) {
 	return auths, nil
 }
 
-func NewSignedChainTree(key ecdsa.PublicKey, nodeStore nodestore.NodeStore) (*SignedChainTree, error) {
+func NewSignedChainTree(key ecdsa.PublicKey, nodeStore nodestore.DagStore) (*SignedChainTree, error) {
 	did := EcdsaPubkeyToDid(key)
 
 	tree, err := chaintree.NewChainTree(
+		context.Background(),
 		NewEmptyTree(did, nodeStore),
 		nil,
 		DefaultTransactors,

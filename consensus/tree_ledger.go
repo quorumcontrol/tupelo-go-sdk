@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/ipfs/go-cid"
@@ -75,7 +76,7 @@ func TokenTransactionCidsForType(tree *dag.Dag, tokenName *TokenName, txType str
 }
 
 func transactionCidsForPath(tree *dag.Dag, path []string) ([]cid.Cid, error) {
-	uncastCids, _, err := tree.Resolve(path)
+	uncastCids, _, err := tree.Resolve(context.TODO(), path)
 	if err != nil {
 		return nil, fmt.Errorf("error resolving path %v: %v", path, err)
 	}
@@ -130,7 +131,7 @@ func (l *TreeLedger) sumTokenTransactions(cids []cid.Cid) (uint64, error) {
 	var sum uint64
 
 	for _, c := range cids {
-		node, err := l.tree.Get(c)
+		node, err := l.tree.Get(context.TODO(), c)
 
 		if err != nil {
 			return 0, fmt.Errorf("error fetching node %v: %v", c, err)
@@ -155,7 +156,7 @@ func (l *TreeLedger) Balance() (uint64, error) {
 	}
 
 	balancePath := append(tokenPath, TokenBalanceLabel)
-	balanceObj, remaining, err := l.tree.Resolve(balancePath)
+	balanceObj, remaining, err := l.tree.Resolve(context.TODO(), balancePath)
 	if err != nil {
 		return 0, err
 	}
@@ -178,7 +179,7 @@ func (l *TreeLedger) TokenExists() (bool, error) {
 		return false, fmt.Errorf("error getting token path: %v", err)
 	}
 
-	existingToken, _, err := l.tree.Resolve(tokenPath)
+	existingToken, _, err := l.tree.Resolve(context.TODO(), tokenPath)
 	if err != nil {
 		return false, fmt.Errorf("error attempting to resolve %v: %v", tokenPath, err)
 	}
@@ -192,12 +193,12 @@ func (l *TreeLedger) createToken() (*dag.Dag, error) {
 		return nil, fmt.Errorf("error getting token path: %v", err)
 	}
 
-	newTree, err := l.tree.SetAsLink(tokenPath, &Token{})
+	newTree, err := l.tree.SetAsLink(context.TODO(), tokenPath, &Token{})
 	if err != nil {
 		return nil, fmt.Errorf("error creating new token: %v", err)
 	}
 
-	newTree, err = newTree.Set(append(tokenPath, TokenBalanceLabel), uint64(0))
+	newTree, err = newTree.Set(context.TODO(), append(tokenPath, TokenBalanceLabel), uint64(0))
 	if err != nil {
 		return nil, fmt.Errorf("error setting balance: %v", err)
 	}
@@ -218,7 +219,7 @@ func (l *TreeLedger) EstablishToken(monetaryPolicy transactions.TokenMonetaryPol
 		return nil, err
 	}
 
-	newTree, err = newTree.SetAsLink(append(tokenPath, MonetaryPolicyLabel), monetaryPolicy)
+	newTree, err = newTree.SetAsLink(context.TODO(), append(tokenPath, MonetaryPolicyLabel), monetaryPolicy)
 	if err != nil {
 		return nil, fmt.Errorf("error setting monetary policy: %v", err)
 	}
@@ -243,7 +244,7 @@ func (l *TreeLedger) MintToken(amount uint64) (*dag.Dag, error) {
 	}
 
 	monetaryPolicyPath := append(tokenPath, MonetaryPolicyLabel)
-	uncastMonetaryPolicy, _, err := l.tree.Resolve(monetaryPolicyPath)
+	uncastMonetaryPolicy, _, err := l.tree.Resolve(context.TODO(), monetaryPolicyPath)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching monetary policy at path %v: %v", monetaryPolicyPath, err)
 	}
@@ -272,7 +273,7 @@ func (l *TreeLedger) MintToken(amount uint64) (*dag.Dag, error) {
 		}
 	}
 
-	newMint, err := l.tree.CreateNode(&TokenMint{
+	newMint, err := l.tree.CreateNode(context.TODO(), &TokenMint{
 		Amount: amount,
 	})
 	if err != nil {
@@ -281,7 +282,7 @@ func (l *TreeLedger) MintToken(amount uint64) (*dag.Dag, error) {
 
 	mintCids = append(mintCids, newMint.Cid())
 
-	newTree, err := l.tree.SetAsLink(append(tokenPath, TokenMintLabel), mintCids)
+	newTree, err := l.tree.SetAsLink(context.TODO(), append(tokenPath, TokenMintLabel), mintCids)
 	if err != nil {
 		return nil, fmt.Errorf("error setting: %v", err)
 	}
@@ -292,7 +293,7 @@ func (l *TreeLedger) MintToken(amount uint64) (*dag.Dag, error) {
 	}
 
 	newBalance := currBalance + amount
-	newTree, err = newTree.Set(append(tokenPath, TokenBalanceLabel), newBalance)
+	newTree, err = newTree.Set(context.TODO(), append(tokenPath, TokenBalanceLabel), newBalance)
 	if err != nil {
 		return nil, fmt.Errorf("error updating balance: %v", err)
 	}
@@ -329,7 +330,7 @@ func (l *TreeLedger) SendToken(txId, destination string, amount uint64) (*dag.Da
 		return nil, fmt.Errorf("cannot send token, balance of %d is too low to send %d", availableBalance, amount)
 	}
 
-	newSend, err := l.tree.CreateNode(&TokenSend{
+	newSend, err := l.tree.CreateNode(context.TODO(), &TokenSend{
 		Id:          txId,
 		Amount:      amount,
 		Destination: destination,
@@ -345,13 +346,13 @@ func (l *TreeLedger) SendToken(txId, destination string, amount uint64) (*dag.Da
 
 	sentCids = append(sentCids, newSend.Cid())
 
-	newTree, err := l.tree.SetAsLink(append(tokenPath, TokenSendLabel), sentCids)
+	newTree, err := l.tree.SetAsLink(context.TODO(), append(tokenPath, TokenSendLabel), sentCids)
 	if err != nil {
 		return nil, fmt.Errorf("error setting: %v", err)
 	}
 
 	newBalance := availableBalance - amount
-	newTree, err = newTree.Set(append(tokenPath, TokenBalanceLabel), newBalance)
+	newTree, err = newTree.Set(context.TODO(), append(tokenPath, TokenBalanceLabel), newBalance)
 	if err != nil {
 		return nil, fmt.Errorf("error updating balance: %v", err)
 	}
@@ -393,7 +394,7 @@ func (l *TreeLedger) ReceiveToken(sendTokenTxId string, amount uint64) (*dag.Dag
 
 	// TODO: Consider storing receives as map w/ send tx id keys instead of iterating over all of them
 	for _, r := range tokenReceives {
-		node, err := l.tree.Get(r)
+		node, err := l.tree.Get(context.TODO(), r)
 		if err != nil {
 			return nil, fmt.Errorf("error getting existing token receive: %v", err)
 		}
@@ -409,7 +410,7 @@ func (l *TreeLedger) ReceiveToken(sendTokenTxId string, amount uint64) (*dag.Dag
 		}
 	}
 
-	newReceive, err := l.tree.CreateNode(TokenReceive{
+	newReceive, err := l.tree.CreateNode(context.TODO(), TokenReceive{
 		SendTokenTransactionId: sendTokenTxId,
 		Amount:                 amount,
 	})
@@ -419,7 +420,7 @@ func (l *TreeLedger) ReceiveToken(sendTokenTxId string, amount uint64) (*dag.Dag
 
 	tokenReceives = append(tokenReceives, newReceive.Cid())
 
-	newTree, err := l.tree.SetAsLink(append(tokenPath, TokenReceiveLabel), tokenReceives)
+	newTree, err := l.tree.SetAsLink(context.TODO(), append(tokenPath, TokenReceiveLabel), tokenReceives)
 	if err != nil {
 		return nil, fmt.Errorf("error setting: %v", err)
 	}
@@ -430,7 +431,7 @@ func (l *TreeLedger) ReceiveToken(sendTokenTxId string, amount uint64) (*dag.Dag
 	}
 
 	newBalance := currBalance + amount
-	newTree, err = newTree.Set(append(tokenPath, TokenBalanceLabel), newBalance)
+	newTree, err = newTree.Set(context.TODO(), append(tokenPath, TokenBalanceLabel), newBalance)
 	if err != nil {
 		return nil, fmt.Errorf("error updating balance: %v", err)
 	}

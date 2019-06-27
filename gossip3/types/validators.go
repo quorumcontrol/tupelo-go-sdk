@@ -57,7 +57,7 @@ func IsTokenRecipient(tree *dag.Dag, blockWithHeaders *chaintree.BlockWithHeader
 
 	// we have at least one RECEIVE_TOKEN; make sure it was intended for this chaintree
 
-	id, _, err := tree.Resolve([]string{"id"})
+	id, _, err := tree.Resolve(context.TODO(), []string{"id"})
 	if err != nil {
 		return false, &consensus.ErrorCode{Memo: fmt.Sprintf("error: %v", err), Code: consensus.ErrUnknown}
 	}
@@ -183,7 +183,7 @@ func HasBurnGenerator(ctx context.Context, ng *NotaryGroup) (chaintree.BlockVali
 // an authorized owner (in the consensus.TreePathForAuthentications path) has signed
 // this block.
 func IsOwner(tree *dag.Dag, blockWithHeaders *chaintree.BlockWithHeaders) (bool, chaintree.CodedError) {
-	id, _, err := tree.Resolve([]string{"id"})
+	id, _, err := tree.Resolve(context.TODO(), []string{"id"})
 	if err != nil {
 		return false, &consensus.ErrorCode{Memo: fmt.Sprintf("error: %v", err), Code: consensus.ErrUnknown}
 	}
@@ -197,7 +197,7 @@ func IsOwner(tree *dag.Dag, blockWithHeaders *chaintree.BlockWithHeaders) (bool,
 
 	var addrs []string
 
-	uncastAuths, _, err := tree.Resolve(strings.Split("tree/"+consensus.TreePathForAuthentications, "/"))
+	uncastAuths, _, err := tree.Resolve(context.TODO(), strings.Split("tree/"+consensus.TreePathForAuthentications, "/"))
 	if err != nil {
 		return false, &consensus.ErrorCode{Code: consensus.ErrUnknown, Memo: fmt.Sprintf("err resolving: %v", err)}
 	}

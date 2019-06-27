@@ -1,13 +1,14 @@
 package consensus
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
+	format "github.com/ipfs/go-ipld-format"
 	"github.com/quorumcontrol/messages/build/go/transactions"
-	"github.com/quorumcontrol/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -23,8 +24,8 @@ func mustWrap(t testing.TB, obj interface{}) *cbornode.Node {
 	return wrapped
 }
 
-func treeMapToNodes(t testing.TB, tree map[string]interface{}) []*cbornode.Node {
-	var nodes []*cbornode.Node
+func treeMapToNodes(t testing.TB, tree map[string]interface{}) []format.Node {
+	var nodes []format.Node
 
 	wrappable := make(map[string]interface{}, len(tree))
 
@@ -46,7 +47,7 @@ func treeMapToNodes(t testing.TB, tree map[string]interface{}) []*cbornode.Node 
 	}
 
 	wrapped := mustWrap(t, wrappable)
-	nodes = append([]*cbornode.Node{wrapped}, nodes...)
+	nodes = append([]format.Node{wrapped}, nodes...)
 
 	return nodes
 }
@@ -54,10 +55,10 @@ func treeMapToNodes(t testing.TB, tree map[string]interface{}) []*cbornode.Node 
 // Turns arbitrarily-nested map[string]interface{}'s into DAGs to aid test tree
 // construction.
 func NewTestTree(t testing.TB, tree map[string]interface{}) *dag.Dag {
-	nodeStore := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	nodeStore := nodestore.MustMemoryStore(context.TODO())
 	treeNodes := treeMapToNodes(t, tree)
 
-	dagTree, err := dag.NewDagWithNodes(nodeStore, treeNodes...)
+	dagTree, err := dag.NewDagWithNodes(context.TODO(), nodeStore, treeNodes...)
 	require.Nil(t, err)
 
 	return dagTree
