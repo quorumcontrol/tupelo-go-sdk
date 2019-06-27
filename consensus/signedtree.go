@@ -30,19 +30,11 @@ type SignedChainTree struct {
 }
 
 func (sct *SignedChainTree) Id() (string, error) {
-<<<<<<< HEAD
 	return sct.ChainTree.Id(context.TODO())
 }
 
 func (sct *SignedChainTree) MustId() string {
 	id, err := sct.ChainTree.Id(context.TODO())
-=======
-	return sct.ChainTree.Id(context.Background())
-}
-
-func (sct *SignedChainTree) MustId() string {
-	id, err := sct.ChainTree.Id(context.Background())
->>>>>>> dag service updates to consensus
 	if err != nil {
 		log.Error("error getting id from chaintree: %v", id)
 	}
@@ -54,21 +46,13 @@ func (sct *SignedChainTree) Tip() cid.Cid {
 }
 
 func (sct *SignedChainTree) IsGenesis() bool {
-<<<<<<< HEAD
 	store := nodestore.MustMemoryStore(context.TODO())
-=======
-	store := nodestore.MustMemoryStore(context.Background())
->>>>>>> dag service updates to consensus
 	newEmpty := NewEmptyTree(sct.MustId(), store)
 	return newEmpty.Tip.Equals(sct.Tip())
 }
 
 func (sct *SignedChainTree) Authentications() ([]string, error) {
-<<<<<<< HEAD
 	uncastAuths, _, err := sct.ChainTree.Dag.Resolve(context.TODO(), strings.Split("tree/"+TreePathForAuthentications, "/"))
-=======
-	uncastAuths, _, err := sct.ChainTree.Dag.Resolve(context.Background(), strings.Split("tree/"+TreePathForAuthentications, "/"))
->>>>>>> dag service updates to consensus
 	if err != nil {
 		return nil, err
 	}
@@ -87,15 +71,18 @@ func (sct *SignedChainTree) Authentications() ([]string, error) {
 	return auths, nil
 }
 
+func NewSignedChainTreeFromChainTree(tree *chaintree.ChainTree) *SignedChainTree {
+	return &SignedChainTree{
+		ChainTree:  tree,
+		Signatures: make(SignatureMap),
+	}
+}
+
 func NewSignedChainTree(key ecdsa.PublicKey, nodeStore nodestore.DagStore) (*SignedChainTree, error) {
 	did := EcdsaPubkeyToDid(key)
 
 	tree, err := chaintree.NewChainTree(
-<<<<<<< HEAD
 		context.TODO(),
-=======
-		context.Background(),
->>>>>>> dag service updates to consensus
 		NewEmptyTree(did, nodeStore),
 		nil,
 		DefaultTransactors,
