@@ -38,6 +38,12 @@ func NewRemoteSigner(dstKey *ecdsa.PublicKey, verKey *bls.VerKey) *Signer {
 	}
 }
 
+// ActorName returns the default name that should be used for the spawned
+// actor of this signer.
+func (s *Signer) ActorName() string {
+	return "tupelo-" + s.ID
+}
+
 func (s *Signer) ActorAddress(localKey *ecdsa.PublicKey) string {
 	fromID, err := p2p.PeerFromEcdsaKey(localKey)
 	if err != nil {

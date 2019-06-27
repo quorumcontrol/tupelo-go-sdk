@@ -1,8 +1,12 @@
 package types
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+
+	"github.com/AsynkronIT/protoactor-go/actor"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 
@@ -43,6 +47,8 @@ type Config struct {
 	ValidatorGenerators []ValidatorGenerator
 	// Transactions is the map of all supported transactions by this notary group.
 	Transactions map[transactions.Transaction_Type]chaintree.TransactorFunc
+	// Signers is the set of VerKey and DestKey necessary to validate and reach a signer
+	Signers []PublicKeySet
 }
 
 func (c *Config) blockValidators(ctx context.Context, ng *NotaryGroup) ([]chaintree.BlockValidatorFunc, error) {
@@ -55,6 +61,29 @@ func (c *Config) blockValidators(ctx context.Context, ng *NotaryGroup) ([]chaint
 		validators[i] = validator
 	}
 	return validators, nil
+}
+
+func (c *Config) NotaryGroup(local *Signer) (*NotaryGroup, error) {
+
+	group := NewNotaryGroupFromConfig(c)
+
+	if local != nil {
+		group.AddSigner(local)
+	}
+
+	for _, keySet := range c.Signers {
+		if local != nil && bytes.Equal(crypto.FromECDSAPub(local.DstKey), crypto.FromECDSAPub(keySet.DestKey)) {
+			continue
+		}
+
+		signer := NewRemoteSigner(keySet.DestKey, keySet.VerKey)
+		if local != nil {
+			signer.Actor = actor.NewPID(signer.ActorAddress(local.DstKey), signer.ActorName())
+		}
+		group.AddSigner(signer)
+	}
+
+	return group, nil
 }
 
 // WrapStatelessValidator is a convenience function when your BlockValidatorFunc does not need any state
