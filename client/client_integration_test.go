@@ -25,7 +25,6 @@ import (
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/messages/build/go/transactions"
-	"github.com/quorumcontrol/storage"
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/remote"
@@ -69,8 +68,15 @@ func setupRemote(ctx context.Context, group *types.NotaryGroup) (p2p.Node, error
 	if err != nil {
 		return nil, fmt.Errorf("error setting up p2p host: %s", err)
 	}
+	fmt.Println("bootstrapping with ", p2p.BootstrapNodes())
 	if _, err = p2pHost.Bootstrap(p2p.BootstrapNodes()); err != nil {
 		return nil, err
+	}
+	if err = p2pHost.WaitForBootstrap(1, 15*time.Second); err != nil {
+		return nil, fmt.Errorf("just 1 bootstrap error: %v", err)
+	}
+	if err = p2pHost.WaitForBootstrap(2, 15*time.Second); err != nil {
+		return nil, fmt.Errorf("just 1 bootstrap error: %v", err)
 	}
 	if err = p2pHost.WaitForBootstrap(len(group.Signers), 15*time.Second); err != nil {
 		return nil, err
@@ -162,7 +168,7 @@ func TestPlayTransactions(t *testing.T) {
 
 	treeKey, err := crypto.GenerateKey()
 	require.Nil(t, err)
-	nodeStore := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	nodeStore := nodestore.MustMemoryStore(ctx)
 	chain, err := consensus.NewSignedChainTree(treeKey.PublicKey, nodeStore)
 	require.Nil(t, err)
 
@@ -200,6 +206,7 @@ func TestPlayTransactions(t *testing.T) {
 }
 
 func transactLocal(t testing.TB, tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, height uint64, path, value string) *chaintree.BlockWithHeaders {
+	ctx := context.TODO()
 	var pt *cid.Cid
 	if !tree.IsGenesis() {
 		tip := tree.Tip()
@@ -219,7 +226,7 @@ func transactLocal(t testing.TB, tree *consensus.SignedChainTree, treeKey *ecdsa
 	blockWithHeaders, err := consensus.SignBlock(unsignedBlock, treeKey)
 	require.Nil(t, err)
 
-	_, err = tree.ChainTree.ProcessBlock(blockWithHeaders)
+	_, err = tree.ChainTree.ProcessBlock(ctx, blockWithHeaders)
 	require.Nil(t, err)
 
 	return blockWithHeaders
@@ -267,7 +274,7 @@ func TestSnoozedTransaction(t *testing.T) {
 
 	treeKey, err := crypto.GenerateKey()
 	require.Nil(t, err)
-	nodeStore := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	nodeStore := nodestore.MustMemoryStore(ctx)
 
 	testTree, err := consensus.NewSignedChainTree(treeKey.PublicKey, nodeStore)
 	require.Nil(t, err)
@@ -315,8 +322,8 @@ func TestInvalidPreviousTipOnSnoozedTransaction(t *testing.T) {
 
 	treeKey, err := crypto.GenerateKey()
 	require.Nil(t, err)
-	nodeStoreA := nodestore.NewStorageBasedStore(storage.NewMemStorage())
-	nodeStoreB := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	nodeStoreA := nodestore.MustMemoryStore(ctx)
+	nodeStoreB := nodestore.MustMemoryStore(ctx)
 
 	testTreeA, err := consensus.NewSignedChainTree(treeKey.PublicKey, nodeStoreA)
 	require.Nil(t, err)
@@ -382,7 +389,7 @@ func TestNonOwnerTransactions(t *testing.T) {
 
 	treeKey1, err := crypto.GenerateKey()
 	require.Nil(t, err)
-	nodeStore := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	nodeStore := nodestore.MustMemoryStore(ctx)
 	chain, err := consensus.NewSignedChainTree(treeKey1.PublicKey, nodeStore)
 	require.Nil(t, err)
 
