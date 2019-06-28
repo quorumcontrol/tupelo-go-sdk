@@ -775,6 +775,8 @@ github.com/quorumcontrol/chaintree v0.0.0-20190624152451-31c150abdde2 h1:ZbnL5Db
 github.com/quorumcontrol/chaintree v0.0.0-20190624152451-31c150abdde2/go.mod h1:aAqx2t9x1SUz3efN6apqiGk31xtMJ6tt2ctLPGGXCOA=
 github.com/quorumcontrol/chaintree v0.0.0-20190628000000-b70655f124a85dd1f698bb22ee36b77e16893380 h1:I2EYrzUivyjauF8BcW1SiVQCVwib2YgLnj6T541TdMc=
 github.com/quorumcontrol/chaintree v0.0.0-20190628000000-b70655f124a85dd1f698bb22ee36b77e16893380/go.mod h1:6QeULbA/At9H8uowUeU3E4ojnsuYsoaAgLOyGAz7ZBs=
+github.com/quorumcontrol/chaintree v0.0.0-20190628111909-7fcc00a16764 h1:SWWmktchXhZ3q54NNP4MqBefYbDCcCZ2Njjk6Mdit+w=
+github.com/quorumcontrol/chaintree v0.0.0-20190628111909-7fcc00a16764/go.mod h1:82LGbSfWlhcddvffGqpXKFRXUMjt8DGtNrkLH5tycgs=
 github.com/quorumcontrol/go-libp2p-pubsub v0.0.4-0.20190528094025-e4e719f73e7a h1:XDXN6yY9PODqRMHFupyf44BQOTvCetoTG0ypXPOQzqs=
 github.com/quorumcontrol/go-libp2p-pubsub v0.0.4-0.20190528094025-e4e719f73e7a/go.mod h1:ZwlKzRSe1eGvSIdU5bD7+8RZN/Uzw0t1Bp9R1znpR/Q=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190530182608-30c127bffefb h1:x/0eUSPARsrbdV1R/3vJWIT8P3EhUaF1AIYPu9L4TKg=
@@ -787,6 +789,8 @@ github.com/quorumcontrol/storage v0.0.0-20190628000000-71102a21e424195893b1090e7
 github.com/quorumcontrol/storage v0.0.0-20190628000000-71102a21e424195893b1090e7cf4867ad64bdeca/go.mod h1:SvzzH9/MMVcDVokuk02bi5Y9dmKsCetDOyReXEsprJw=
 github.com/quorumcontrol/storage v1.1.3 h1:xaz2nlRa6nykE5GegjkrWE7DiGPNOSDilNGbsvdEu1s=
 github.com/quorumcontrol/storage v1.1.3/go.mod h1:6Uy020+x1JrEK02qX9U1/8uPsyB39hBWvTYoW6EUQKk=
+github.com/quorumcontrol/storage v1.1.4 h1:4bNJAXkHbq9AzcEyBkCafxcDeo9AkOdRAftDxUtJ+pw=
+github.com/quorumcontrol/storage v1.1.4/go.mod h1:SvzzH9/MMVcDVokuk02bi5Y9dmKsCetDOyReXEsprJw=
 github.com/rogpeppe/go-internal v1.1.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rs/cors v1.6.0 h1:G9tHG9lebljV9mfp9SNPDL36nCDxmo3zTlAf1YgvzmI=
 github.com/rs/cors v1.6.0/go.mod h1:gFx+x8UowdsKA9AchylcLynDq+nNFfI8FkUZdN/jGCU=

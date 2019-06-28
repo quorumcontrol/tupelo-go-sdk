@@ -33,9 +33,9 @@ require (
 	github.com/multiformats/go-multiaddr v0.0.4
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/prometheus/client_golang v0.9.3
-	github.com/quorumcontrol/chaintree v0.0.0-20190628000000-b70655f124a85dd1f698bb22ee36b77e16893380
+	github.com/quorumcontrol/chaintree v0.0.0-20190628111909-7fcc00a16764
 	github.com/quorumcontrol/messages/build/go v0.0.0-20190603192428-dcb5ad7a31ca
-	github.com/quorumcontrol/storage v0.0.0-20190628000000-71102a21e424195893b1090e7cf4867ad64bdeca
+	github.com/quorumcontrol/storage v1.1.4
 	github.com/santhosh-tekuri/jsonschema v1.2.4 // indirect
 	github.com/stretchr/testify v1.3.0
 	github.com/uber-go/atomic v1.3.2 // indirect
