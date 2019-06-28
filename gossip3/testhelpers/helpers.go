@@ -1,9 +1,11 @@
 package testhelpers
 
 import (
-	"github.com/quorumcontrol/messages/build/go/services"
+	"context"
 	"crypto/ecdsa"
 	"testing"
+
+	"github.com/quorumcontrol/messages/build/go/services"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/quorumcontrol/chaintree/chaintree"
@@ -11,7 +13,6 @@ import (
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/messages/build/go/transactions"
-	"github.com/quorumcontrol/storage"
 	"github.com/stretchr/testify/require"
 
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
@@ -29,6 +30,7 @@ func NewValidTransactionWithKey(t testing.TB, treeKey *ecdsa.PrivateKey) service
 }
 
 func NewValidTransactionWithPathAndValue(t testing.TB, treeKey *ecdsa.PrivateKey, path, value string) services.AddBlockRequest {
+	ctx := context.TODO()
 	sw := safewrap.SafeWrap{}
 
 	txn, err := chaintree.NewSetDataTransaction(path, value)
@@ -44,16 +46,16 @@ func NewValidTransactionWithPathAndValue(t testing.TB, treeKey *ecdsa.PrivateKey
 
 	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(treeKey.PublicKey).String())
 
-	nodeStore := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	nodeStore := nodestore.MustMemoryStore(ctx)
 	emptyTree := consensus.NewEmptyTree(treeDID, nodeStore)
 	emptyTip := emptyTree.Tip
-	testTree, err := chaintree.NewChainTree(emptyTree, nil, consensus.DefaultTransactors)
+	testTree, err := chaintree.NewChainTree(ctx, emptyTree, nil, consensus.DefaultTransactors)
 	require.Nil(t, err)
 
 	blockWithHeaders, err := consensus.SignBlock(&unsignedBlock, treeKey)
 	require.Nil(t, err)
 
-	_, err = testTree.ProcessBlock(blockWithHeaders)
+	_, err = testTree.ProcessBlock(ctx, blockWithHeaders)
 	require.Nil(t, err)
 	nodes := DagToByteNodes(t, emptyTree)
 
@@ -71,7 +73,7 @@ func NewValidTransactionWithPathAndValue(t testing.TB, treeKey *ecdsa.PrivateKey
 }
 
 func DagToByteNodes(t testing.TB, dagTree *dag.Dag) [][]byte {
-	cborNodes, err := dagTree.Nodes()
+	cborNodes, err := dagTree.Nodes(context.TODO())
 	require.Nil(t, err)
 	nodes := make([][]byte, len(cborNodes))
 	for i, node := range cborNodes {
