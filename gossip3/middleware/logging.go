@@ -1,7 +1,9 @@
 package middleware
 
 import (
+	"os"
 	//"reflect"
+	
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"go.uber.org/zap"
 )
@@ -57,6 +59,9 @@ func SetLogLevel(level string) error {
 func buildLogger() *zap.SugaredLogger {
 	cfg := zap.NewDevelopmentConfig()
 	cfg.Level = globalLevel
+	if encoding := os.Getenv("TUPELO_GO_SDK_LOG_ENCODING"); encoding != "" {
+		cfg.Encoding = encoding
+	}
 
 	logger, err := cfg.Build()
 	if err != nil {
