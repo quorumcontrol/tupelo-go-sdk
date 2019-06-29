@@ -88,12 +88,20 @@ type HumanConfig struct {
 }
 
 func HumanConfigToConfig(hc *HumanConfig) (*Config, error) {
+	txnTopic := hc.TransactionTopic
+	cmtTopic := hc.CommitTopic
+	if txnTopic == "" {
+		txnTopic = "tupelo-transaction-broadcast"
+	}
+	if cmtTopic == "" {
+		cmtTopic = "tupelo-pubsub-commits"
+	}
 	c := &Config{
 		ID:               hc.ID,
 		TransactionToken: hc.TransactionToken,
 		BurnAmount:       hc.BurnAmount,
-		TransactionTopic: hc.TransactionTopic,
-		CommitTopic:      hc.CommitTopic,
+		TransactionTopic: txnTopic,
+		CommitTopic:      cmtTopic,
 	}
 
 	if len(hc.ValidatorGenerators) > 0 {
