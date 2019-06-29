@@ -338,7 +338,7 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 	err = retry.Do(
 		func() error {
 			attemptNo++
-			c.log.Debugw("attempt to play transactions", "attemptNo", attemptNo)
+			c.log.Debugw("attempt to play transactions", "attemptNo", attemptNo+1)
 			resp, err = c.attemptPlayTransactions(tree, treeKey, latestRemoteTip, transactions)
 			signerId := ""
 			if resp != nil {
