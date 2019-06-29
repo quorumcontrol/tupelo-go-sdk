@@ -186,7 +186,9 @@ func (c *Client) Subscribe(trans *services.AddBlockRequest, timeout time.Duratio
 
 // SendTransaction sends a transaction to a signer.
 func (c *Client) SendTransaction(trans *services.AddBlockRequest) error {
-	return c.pubsub.Broadcast(c.Group.Config().TransactionTopic, trans)
+	topic := c.Group.Config().TransactionTopic
+	c.log.Debugw("broadcasting transaction", "topic", topic)
+	return c.pubsub.Broadcast(topic, trans)
 }
 
 func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*transactions.Transaction) (*consensus.AddBlockResponse, error) {
@@ -255,7 +257,7 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 	c.log.Debugw("sending transaction", "height", transaction.Height, "chainTreeId", chainId)
 	err = c.SendTransaction(&transaction)
 	if err != nil {
-		panic(fmt.Errorf("error sending transaction %v", err))
+		return nil, fmt.Errorf("error sending transaction %v", err)
 	}
 
 	c.log.Debugw("waiting on transaction to complete", "height", transaction.Height,
@@ -268,7 +270,6 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 				"chainTreeId", chainId)
 			return nil, fmt.Errorf(ErrorTimeout)
 		}
-
 		c.log.Debugw("transaction failed", "error", err, "height", transaction.Height,
 			"chainTreeId", chainId)
 		return nil, fmt.Errorf("error response: %v", err)
@@ -286,12 +287,14 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 	case *signatures.CurrentState:
 		resp = respVal
 	default:
+		c.log.Debugw("transaction resulted in an unrecognized response type", "response", respVal)
 		return nil, fmt.Errorf("error unrecognized response type: %T", respVal)
 	}
 
 	if !bytes.Equal(resp.Signature.NewTip, expectedTip.Bytes()) {
 		respCid, _ := cid.Cast(resp.Signature.NewTip)
-		return nil, fmt.Errorf("error, tree updated to different tip - expected: %v - received: %v", expectedTip.String(), respCid.String())
+		return nil, fmt.Errorf("error, tree updated to different tip - expected: %v - received: %v",
+			expectedTip.String(), respCid.String())
 	}
 
 	tree.ChainTree = newChainTree
@@ -313,6 +316,7 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 		Signature: *tree.Signatures[c.Group.ID],
 	}
 
+	c.log.Debugw("successfully played transactions")
 	return addResponse, nil
 }
 
@@ -327,19 +331,34 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 
 	latestRemoteTip := remoteTip
 
+	c.log.Debugw("playing transactions against tree", "numTransactions", len(transactions),
+		"maxAttempts", MaxPlayTransactionsAttempts)
+
+	attemptNo := 0
 	err = retry.Do(
 		func() error {
+			attemptNo++
+			c.log.Debugw("attempt to play transactions", "attemptNo", attemptNo+1)
 			resp, err = c.attemptPlayTransactions(tree, treeKey, latestRemoteTip, transactions)
+			signerId := ""
+			if resp != nil {
+				signerId = resp.SignerId
+			}
+			c.log.Debugw("attempt ended", "error", err, "response.signerId", signerId)
 			return err
 		},
 		retry.Attempts(MaxPlayTransactionsAttempts),
 		retry.RetryIf(func(err error) bool {
-			return err.Error() == ErrorTimeout
+			shouldRetry := err.Error() == ErrorTimeout
+			c.log.Debugf("should retry playing transactions: %v (%q == %q)", shouldRetry, err.Error(),
+				ErrorTimeout)
+			return shouldRetry
 		}),
 		retry.OnRetry(func(n uint, err error) {
 			c.log.Debugf("PlayTransactions attempt #%d error: %s", n, err)
 
 			if n > 1 {
+				c.log.Debugw("trying to update the tip")
 				// Try updating tip in case it has moved forward since the first attempt
 				// (possibly due to our transactions succeeding but we just didn't get the response).
 				cs, err := c.TipRequest()
@@ -355,6 +374,7 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 					}
 
 					if !tip.Equals(tree.Tip()) {
+						c.log.Debugw("tip is out of date, updating")
 						newTipNode, err := tree.ChainTree.Dag.Get(tip)
 						if err != nil {
 							c.log.Errorf("error getting new tip node from DAG: %v", err)
@@ -375,9 +395,11 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 		retry.LastErrorOnly(true),
 	)
 	if err != nil {
+		c.log.Debugw("PlayTransactions failed", "error", err)
 		return nil, err
 	}
 
+	c.log.Debugw("PlayTransactions succeeded")
 	return resp, nil
 }
 

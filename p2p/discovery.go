@@ -118,7 +118,7 @@ func (td *tupeloDiscoverer) handleNewPeerInfo(ctx context.Context, p peer.AddrIn
 		if err := host.Connect(ctx, p); err != nil {
 			log.Errorf("error connecting to  %s %v: %v", p.ID, p, err)
 		}
-		log.Debugf("node connected %s %v", td.namespace, p)
+		log.Debugf("node connected for namespace %s: %v", td.namespace, p)
 		numConnected := atomic.AddUint64(&td.connected, uint64(1))
 		td.events.Publish(&DiscoveryEvent{
 			Namespace: td.namespace,

@@ -64,6 +64,7 @@ func (nps *NetworkPubSub) Broadcast(topic string, message proto.Message) error {
 		return fmt.Errorf("could not marshal any: %v", err)
 	}
 
+	nps.log.Debugw("broadcasting", "topic", topic)
 	return nps.host.GetPubSub().Publish(topic, marshaled)
 }
 
