@@ -1,13 +1,13 @@
 package consensus
 
 import (
+	"context"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/messages/build/go/transactions"
-	"github.com/quorumcontrol/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,7 +15,7 @@ import (
 func TestSignedChainTree_IsGenesis(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	require.Nil(t, err)
-	nodeStore := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	nodeStore := nodestore.MustMemoryStore(context.TODO())
 
 	newTree, err := NewSignedChainTree(key.PublicKey, nodeStore)
 	require.Nil(t, err)
@@ -36,7 +36,7 @@ func TestSignedChainTree_IsGenesis(t *testing.T) {
 	blockWithHeaders, err := SignBlock(&unsignedBlock, key)
 	require.Nil(t, err)
 
-	isValid, err := newTree.ChainTree.ProcessBlock(blockWithHeaders)
+	isValid, err := newTree.ChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
 	require.Nil(t, err)
 	require.True(t, isValid)
 
@@ -47,7 +47,7 @@ func TestSignedChainTree_IsGenesis(t *testing.T) {
 func TestSignedChainTree_Authentications(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	require.Nil(t, err)
-	nodeStore := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	nodeStore := nodestore.MustMemoryStore(context.TODO())
 
 	newTree, err := NewSignedChainTree(key.PublicKey, nodeStore)
 	require.Nil(t, err)
@@ -76,7 +76,7 @@ func TestSignedChainTree_Authentications(t *testing.T) {
 	blockWithHeaders, err := SignBlock(&unsignedBlock, newKey)
 	require.Nil(t, err)
 
-	isValid, err := newTree.ChainTree.ProcessBlock(blockWithHeaders)
+	isValid, err := newTree.ChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
 	require.Nil(t, err)
 	require.True(t, isValid)
 

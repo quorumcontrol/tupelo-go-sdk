@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"fmt"
 	"strings"
@@ -138,7 +139,7 @@ func BlockToHash(block chaintree.Block) ([]byte, error) {
 	return ObjToHash(block)
 }
 
-func NewEmptyTree(did string, nodeStore nodestore.NodeStore) *dag.Dag {
+func NewEmptyTree(did string, nodeStore nodestore.DagStore) *dag.Dag {
 	sw := &safewrap.SafeWrap{}
 	treeNode := sw.WrapObject(make(map[string]string))
 
@@ -154,7 +155,7 @@ func NewEmptyTree(did string, nodeStore nodestore.NodeStore) *dag.Dag {
 	if sw.Err != nil {
 		panic(sw.Err)
 	}
-	dag, err := dag.NewDagWithNodes(nodeStore, root, treeNode, chainNode)
+	dag, err := dag.NewDagWithNodes(context.TODO(), nodeStore, root, treeNode, chainNode)
 	if err != nil {
 		panic(err) // TODO: this err was introduced, keeping external interface the same
 	}

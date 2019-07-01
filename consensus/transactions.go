@@ -1,13 +1,15 @@
 package consensus
 
 import (
+	"context"
 	"fmt"
 	"strings"
+
+	format "github.com/ipfs/go-ipld-format"
 
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/messages/build/go/signatures"
-	"github.com/quorumcontrol/storage"
 
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
@@ -90,9 +92,9 @@ func SetDataTransaction(_ string, tree *dag.Dag, txn *transactions.Transaction) 
 	path = append(dataPath, path...)
 
 	if complexType(val) {
-		newTree, err = tree.SetAsLink(path, val)
+		newTree, err = tree.SetAsLink(context.TODO(), path, val)
 	} else {
-		newTree, err = tree.Set(path, val)
+		newTree, err = tree.Set(context.TODO(), path, val)
 	}
 	if err != nil {
 		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error setting: %v", err)}
@@ -113,7 +115,7 @@ func SetOwnershipTransaction(_ string, tree *dag.Dag, txn *transactions.Transact
 		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error decoding path: %v", err)}
 	}
 
-	newTree, err = tree.SetAsLink(path, payload.Authentication)
+	newTree, err = tree.SetAsLink(context.TODO(), path, payload.Authentication)
 	if err != nil {
 		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error setting: %v", err)}
 	}
@@ -157,7 +159,7 @@ func CanonicalTokenName(tree *dag.Dag, defaultChainTreeDID, tokenName string, re
 		return nil, fmt.Errorf("error decoding tokens path: %v", err)
 	}
 
-	tokensObj, remaining, err := tree.Resolve(tokensPath)
+	tokensObj, remaining, err := tree.Resolve(context.TODO(), tokensPath)
 	if err != nil {
 		return nil, fmt.Errorf("error resolving tokens path: %v", err)
 	}
@@ -267,8 +269,8 @@ func SendTokenTransaction(chainTreeDID string, tree *dag.Dag, txn *transactions.
 	return newTree, true, nil
 }
 
-func allSendTokenNodes(chain *chaintree.ChainTree, tokenName *TokenName, sendNodeId cid.Cid) ([]*cbornode.Node, error) {
-	sendTokenNode, codedErr := chain.Dag.Get(sendNodeId)
+func allSendTokenNodes(chain *chaintree.ChainTree, tokenName *TokenName, sendNodeId cid.Cid) ([]format.Node, error) {
+	sendTokenNode, codedErr := chain.Dag.Get(context.TODO(), sendNodeId)
 	if codedErr != nil {
 		return nil, fmt.Errorf("error getting send token node: %v", codedErr)
 	}
@@ -280,7 +282,7 @@ func allSendTokenNodes(chain *chaintree.ChainTree, tokenName *TokenName, sendNod
 	tokenPath = append([]string{chaintree.TreeLabel}, tokenPath...)
 	tokenPath = append(tokenPath, TokenSendLabel)
 
-	tokenSendNodes, codedErr := chain.Dag.NodesForPath(tokenPath)
+	tokenSendNodes, codedErr := chain.Dag.NodesForPath(context.TODO(), tokenPath)
 	if codedErr != nil {
 		return nil, codedErr
 	}
@@ -290,7 +292,7 @@ func allSendTokenNodes(chain *chaintree.ChainTree, tokenName *TokenName, sendNod
 	return tokenSendNodes, nil
 }
 
-func serializeNodes(nodes []*cbornode.Node) [][]byte {
+func serializeNodes(nodes []format.Node) [][]byte {
 	var bytes [][]byte
 	for _, node := range nodes {
 		bytes = append(bytes, node.RawData())
@@ -303,7 +305,7 @@ func TokenPayloadForTransaction(chain *chaintree.ChainTree, tokenName *TokenName
 		return nil, fmt.Errorf("token name must be canonical (i.e. start with chaintree DID)")
 	}
 
-	tree, err := chain.Tree()
+	tree, err := chain.Tree(context.TODO())
 	if err != nil {
 		return nil, err
 	}
@@ -315,12 +317,12 @@ func TokenPayloadForTransaction(chain *chaintree.ChainTree, tokenName *TokenName
 
 	tokenSendTx := cid.Undef
 	for _, sendTxCid := range tokenSends {
-		sendTxNode, err := tree.Get(sendTxCid)
+		sendTxNode, err := tree.Get(context.TODO(), sendTxCid)
 		if err != nil {
 			return nil, err
 		}
 
-		sendTxNodeObj, err := nodestore.CborNodeToObj(sendTxNode)
+		sendTxNodeObj, err := NodeToObj(sendTxNode)
 		if err != nil {
 			return nil, err
 		}
@@ -354,14 +356,14 @@ func TokenPayloadForTransaction(chain *chaintree.ChainTree, tokenName *TokenName
 // Returns the first node in tree linked to by a value of parentNode
 // (i.e. a CID value) and the parentNode key it was found under.
 // Useful for finding token & send nodes in ReceiveToken leaves.
-func findFirstLinkedNode(tree *dag.Dag, parentNode map[string]interface{}) (key string, node *cbornode.Node, err error) {
+func findFirstLinkedNode(tree *dag.Dag, parentNode map[string]interface{}) (key string, node format.Node, err error) {
 	for k, v := range parentNode {
 		nodeCid, ok := v.(cid.Cid)
 		if !ok {
 			continue
 		}
 
-		node, err := tree.Get(nodeCid)
+		node, err := tree.Get(context.TODO(), nodeCid)
 		if err == nil && node != nil {
 			return k, node, nil
 		}
@@ -378,7 +380,7 @@ func GetSenderDagFromReceive(payload *transactions.ReceiveTokenPayload) (*dag.Da
 	}
 
 	leaves := payload.Leaves
-	nodes := make([]*cbornode.Node, 0)
+	nodes := make([]format.Node, 0)
 	sw := safewrap.SafeWrap{}
 	for _, l := range leaves {
 		cborNode := sw.Decode(l)
@@ -388,14 +390,14 @@ func GetSenderDagFromReceive(payload *transactions.ReceiveTokenPayload) (*dag.Da
 
 		// make sure tip is first
 		if cborNode.Cid() == tipCid {
-			nodes = append([]*cbornode.Node{cborNode}, nodes...)
+			nodes = append([]format.Node{cborNode}, nodes...)
 		} else {
 			nodes = append(nodes, cborNode)
 		}
 	}
 
-	nodeStore := nodestore.NewStorageBasedStore(storage.NewMemStorage())
-	senderDag, err := dag.NewDagWithNodes(nodeStore, nodes...)
+	nodeStore := nodestore.MustMemoryStore(context.TODO())
+	senderDag, err := dag.NewDagWithNodes(context.TODO(), nodeStore, nodes...)
 	if err != nil {
 		return nil, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error recreating sender leaves DAG: %v", err)}
 	}
@@ -412,7 +414,7 @@ func GetTokenNameFromReceive(senderDag *dag.Dag) (*TokenName, chaintree.CodedErr
 	}
 	tokensPath := append([]string{"tree"}, treePath...)
 
-	uncastTokens, remaining, err := senderDag.Resolve(tokensPath)
+	uncastTokens, remaining, err := senderDag.Resolve(context.TODO(), tokensPath)
 	if err != nil {
 		return nil, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error resolving tokens: %v", err)}
 	}
@@ -435,7 +437,7 @@ func GetTokenNameFromReceive(senderDag *dag.Dag) (*TokenName, chaintree.CodedErr
 	return &tn, nil
 }
 
-// GetSendTokenFromReceive takes DAG that is part of the ReceiveTokenPayload and returns 
+// GetSendTokenFromReceive takes DAG that is part of the ReceiveTokenPayload and returns
 // The TokenSend for the specified tokenName
 func GetSendTokenFromReceive(senderDag *dag.Dag, tokenName *TokenName) (*TokenSend, chaintree.CodedError) {
 	treePath, err := DecodePath(TreePathForTokens)
@@ -445,7 +447,7 @@ func GetSendTokenFromReceive(senderDag *dag.Dag, tokenName *TokenName) (*TokenSe
 	tokensPath := append([]string{"tree"}, treePath...)
 
 	tokenSendsPath := append(tokensPath, tokenName.String(), TokenSendLabel)
-	uncastTokenSends, remaining, err := senderDag.Resolve(tokenSendsPath)
+	uncastTokenSends, remaining, err := senderDag.Resolve(context.TODO(), tokenSendsPath)
 	if err != nil {
 		return nil, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error resolving token sends: %v", err)}
 	}
@@ -534,10 +536,18 @@ func StakeTransaction(_ string, tree *dag.Dag, txn *transactions.Transaction) (n
 		return nil, false, &ErrorCode{Code: ErrUnknown, Memo: fmt.Sprintf("error decoding path: %v", err)}
 	}
 
-	newTree, err = tree.SetAsLink(path, payload)
+	newTree, err = tree.SetAsLink(context.TODO(), path, payload)
 	if err != nil {
 		return nil, false, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error setting: %v", err)}
 	}
 
 	return newTree, true, nil
+}
+
+func NodeToObj(node format.Node) (obj interface{}, err error) {
+	err = cbornode.DecodeInto(node.RawData(), &obj)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding: %v", err)
+	}
+	return
 }

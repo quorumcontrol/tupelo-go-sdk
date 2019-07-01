@@ -1,6 +1,7 @@
 package consensus_test
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/messages/build/go/transactions"
-	"github.com/quorumcontrol/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -25,7 +25,7 @@ func TestEstablishTokenTransactionWithMaximum(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	assert.Nil(t, err)
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store := nodestore.MustMemoryStore(context.TODO())
 	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
 	emptyTree := consensus.NewEmptyTree(treeDID, store)
 
@@ -43,25 +43,25 @@ func TestEstablishTokenTransactionWithMaximum(t *testing.T) {
 		},
 	}
 
-	testTree, err := chaintree.NewChainTree(emptyTree, nil, consensus.DefaultTransactors)
+	testTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
 	assert.Nil(t, err)
 
-	_, err = testTree.ProcessBlock(&blockWithHeaders)
+	_, err = testTree.ProcessBlock(context.TODO(), &blockWithHeaders)
 	assert.Nil(t, err)
 
-	maximum, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "monetaryPolicy", "maximum"})
+	maximum, _, err := testTree.Dag.Resolve(context.TODO(), []string{"tree", "_tupelo", "tokens", tokenFullName, "monetaryPolicy", "maximum"})
 	assert.Nil(t, err)
 	assert.Equal(t, maximum, uint64(42))
 
-	mints, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "mints"})
+	mints, _, err := testTree.Dag.Resolve(context.TODO(), []string{"tree", "_tupelo", "tokens", tokenFullName, "mints"})
 	assert.Nil(t, err)
 	assert.Nil(t, mints)
 
-	sends, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "sends"})
+	sends, _, err := testTree.Dag.Resolve(context.TODO(), []string{"tree", "_tupelo", "tokens", tokenFullName, "sends"})
 	assert.Nil(t, err)
 	assert.Nil(t, sends)
 
-	receives, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "receives"})
+	receives, _, err := testTree.Dag.Resolve(context.TODO(), []string{"tree", "_tupelo", "tokens", tokenFullName, "receives"})
 	assert.Nil(t, err)
 	assert.Nil(t, receives)
 }
@@ -70,7 +70,7 @@ func TestMintToken(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	assert.Nil(t, err)
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store := nodestore.MustMemoryStore(context.TODO())
 	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
 	emptyTree := consensus.NewEmptyTree(treeDID, store)
 
@@ -88,10 +88,10 @@ func TestMintToken(t *testing.T) {
 		},
 	}
 
-	testTree, err := chaintree.NewChainTree(emptyTree, nil, consensus.DefaultTransactors)
+	testTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
 	assert.Nil(t, err)
 
-	_, err = testTree.ProcessBlock(&blockWithHeaders)
+	_, err = testTree.ProcessBlock(context.TODO(), &blockWithHeaders)
 	assert.Nil(t, err)
 
 	mintTxn, err := chaintree.NewMintTokenTransaction(tokenName, 40)
@@ -104,10 +104,10 @@ func TestMintToken(t *testing.T) {
 			Transactions: []*transactions.Transaction{mintTxn},
 		},
 	}
-	_, err = testTree.ProcessBlock(&mintBlockWithHeaders)
+	_, err = testTree.ProcessBlock(context.TODO(), &mintBlockWithHeaders)
 	assert.Nil(t, err)
 
-	mints, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "mints"})
+	mints, _, err := testTree.Dag.Resolve(context.TODO(), []string{"tree", "_tupelo", "tokens", tokenFullName, "mints"})
 	assert.Nil(t, err)
 	assert.Len(t, mints.([]interface{}), 1)
 
@@ -123,10 +123,10 @@ func TestMintToken(t *testing.T) {
 			Transactions: []*transactions.Transaction{mintTxn2},
 		},
 	}
-	_, err = testTree.ProcessBlock(&mintBlockWithHeaders2)
+	_, err = testTree.ProcessBlock(context.TODO(), &mintBlockWithHeaders2)
 	assert.Nil(t, err)
 
-	mints, _, err = testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "mints"})
+	mints, _, err = testTree.Dag.Resolve(context.TODO(), []string{"tree", "_tupelo", "tokens", tokenFullName, "mints"})
 	assert.Nil(t, err)
 	assert.Len(t, mints.([]interface{}), 2)
 
@@ -142,10 +142,10 @@ func TestMintToken(t *testing.T) {
 			Transactions: []*transactions.Transaction{mintTxn3},
 		},
 	}
-	_, err = testTree.ProcessBlock(&mintBlockWithHeaders3)
+	_, err = testTree.ProcessBlock(context.TODO(), &mintBlockWithHeaders3)
 	assert.NotNil(t, err)
 
-	mints, _, err = testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "mints"})
+	mints, _, err = testTree.Dag.Resolve(context.TODO(), []string{"tree", "_tupelo", "tokens", tokenFullName, "mints"})
 	assert.Nil(t, err)
 	assert.Len(t, mints.([]interface{}), 2)
 }
@@ -154,7 +154,7 @@ func TestEstablishTokenTransactionWithoutMonetaryPolicy(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	assert.Nil(t, err)
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store := nodestore.MustMemoryStore(context.TODO())
 	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
 	emptyTree := consensus.NewEmptyTree(treeDID, store)
 
@@ -176,25 +176,25 @@ func TestEstablishTokenTransactionWithoutMonetaryPolicy(t *testing.T) {
 		},
 	}
 
-	testTree, err := chaintree.NewChainTree(emptyTree, nil, consensus.DefaultTransactors)
+	testTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
 	assert.Nil(t, err)
 
-	_, err = testTree.ProcessBlock(&blockWithHeaders)
+	_, err = testTree.ProcessBlock(context.TODO(), &blockWithHeaders)
 	assert.Nil(t, err)
 
-	maximum, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "monetaryPolicy", "maximum"})
+	maximum, _, err := testTree.Dag.Resolve(context.TODO(), []string{"tree", "_tupelo", "tokens", tokenFullName, "monetaryPolicy", "maximum"})
 	assert.Nil(t, err)
 	assert.Empty(t, maximum)
 
-	mints, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "mints"})
+	mints, _, err := testTree.Dag.Resolve(context.TODO(), []string{"tree", "_tupelo", "tokens", tokenFullName, "mints"})
 	assert.Nil(t, err)
 	assert.Nil(t, mints)
 
-	sends, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "sends"})
+	sends, _, err := testTree.Dag.Resolve(context.TODO(), []string{"tree", "_tupelo", "tokens", tokenFullName, "sends"})
 	assert.Nil(t, err)
 	assert.Nil(t, sends)
 
-	receives, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "receives"})
+	receives, _, err := testTree.Dag.Resolve(context.TODO(), []string{"tree", "_tupelo", "tokens", tokenFullName, "receives"})
 	assert.Nil(t, err)
 	assert.Nil(t, receives)
 }
@@ -203,7 +203,7 @@ func TestSetData(t *testing.T) {
 	treeKey, err := crypto.GenerateKey()
 	require.Nil(t, err)
 	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(treeKey.PublicKey).String())
-	nodeStore := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	nodeStore := nodestore.MustMemoryStore(context.TODO())
 	emptyTree := consensus.NewEmptyTree(treeDID, nodeStore)
 	path := "some/data"
 	value := "is now set"
@@ -218,25 +218,25 @@ func TestSetData(t *testing.T) {
 			Transactions: []*transactions.Transaction{txn},
 		},
 	}
-	testTree, err := chaintree.NewChainTree(emptyTree, nil, consensus.DefaultTransactors)
+	testTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
 	require.Nil(t, err)
 
 	blockWithHeaders, err := consensus.SignBlock(&unsignedBlock, treeKey)
 	require.Nil(t, err)
 
-	_, err = testTree.ProcessBlock(blockWithHeaders)
+	_, err = testTree.ProcessBlock(context.TODO(), blockWithHeaders)
 	require.Nil(t, err)
 
 	// nodes, err := testTree.Dag.Nodes()
 	// require.Nil(t, err)
 
 	// assert the node the tree links to isn't itself a CID
-	root, err := testTree.Dag.Get(testTree.Dag.Tip)
+	root, err := testTree.Dag.Get(context.TODO(), testTree.Dag.Tip)
 	assert.Nil(t, err)
 	rootMap := make(map[string]interface{})
 	err = cbornode.DecodeInto(root.RawData(), &rootMap)
 	require.Nil(t, err)
-	linkedTree, err := testTree.Dag.Get(rootMap["tree"].(cid.Cid))
+	linkedTree, err := testTree.Dag.Get(context.TODO(), rootMap["tree"].(cid.Cid))
 	require.Nil(t, err)
 
 	// assert that the thing being linked to isn't a CID itself
@@ -252,7 +252,7 @@ func TestSetData(t *testing.T) {
 	assert.True(t, ok)
 
 	// assert the thing being linked to is a map with actual set data
-	dataTree, err := testTree.Dag.Get(dataCid.(cid.Cid))
+	dataTree, err := testTree.Dag.Get(context.TODO(), dataCid.(cid.Cid))
 	assert.Nil(t, err)
 	dataMap := make(map[string]interface{})
 	err = cbornode.DecodeInto(dataTree.RawData(), &dataMap)
@@ -278,19 +278,19 @@ func TestSetData(t *testing.T) {
 	blockWithHeaders, err = consensus.SignBlock(&unsignedBlock, treeKey)
 	require.Nil(t, err)
 
-	_, err = testTree.ProcessBlock(blockWithHeaders)
+	_, err = testTree.ProcessBlock(context.TODO(), blockWithHeaders)
 	require.Nil(t, err)
 
 	dp, err := consensus.DecodePath("/tree/data/" + path)
 	require.Nil(t, err)
-	resp, remain, err := testTree.Dag.Resolve(dp)
+	resp, remain, err := testTree.Dag.Resolve(context.TODO(), dp)
 	require.Nil(t, err)
 	require.Len(t, remain, 0)
 	require.Equal(t, value, resp)
 
 	dp, err = consensus.DecodePath("/tree/data/some/data")
 	require.Nil(t, err)
-	resp, remain, err = testTree.Dag.Resolve(dp)
+	resp, remain, err = testTree.Dag.Resolve(context.TODO(), dp)
 	require.Nil(t, err)
 	require.Len(t, remain, 0)
 	require.Equal(t, "is now set", resp)
@@ -303,7 +303,7 @@ func TestSetOwnership(t *testing.T) {
 	keyAddr := crypto.PubkeyToAddress(treeKey.PublicKey).String()
 	keyAddrs := []string{keyAddr}
 	treeDID := consensus.AddrToDid(keyAddr)
-	nodeStore := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	nodeStore := nodestore.MustMemoryStore(context.TODO())
 	emptyTree := consensus.NewEmptyTree(treeDID, nodeStore)
 	path := "some/data"
 	value := "is now set"
@@ -318,18 +318,18 @@ func TestSetOwnership(t *testing.T) {
 			Transactions: []*transactions.Transaction{txn},
 		},
 	}
-	testTree, err := chaintree.NewChainTree(emptyTree, nil, consensus.DefaultTransactors)
+	testTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
 	require.Nil(t, err)
 
 	blockWithHeaders, err := consensus.SignBlock(&unsignedBlock, treeKey)
 	require.Nil(t, err)
 
-	_, err = testTree.ProcessBlock(blockWithHeaders)
+	_, err = testTree.ProcessBlock(context.TODO(), blockWithHeaders)
 	require.Nil(t, err)
 
 	dp, err := consensus.DecodePath("/tree/data/" + path)
 	require.Nil(t, err)
-	resp, remain, err := testTree.Dag.Resolve(dp)
+	resp, remain, err := testTree.Dag.Resolve(context.TODO(), dp)
 	require.Nil(t, err)
 	require.Len(t, remain, 0)
 	require.Equal(t, value, resp)
@@ -347,10 +347,10 @@ func TestSetOwnership(t *testing.T) {
 	blockWithHeaders, err = consensus.SignBlock(&unsignedBlock, treeKey)
 	require.Nil(t, err)
 
-	_, err = testTree.ProcessBlock(blockWithHeaders)
+	_, err = testTree.ProcessBlock(context.TODO(), blockWithHeaders)
 	require.Nil(t, err)
 
-	resp, remain, err = testTree.Dag.Resolve(dp)
+	resp, remain, err = testTree.Dag.Resolve(context.TODO(), dp)
 	require.Nil(t, err)
 	assert.Len(t, remain, 0)
 	assert.Equal(t, value, resp)
@@ -360,7 +360,7 @@ func TestSendToken(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	assert.Nil(t, err)
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store := nodestore.MustMemoryStore(context.TODO())
 	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
 	emptyTree := consensus.NewEmptyTree(treeDID, store)
 
@@ -384,10 +384,10 @@ func TestSendToken(t *testing.T) {
 		},
 	}
 
-	testTree, err := chaintree.NewChainTree(emptyTree, nil, consensus.DefaultTransactors)
+	testTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
 	assert.Nil(t, err)
 
-	_, err = testTree.ProcessBlock(blockWithHeaders)
+	_, err = testTree.ProcessBlock(context.TODO(), blockWithHeaders)
 	assert.Nil(t, err)
 	height++
 
@@ -406,11 +406,11 @@ func TestSendToken(t *testing.T) {
 		},
 	}
 
-	_, err = testTree.ProcessBlock(sendBlockWithHeaders)
+	_, err = testTree.ProcessBlock(context.TODO(), sendBlockWithHeaders)
 	assert.Nil(t, err)
 	height++
 
-	sends, _, err := testTree.Dag.Resolve([]string{"tree", "_tupelo", "tokens", tokenFullName, "sends", "0"})
+	sends, _, err := testTree.Dag.Resolve(context.TODO(), []string{"tree", "_tupelo", "tokens", tokenFullName, "sends", "0"})
 	assert.Nil(t, err)
 	assert.NotNil(t, sends)
 
@@ -431,7 +431,7 @@ func TestSendToken(t *testing.T) {
 		},
 	}
 
-	_, err = testTree.ProcessBlock(overSpendBlockWithHeaders)
+	_, err = testTree.ProcessBlock(context.TODO(), overSpendBlockWithHeaders)
 	assert.NotNil(t, err)
 }
 
@@ -439,7 +439,7 @@ func TestReceiveToken(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	assert.Nil(t, err)
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store := nodestore.MustMemoryStore(context.TODO())
 	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
 	emptyTree := consensus.NewEmptyTree(treeDID, store)
 
@@ -461,10 +461,10 @@ func TestReceiveToken(t *testing.T) {
 		},
 	}
 
-	senderChainTree, err := chaintree.NewChainTree(emptyTree, nil, consensus.DefaultTransactors)
+	senderChainTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
 	assert.Nil(t, err)
 
-	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
 	assert.Nil(t, err)
 	senderHeight++
 
@@ -487,7 +487,7 @@ func TestReceiveToken(t *testing.T) {
 		},
 	}
 
-	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
 	assert.Nil(t, err)
 	senderHeight++
 
@@ -506,7 +506,7 @@ func TestReceiveToken(t *testing.T) {
 		},
 	}
 
-	_, err = senderChainTree.ProcessBlock(sendBlockWithHeaders)
+	_, err = senderChainTree.ProcessBlock(context.TODO(), sendBlockWithHeaders)
 	assert.Nil(t, err)
 
 	recipientHeight := uint64(0)
@@ -523,7 +523,7 @@ func TestReceiveToken(t *testing.T) {
 	require.True(t, ok)
 
 	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
-	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
+	leafNodes, err := senderChainTree.Dag.NodesForPath(context.TODO(), tokenPath)
 	require.Nil(t, err)
 
 	leaves := make([][]byte, 0)
@@ -546,11 +546,11 @@ func TestReceiveToken(t *testing.T) {
 	require.Nil(t, err)
 	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators, types.IsTokenRecipient)
 
-	valid, err := recipientChainTree.ChainTree.ProcessBlock(receiveBlockWithHeaders)
+	valid, err := recipientChainTree.ChainTree.ProcessBlock(context.TODO(), receiveBlockWithHeaders)
 	assert.Nil(t, err)
 	assert.True(t, valid)
 
-	senderTree, err := senderChainTree.Tree()
+	senderTree, err := senderChainTree.Tree(context.TODO())
 	require.Nil(t, err)
 
 	tokenCanonicalName2, err := consensus.CanonicalTokenName(senderTree, treeDID, tokenName2, true)
@@ -560,7 +560,7 @@ func TestReceiveToken(t *testing.T) {
 	senderBalance, err := senderLedger.Balance()
 	require.Nil(t, err)
 
-	recipientTree, err := recipientChainTree.ChainTree.Tree()
+	recipientTree, err := recipientChainTree.ChainTree.Tree(context.TODO())
 	require.Nil(t, err)
 	recipientLedger := consensus.NewTreeLedger(recipientTree, tokenCanonicalName2)
 	recipientBalance, err := recipientLedger.Balance()
@@ -574,7 +574,7 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	assert.Nil(t, err)
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store := nodestore.MustMemoryStore(context.TODO())
 	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
 	emptyTree := consensus.NewEmptyTree(treeDID, store)
 
@@ -596,10 +596,10 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 		},
 	}
 
-	senderChainTree, err := chaintree.NewChainTree(emptyTree, nil, consensus.DefaultTransactors)
+	senderChainTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
 	assert.Nil(t, err)
 
-	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
 	assert.Nil(t, err)
 	senderHeight++
 
@@ -622,7 +622,7 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 		},
 	}
 
-	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
 	assert.Nil(t, err)
 	senderHeight++
 
@@ -641,7 +641,7 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 		},
 	}
 
-	_, err = senderChainTree.ProcessBlock(sendBlockWithHeaders)
+	_, err = senderChainTree.ProcessBlock(context.TODO(), sendBlockWithHeaders)
 	assert.Nil(t, err)
 
 	recipientHeight := uint64(0)
@@ -658,7 +658,7 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 	require.True(t, ok)
 
 	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
-	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
+	leafNodes, err := senderChainTree.Dag.NodesForPath(context.TODO(), tokenPath)
 	require.Nil(t, err)
 
 	leaves := make([][]byte, 0)
@@ -666,7 +666,7 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 		leaves = append(leaves, ln.RawData())
 	}
 
-	otherChainTree, err := chaintree.NewChainTree(emptyTree, nil, consensus.DefaultTransactors)
+	otherChainTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
 	require.Nil(t, err)
 
 	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", otherChainTree.Dag.Tip.Bytes(), signature, leaves)
@@ -684,7 +684,7 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 	require.Nil(t, err)
 	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators, types.IsTokenRecipient)
 
-	valid, err := recipientChainTree.ChainTree.ProcessBlock(receiveBlockWithHeaders)
+	valid, err := recipientChainTree.ChainTree.ProcessBlock(context.TODO(), receiveBlockWithHeaders)
 	assert.NotNil(t, err)
 	assert.False(t, valid)
 }
@@ -693,7 +693,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	assert.Nil(t, err)
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store := nodestore.MustMemoryStore(context.TODO())
 	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
 	emptyTree := consensus.NewEmptyTree(treeDID, store)
 
@@ -715,10 +715,10 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 		},
 	}
 
-	senderChainTree, err := chaintree.NewChainTree(emptyTree, nil, consensus.DefaultTransactors)
+	senderChainTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
 	assert.Nil(t, err)
 
-	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
 	assert.Nil(t, err)
 	senderHeight++
 
@@ -741,7 +741,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 		},
 	}
 
-	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
 	assert.Nil(t, err)
 	senderHeight++
 
@@ -760,7 +760,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 		},
 	}
 
-	_, err = senderChainTree.ProcessBlock(sendBlockWithHeaders)
+	_, err = senderChainTree.ProcessBlock(context.TODO(), sendBlockWithHeaders)
 	assert.Nil(t, err)
 	senderHeight++
 
@@ -778,7 +778,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 	require.True(t, ok)
 
 	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
-	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
+	leafNodes, err := senderChainTree.Dag.NodesForPath(context.TODO(), tokenPath)
 	require.Nil(t, err)
 
 	leaves := make([][]byte, 0)
@@ -801,7 +801,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 	require.Nil(t, err)
 	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators, types.IsTokenRecipient)
 
-	valid, err := recipientChainTree.ChainTree.ProcessBlock(receiveBlockWithHeaders)
+	valid, err := recipientChainTree.ChainTree.ProcessBlock(context.TODO(), receiveBlockWithHeaders)
 	assert.Nil(t, err)
 	assert.True(t, valid)
 	recipientHeight++
@@ -819,7 +819,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 		},
 	}
 
-	_, err = senderChainTree.ProcessBlock(sendBlockWithHeaders)
+	_, err = senderChainTree.ProcessBlock(context.TODO(), sendBlockWithHeaders)
 	assert.Nil(t, err)
 
 	signedBlock, err = consensus.SignBlock(sendBlockWithHeaders, key)
@@ -834,7 +834,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 	require.True(t, ok)
 
 	tokenPath = []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "1"}
-	leafNodes, err = senderChainTree.Dag.NodesForPath(tokenPath)
+	leafNodes, err = senderChainTree.Dag.NodesForPath(context.TODO(), tokenPath)
 	require.Nil(t, err)
 
 	leaves = make([][]byte, 0)
@@ -853,7 +853,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 		},
 	}
 
-	valid, err = recipientChainTree.ChainTree.ProcessBlock(receiveBlockWithHeaders)
+	valid, err = recipientChainTree.ChainTree.ProcessBlock(context.TODO(), receiveBlockWithHeaders)
 	assert.NotNil(t, err)
 	assert.False(t, valid)
 }
@@ -862,7 +862,7 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	assert.Nil(t, err)
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store := nodestore.MustMemoryStore(context.TODO())
 	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
 	emptyTree := consensus.NewEmptyTree(treeDID, store)
 
@@ -884,10 +884,10 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 		},
 	}
 
-	senderChainTree, err := chaintree.NewChainTree(emptyTree, nil, consensus.DefaultTransactors)
+	senderChainTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
 	assert.Nil(t, err)
 
-	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
 	assert.Nil(t, err)
 	senderHeight++
 
@@ -910,7 +910,7 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 		},
 	}
 
-	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
 	assert.Nil(t, err)
 	senderHeight++
 
@@ -929,7 +929,7 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 		},
 	}
 
-	_, err = senderChainTree.ProcessBlock(sendBlockWithHeaders)
+	_, err = senderChainTree.ProcessBlock(context.TODO(), sendBlockWithHeaders)
 	assert.Nil(t, err)
 
 	otherKey, err := crypto.GenerateKey()
@@ -946,14 +946,14 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 	signature, ok := headers.Signatures[sigAddr]
 	require.True(t, ok)
 
-	objectID, err := senderChainTree.Id()
+	objectID, err := senderChainTree.Id(context.TODO())
 	require.Nil(t, err)
 	signature.ObjectId = []byte(objectID)
 	signature.NewTip = senderChainTree.Dag.Tip.Bytes()
 	signature.PreviousTip = signedBlock.PreviousTip.Bytes()
 
 	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
-	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
+	leafNodes, err := senderChainTree.Dag.NodesForPath(context.TODO(), tokenPath)
 	require.Nil(t, err)
 
 	leaves := make([][]byte, 0)
@@ -984,7 +984,7 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators,
 		types.IsTokenRecipient, isValidSignature)
 
-	valid, err := recipientChainTree.ChainTree.ProcessBlock(receiveBlockWithHeaders)
+	valid, err := recipientChainTree.ChainTree.ProcessBlock(context.TODO(), receiveBlockWithHeaders)
 	assert.Nil(t, err)
 	assert.False(t, valid)
 }
@@ -993,7 +993,7 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	assert.Nil(t, err)
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store := nodestore.MustMemoryStore(context.TODO())
 	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
 	emptyTree := consensus.NewEmptyTree(treeDID, store)
 
@@ -1016,10 +1016,10 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 		},
 	}
 
-	senderChainTree, err := chaintree.NewChainTree(emptyTree, nil, consensus.DefaultTransactors)
+	senderChainTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
 	assert.Nil(t, err)
 
-	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
 	assert.Nil(t, err)
 	senderHeight++
 
@@ -1042,7 +1042,7 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 		},
 	}
 
-	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
 	assert.Nil(t, err)
 	senderHeight++
 
@@ -1061,7 +1061,7 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 		},
 	}
 
-	_, err = senderChainTree.ProcessBlock(sendBlockWithHeaders)
+	_, err = senderChainTree.ProcessBlock(context.TODO(), sendBlockWithHeaders)
 	assert.Nil(t, err)
 
 	signedBlock, err := consensus.SignBlock(sendBlockWithHeaders, key)
@@ -1076,7 +1076,7 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 	require.True(t, ok)
 
 	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
-	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
+	leafNodes, err := senderChainTree.Dag.NodesForPath(context.TODO(), tokenPath)
 	require.Nil(t, err)
 
 	leaves := make([][]byte, 0)
@@ -1103,7 +1103,7 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 	require.Nil(t, err)
 	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators, types.IsTokenRecipient)
 
-	valid, err := recipientChainTree.ChainTree.ProcessBlock(receiveBlockWithHeaders)
+	valid, err := recipientChainTree.ChainTree.ProcessBlock(context.TODO(), receiveBlockWithHeaders)
 	assert.Nil(t, err)
 	assert.False(t, valid)
 }
@@ -1112,7 +1112,7 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	assert.Nil(t, err)
 
-	store := nodestore.NewStorageBasedStore(storage.NewMemStorage())
+	store := nodestore.MustMemoryStore(context.TODO())
 	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
 	emptyTree := consensus.NewEmptyTree(treeDID, store)
 
@@ -1134,10 +1134,10 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 		},
 	}
 
-	senderChainTree, err := chaintree.NewChainTree(emptyTree, nil, consensus.DefaultTransactors)
+	senderChainTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
 	assert.Nil(t, err)
 
-	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
 	assert.Nil(t, err)
 	senderHeight++
 
@@ -1160,7 +1160,7 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 		},
 	}
 
-	_, err = senderChainTree.ProcessBlock(blockWithHeaders)
+	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
 	assert.Nil(t, err)
 	senderHeight++
 
@@ -1179,7 +1179,7 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 		},
 	}
 
-	_, err = senderChainTree.ProcessBlock(sendBlockWithHeaders)
+	_, err = senderChainTree.ProcessBlock(context.TODO(), sendBlockWithHeaders)
 	assert.Nil(t, err)
 
 	otherKey, err := crypto.GenerateKey()
@@ -1196,14 +1196,14 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 	signature, ok := headers.Signatures[sigAddr]
 	require.True(t, ok)
 
-	objectID, err := senderChainTree.Id()
+	objectID, err := senderChainTree.Id(context.TODO())
 	require.Nil(t, err)
 	signature.ObjectId = []byte(objectID)
 	signature.NewTip = emptyTree.Tip.Bytes() // invalid
 	signature.PreviousTip = signedBlock.PreviousTip.Bytes()
 
 	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
-	leafNodes, err := senderChainTree.Dag.NodesForPath(tokenPath)
+	leafNodes, err := senderChainTree.Dag.NodesForPath(context.TODO(), tokenPath)
 	require.Nil(t, err)
 
 	leaves := make([][]byte, 0)
@@ -1234,7 +1234,7 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators,
 		types.IsTokenRecipient, isValidSignature)
 
-	valid, err := recipientChainTree.ChainTree.ProcessBlock(receiveBlockWithHeaders)
+	valid, err := recipientChainTree.ChainTree.ProcessBlock(context.TODO(), receiveBlockWithHeaders)
 	assert.Nil(t, err)
 	assert.False(t, valid)
 }

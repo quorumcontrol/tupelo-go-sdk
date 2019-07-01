@@ -2,11 +2,14 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"crypto/ecdsa"
 	"fmt"
 	"reflect"
 	"strconv"
 	"time"
+
+	format "github.com/ipfs/go-ipld-format"
 
 	"github.com/quorumcontrol/messages/build/go/services"
 	"github.com/quorumcontrol/messages/build/go/signatures"
@@ -192,6 +195,7 @@ func (c *Client) SendTransaction(trans *services.AddBlockRequest) error {
 }
 
 func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*transactions.Transaction) (*consensus.AddBlockResponse, error) {
+	ctx := context.TODO()
 	sw := safewrap.SafeWrap{}
 
 	if remoteTip != nil && cid.Undef.Equals(*remoteTip) {
@@ -231,7 +235,7 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 
 	storedTip := tree.Tip()
 
-	newChainTree, valid, err := tree.ChainTree.ProcessBlockImmutable(blockWithHeaders)
+	newChainTree, valid, err := tree.ChainTree.ProcessBlockImmutable(ctx, blockWithHeaders)
 	if !valid || err != nil {
 		return nil, fmt.Errorf("error processing block (valid: %t): %v", valid, err)
 	}
@@ -324,6 +328,8 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 // It retries on timeouts so most of the logic in here is for retries and the meat of the
 // transaction-playing code is in attemptPlayTransactions.
 func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*transactions.Transaction) (*consensus.AddBlockResponse, error) {
+	ctx := context.TODO()
+
 	var (
 		resp *consensus.AddBlockResponse
 		err  error
@@ -375,7 +381,7 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 
 					if !tip.Equals(tree.Tip()) {
 						c.log.Debugw("tip is out of date, updating")
-						newTipNode, err := tree.ChainTree.Dag.Get(tip)
+						newTipNode, err := tree.ChainTree.Dag.Get(ctx, tip)
 						if err != nil {
 							c.log.Errorf("error getting new tip node from DAG: %v", err)
 							return
@@ -408,8 +414,9 @@ func (c *Client) TokenPayloadForTransaction(chain *chaintree.ChainTree, tokenNam
 }
 
 func getRoot(sct *consensus.SignedChainTree) (*chaintree.RootNode, error) {
+	ctx := context.TODO()
 	ct := sct.ChainTree
-	unmarshaledRoot, err := ct.Dag.Get(ct.Dag.Tip)
+	unmarshaledRoot, err := ct.Dag.Get(ctx, ct.Dag.Tip)
 	if unmarshaledRoot == nil || err != nil {
 		return nil, fmt.Errorf("error,missing root: %v", err)
 	}
@@ -427,10 +434,11 @@ func getRoot(sct *consensus.SignedChainTree) (*chaintree.RootNode, error) {
 // Currently this takes
 // - the entire resolved tree/ of the existing tree
 // - the nodes for chain/end, but not resolving through the previous tip
-func nodesForTransaction(existingSignedTree *consensus.SignedChainTree) ([]*cbornode.Node, error) {
+func nodesForTransaction(existingSignedTree *consensus.SignedChainTree) ([]format.Node, error) {
+	ctx := context.TODO()
 	existingTree := existingSignedTree.ChainTree
 
-	treeNodes, err := existingTree.Dag.NodesForPathWithDecendants([]string{"tree"})
+	treeNodes, err := existingTree.Dag.NodesForPathWithDecendants(ctx, []string{"tree"})
 	if err != nil {
 		return nil, fmt.Errorf("error getting tree nodes: %v", err)
 	}
@@ -438,18 +446,18 @@ func nodesForTransaction(existingSignedTree *consensus.SignedChainTree) ([]*cbor
 	// Validation needs all the nodes for chain/end, but not past chain/end. aka no need to
 	// resolve the end node, since that would fetch all the nodes of from the previous tip.
 	// Also, on genesis state chain/end is nil, so deal with that
-	var chainNodes []*cbornode.Node
+	var chainNodes []format.Node
 	if existingSignedTree.IsGenesis() {
-		chainNodes, err = existingTree.Dag.NodesForPath([]string{chaintree.ChainLabel})
+		chainNodes, err = existingTree.Dag.NodesForPath(ctx, []string{chaintree.ChainLabel})
 	} else {
-		chainNodes, err = existingTree.Dag.NodesForPath([]string{chaintree.ChainLabel, chaintree.ChainEndLabel})
+		chainNodes, err = existingTree.Dag.NodesForPath(ctx, []string{chaintree.ChainLabel, chaintree.ChainEndLabel})
 	}
 	if err != nil {
 		return nil, fmt.Errorf("error getting chain nodes: %v", err)
 	}
 
 	// subtract 1 to only include tip node once
-	nodes := make([]*cbornode.Node, len(treeNodes)+len(chainNodes)-1)
+	nodes := make([]format.Node, len(treeNodes)+len(chainNodes)-1)
 	i := 0
 	for _, node := range treeNodes {
 		nodes[i] = node
@@ -466,7 +474,7 @@ func nodesForTransaction(existingSignedTree *consensus.SignedChainTree) ([]*cbor
 	return nodes, nil
 }
 
-func nodesToBytes(nodes []*cbornode.Node) [][]byte {
+func nodesToBytes(nodes []format.Node) [][]byte {
 	returnBytes := make([][]byte, len(nodes))
 	for i, n := range nodes {
 		returnBytes[i] = n.RawData()
