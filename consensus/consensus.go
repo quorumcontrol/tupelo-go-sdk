@@ -155,7 +155,7 @@ func NewEmptyTree(did string, nodeStore nodestore.DagStore) *dag.Dag {
 	if sw.Err != nil {
 		panic(sw.Err)
 	}
-	dag, err := dag.NewDagWithNodes(context.Background(), nodeStore, root, treeNode, chainNode)
+	dag, err := dag.NewDagWithNodes(context.TODO(), nodeStore, root, treeNode, chainNode)
 	if err != nil {
 		panic(err) // TODO: this err was introduced, keeping external interface the same
 	}

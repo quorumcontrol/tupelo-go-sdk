@@ -30,11 +30,11 @@ type SignedChainTree struct {
 }
 
 func (sct *SignedChainTree) Id() (string, error) {
-	return sct.ChainTree.Id(context.Background())
+	return sct.ChainTree.Id(context.TODO())
 }
 
 func (sct *SignedChainTree) MustId() string {
-	id, err := sct.ChainTree.Id(context.Background())
+	id, err := sct.ChainTree.Id(context.TODO())
 	if err != nil {
 		log.Error("error getting id from chaintree: %v", id)
 	}
@@ -46,13 +46,13 @@ func (sct *SignedChainTree) Tip() cid.Cid {
 }
 
 func (sct *SignedChainTree) IsGenesis() bool {
-	store := nodestore.MustMemoryStore(context.Background())
+	store := nodestore.MustMemoryStore(context.TODO())
 	newEmpty := NewEmptyTree(sct.MustId(), store)
 	return newEmpty.Tip.Equals(sct.Tip())
 }
 
 func (sct *SignedChainTree) Authentications() ([]string, error) {
-	uncastAuths, _, err := sct.ChainTree.Dag.Resolve(context.Background(), strings.Split("tree/"+TreePathForAuthentications, "/"))
+	uncastAuths, _, err := sct.ChainTree.Dag.Resolve(context.TODO(), strings.Split("tree/"+TreePathForAuthentications, "/"))
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func NewSignedChainTree(key ecdsa.PublicKey, nodeStore nodestore.DagStore) (*Sig
 	did := EcdsaPubkeyToDid(key)
 
 	tree, err := chaintree.NewChainTree(
-		context.Background(),
+		context.TODO(),
 		NewEmptyTree(did, nodeStore),
 		nil,
 		DefaultTransactors,
