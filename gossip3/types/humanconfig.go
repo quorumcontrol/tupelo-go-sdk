@@ -1,7 +1,12 @@
 package types
 
 import (
+	"crypto/ecdsa"
 	"fmt"
+
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 
 	"github.com/BurntSushi/toml"
 	"github.com/quorumcontrol/chaintree/chaintree"
@@ -61,6 +66,39 @@ func mustRegisterValidatorGenerator(name string, fn ValidatorGenerator) {
 	}
 }
 
+type PublicKeySet struct {
+	VerKey  *bls.VerKey
+	DestKey *ecdsa.PublicKey
+}
+
+type HumanPublicKeySet struct {
+	VerKeyHex  string
+	DestKeyHex string
+}
+
+func (hpubset *HumanPublicKeySet) ToPublicKeySet() (pubset PublicKeySet, err error) {
+	blsBits, err := hexutil.Decode(hpubset.VerKeyHex)
+	if err != nil {
+		return pubset, fmt.Errorf("error decoding verkey: %v", err)
+	}
+	ecdsaBits, err := hexutil.Decode(hpubset.DestKeyHex)
+	if err != nil {
+		return pubset, fmt.Errorf("error decoding destkey: %v", err)
+	}
+
+	ecdsaPub, err := crypto.UnmarshalPubkey(ecdsaBits)
+	if err != nil {
+		return pubset, fmt.Errorf("couldn't unmarshal ECDSA pub key: %v", err)
+	}
+
+	verKey := bls.BytesToVerKey(blsBits)
+
+	return PublicKeySet{
+		DestKey: ecdsaPub,
+		VerKey:  verKey,
+	}, nil
+}
+
 // HumanConfig is used for parsing an ondisk configuration into the application-used Config
 // struct.
 type HumanConfig struct {
@@ -80,20 +118,43 @@ type HumanConfig struct {
 	// of this comment) are already registered and the default is ["ISOWNER", "ISRECIPIENT"] if no
 	// generators are specified.
 	ValidatorGenerators []string
-	// Transactions is an array of strings representing the Protobuf TransactionType allowed
+	// Transactions is a slice of strings representing the Protobuf TransactionType allowed
 	// in this notary group. Default transactions (consensus.DefaultTransactors) are pre-registered
 	// otherwise you must register a transaction using RegisterTransactor. Default if unspecified
 	// is consensus.DefaultTransactors.
 	Transactions []string
+	// Signers is a slice of hex BLS VerKeys and ecdsa public keys (for libp2p)
+	Signers []HumanPublicKeySet
 }
 
 func HumanConfigToConfig(hc *HumanConfig) (*Config, error) {
+	defaults := DefaultConfig()
 	c := &Config{
 		ID:               hc.ID,
 		TransactionToken: hc.TransactionToken,
 		BurnAmount:       hc.BurnAmount,
 		TransactionTopic: hc.TransactionTopic,
 		CommitTopic:      hc.CommitTopic,
+	}
+
+	if c.ID == "" {
+		return nil, fmt.Errorf("error ID cannot be nil")
+	}
+
+	if c.TransactionToken == "" {
+		c.TransactionToken = defaults.TransactionToken // at this moment we expect default to be "" too
+	}
+
+	if c.BurnAmount == 0 {
+		c.BurnAmount = defaults.BurnAmount // at this moment, we expect default to be 0 too
+	}
+
+	if c.TransactionTopic == "" {
+		c.TransactionTopic = defaults.TransactionTopic
+	}
+
+	if c.CommitTopic == "" {
+		c.CommitTopic = defaults.CommitTopic
 	}
 
 	if len(hc.ValidatorGenerators) > 0 {
@@ -105,7 +166,7 @@ func HumanConfigToConfig(hc *HumanConfig) (*Config, error) {
 			c.ValidatorGenerators = append(c.ValidatorGenerators, generator)
 		}
 	} else {
-		c.ValidatorGenerators = defaultGenerators
+		c.ValidatorGenerators = defaults.ValidatorGenerators
 	}
 
 	if len(hc.Transactions) > 0 {
@@ -122,8 +183,18 @@ func HumanConfigToConfig(hc *HumanConfig) (*Config, error) {
 			c.Transactions[transactions.Transaction_Type(enum)] = fn
 		}
 	} else {
-		c.Transactions = consensus.DefaultTransactors
+		c.Transactions = defaults.Transactions
 	}
+
+	signers := make([]PublicKeySet, len(hc.Signers))
+	for i, humanPub := range hc.Signers {
+		pub, err := humanPub.ToPublicKeySet()
+		if err != nil {
+			return nil, fmt.Errorf("error getting signer from human: %v", err)
+		}
+		signers[i] = pub
+	}
+	c.Signers = signers
 
 	return c, nil
 }
