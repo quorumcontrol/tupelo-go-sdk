@@ -33,9 +33,8 @@ require (
 	github.com/multiformats/go-multiaddr v0.0.4
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/prometheus/client_golang v0.9.3
-	github.com/quorumcontrol/chaintree v0.0.0-20190628111909-7fcc00a16764
+	github.com/quorumcontrol/chaintree v0.0.0-20190624152451-1b5147271beb2d334c262493abf9f6dd26a48227
 	github.com/quorumcontrol/messages/build/go v0.0.0-20190603192428-dcb5ad7a31ca
-	github.com/quorumcontrol/storage v1.1.4
 	github.com/santhosh-tekuri/jsonschema v1.2.4 // indirect
 	github.com/stretchr/testify v1.3.0
 	github.com/uber-go/atomic v1.3.2 // indirect
@@ -43,6 +42,8 @@ require (
 	github.com/uber/jaeger-lib v1.5.0
 	go.dedis.ch/kyber/v3 v3.0.2
 	go.elastic.co/apm/module/apmot v1.3.0
+	go.uber.org/atomic v1.4.0 // indirect
+	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1
 )
 
