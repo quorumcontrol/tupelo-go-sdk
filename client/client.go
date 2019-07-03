@@ -122,9 +122,11 @@ func (c *Client) TipRequest() (*signatures.CurrentState, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting tip: %v", err)
 	}
-	// cache the result to the LRU so future requests to height will
-	// return the answer by sending the answer to the subscriber
-	actor.EmptyRootContext.Send(c.subscriber, res)
+	if res.(*signatures.CurrentState).Signature != nil {
+		// cache the result to the LRU so future requests to height will
+		// return the answer by sending the answer to the subscriber
+		actor.EmptyRootContext.Send(c.subscriber, res)
+	}
 	return res.(*signatures.CurrentState), nil
 }
 
