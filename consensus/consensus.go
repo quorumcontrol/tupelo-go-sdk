@@ -214,7 +214,7 @@ func IsBlockSignedBy(blockWithHeaders *chaintree.BlockWithHeaders, addr string) 
 
 	sig, ok := headers.Signatures[addr]
 	if !ok {
-		log.Error("no signature", "signatures", headers.Signatures)
+		log.Debug("no signature found for addr", "addr", addr, "signatures", headers.Signatures)
 		return false, nil
 	}
 
