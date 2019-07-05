@@ -37,7 +37,9 @@ type BitswapPeer struct {
 func NewBitswapPeer(ctx context.Context, host *LibP2PHost) (*BitswapPeer, error) {
 	bs := blockstore.NewBlockstore(host.datastore)
 	bs = blockstore.NewIdStore(bs)
-	cachedbs, err := blockstore.CachedBlockstore(ctx, bs, blockstore.DefaultCacheOpts())
+	// Note: cached blockstore with bloomcache fails with s3 due to cache warming
+	// doing an incorrect query for /blocks
+	cachedbs, err := blockstore.CachedBlockstore(ctx, bs, blockstore.CacheOpts{HasARCCacheSize: 64 << 10})
 	if err != nil {
 		return nil, err
 	}
