@@ -1,11 +1,13 @@
+// +build wasm
+
 package main
 
 import (
-	"github.com/stretchr/testify/assert"
-	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 	"testing"
-)
 
+	"github.com/quorumcontrol/tupelo-go-sdk/bls"
+	"github.com/stretchr/testify/assert"
+)
 
 func TestVerKey_Verify(t *testing.T) {
 	msg := []byte("hi")
