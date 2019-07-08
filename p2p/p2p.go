@@ -31,6 +31,10 @@ import (
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
 )
 
+func init() {
+	peer.AdvancedEnableInlining = false
+}
+
 var log = logging.Logger("tupelop2p")
 
 var ErrDialBackoff = swarm.ErrDialBackoff
