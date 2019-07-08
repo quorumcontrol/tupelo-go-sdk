@@ -31,6 +31,7 @@ require (
 	github.com/libp2p/go-libp2p-swarm v0.1.1
 	github.com/multiformats/go-multiaddr v0.0.4
 	github.com/opentracing/opentracing-go v1.1.0
+	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v0.9.3
 	github.com/quorumcontrol/chaintree v0.0.0-20190701175144-f8f44c3e6d4b
 	github.com/quorumcontrol/messages/build/go v0.0.0-20190716095704-9acdbae78c93
