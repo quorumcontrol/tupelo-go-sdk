@@ -189,6 +189,24 @@ func (c *Client) Subscribe(trans *services.AddBlockRequest, timeout time.Duratio
 	return fut
 }
 
+// SubscribeAll accepts a callback that forwards all CurrentState messages
+// broadcasted on tupelo-commits
+func (c *Client) SubscribeAll(fn func(msg *signatures.CurrentState)) (func(), error) {
+	if !c.alreadyListening() {
+		c.Listen()
+	}
+
+	sub := c.stream.Subscribe(func(msgInter interface{}) {
+		switch msg := msgInter.(type) {
+		case *signatures.CurrentState:
+			fn(msg)
+		}
+	})
+
+	cancelFn := func() { c.stream.Unsubscribe(sub) }
+	return cancelFn, nil
+}
+
 // SendTransaction sends a transaction to a signer.
 func (c *Client) SendTransaction(trans *services.AddBlockRequest) error {
 	topic := c.Group.Config().TransactionTopic
