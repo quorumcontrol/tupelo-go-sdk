@@ -3,6 +3,7 @@
 package client
 
 import (
+	"strings"
 	"sync"
 	"github.com/quorumcontrol/messages/build/go/services"
 	"github.com/quorumcontrol/messages/build/go/signatures"
@@ -429,5 +430,7 @@ func TestNonOwnerTransactions(t *testing.T) {
 	require.Nil(t,err)
 
 	// make sure we got an error back on the invalid transaction (because the tip changed)
-	require.NotNil(t, <-invalidTransactionErrorChan)
+	invalidErr := <-invalidTransactionErrorChan
+	require.NotNil(t, invalidErr)
+	assert.Truef(t, strings.HasPrefix(invalidErr.Error(), "error signature at same height did not match transaction new tip"), "error was: %s", invalidErr.Error())
 }
