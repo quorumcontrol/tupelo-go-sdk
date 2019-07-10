@@ -16,3 +16,6 @@ vendor/
 
 # Test report output dir
 test_results/
+
+*.wasm
+node_modules/
