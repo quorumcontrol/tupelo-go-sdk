@@ -11,7 +11,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
-	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 	"github.com/quorumcontrol/tupelo-go-sdk/tracing"
 	"go.uber.org/zap"
 )
@@ -26,6 +25,18 @@ type PubSub interface {
 	Subscribe(ctx spawner, topic string, subscribers ...*actor.PID) *actor.PID
 }
 
+type libp2pSub interface {
+	Next(context.Context) (*pubsub.Message, error)
+	Cancel()
+}
+
+type libp2pPubsub interface {
+	Publish(topic string, data []byte) error
+	RegisterTopicValidator(topic string, fn pubsub.Validator, opts ...pubsub.ValidatorOpt) error
+	UnregisterTopicValidator(topic string) error
+	Subscribe(topic string, opts ...pubsub.SubOpt) (*pubsub.Subscription, error)
+}
+
 type spawner interface {
 	Spawn(props *actor.Props) *actor.PID
 }
@@ -33,16 +44,16 @@ type spawner interface {
 // NetworkPubSub implements the broadcast interface necessary
 // for the client
 type NetworkPubSub struct {
-	host p2p.Node
-	log  *zap.SugaredLogger
+	pubsub libp2pPubsub
+	log    *zap.SugaredLogger
 }
 
 // NewNetworkPubSub returns a NetworkBroadcaster that can be used
 // to send messages.WireMessage across the p2p network using pubsub.
-func NewNetworkPubSub(host p2p.Node) *NetworkPubSub {
+func NewNetworkPubSub(pubsub libp2pPubsub) *NetworkPubSub {
 	return &NetworkPubSub{
-		host: host,
-		log:  middleware.Log.Named("network-pubsub"),
+		pubsub: pubsub,
+		log:    middleware.Log.Named("network-pubsub"),
 	}
 }
 
@@ -64,7 +75,7 @@ func (nps *NetworkPubSub) Broadcast(topic string, message proto.Message) error {
 	}
 
 	nps.log.Debugw("broadcasting", "topic", topic)
-	return nps.host.GetPubSub().Publish(topic, marshaled)
+	return nps.pubsub.Publish(topic, marshaled)
 }
 
 func (nps *NetworkPubSub) RegisterTopicValidator(topic string, validatorFunc PubSubValidator, opts ...pubsub.ValidatorOpt) error {
@@ -80,21 +91,21 @@ func (nps *NetworkPubSub) RegisterTopicValidator(topic string, validatorFunc Pub
 		}
 		return validatorFunc(ctx, peer, msg)
 	}
-	return nps.host.GetPubSub().RegisterTopicValidator(topic, wrappedFunc, opts...)
+	return nps.pubsub.RegisterTopicValidator(topic, wrappedFunc, opts...)
 }
 
 func (nps *NetworkPubSub) UnregisterTopicValidator(topic string) {
-	if err := nps.host.GetPubSub().UnregisterTopicValidator(topic); err != nil {
+	if err := nps.pubsub.UnregisterTopicValidator(topic); err != nil {
 		nps.log.Errorw("error unregistering validator", "err", err)
 	}
 }
 
 func (nps *NetworkPubSub) NewSubscriberProps(topic string) *actor.Props {
-	return newBroadcastSubscriberProps(topic, nps.host, true)
+	return newBroadcastSubscriberProps(topic, nps.pubsub, true)
 }
 
 func (nps *NetworkPubSub) Subscribe(ctx spawner, topic string, subscribers ...*actor.PID) *actor.PID {
-	return ctx.Spawn(newBroadcastSubscriberProps(topic, nps.host, false, subscribers...))
+	return ctx.Spawn(newBroadcastSubscriberProps(topic, nps.pubsub, false, subscribers...))
 }
 
 type broadcastSubscriber struct {
@@ -103,8 +114,8 @@ type broadcastSubscriber struct {
 
 	subCtx       context.Context
 	cancelFunc   context.CancelFunc
-	subscription *pubsub.Subscription
-	host         p2p.Node
+	subscription libp2pSub
+	pubsub       libp2pPubsub
 	topicName    string
 	subscribers  []*actor.PID
 	notifyParent bool
@@ -114,11 +125,11 @@ type broadcastSubscriber struct {
 // A NetworkSubscriber is a subscription to a pubsub style system for a specific message type
 // it is designed to be spawned inside another context so that it can use Parent in order to
 // deliver the messages
-func newBroadcastSubscriberProps(topic string, host p2p.Node, notifyParent bool, subscribers ...*actor.PID) *actor.Props {
+func newBroadcastSubscriberProps(topic string, pubsub libp2pPubsub, notifyParent bool, subscribers ...*actor.PID) *actor.Props {
 	ctx, cancel := context.WithCancel(context.Background())
 	return actor.PropsFromProducer(func() actor.Actor {
 		return &broadcastSubscriber{
-			host:         host,
+			pubsub:       pubsub,
 			cancelFunc:   cancel,
 			subCtx:       ctx,
 			topicName:    topic,
@@ -135,7 +146,7 @@ func (bs *broadcastSubscriber) Receive(actorContext actor.Context) {
 	switch msg := actorContext.Message().(type) {
 	case *actor.Started:
 		bs.Log.Debugw("subscribed", "topic", bs.topicName)
-		sub, err := bs.host.GetPubSub().Subscribe(bs.topicName)
+		sub, err := bs.pubsub.Subscribe(bs.topicName)
 		if err != nil {
 			panic(fmt.Sprintf("subscription failed, dying %v", err))
 		}

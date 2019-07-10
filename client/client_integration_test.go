@@ -121,7 +121,7 @@ func TestClientSendTransaction(t *testing.T) {
 
 	trans := testhelpers.NewValidTransaction(t)
 
-	client := New(ng, string(trans.ObjectId), remote.NewNetworkPubSub(host))
+	client := New(ng, string(trans.ObjectId), remote.NewNetworkPubSub(host.GetPubSub()))
 	defer client.Stop()
 
 	err = client.SendTransaction(&trans)
@@ -140,7 +140,7 @@ func TestClientSubscribe(t *testing.T) {
 
 	trans := testhelpers.NewValidTransaction(t)
 
-	client := New(ng, string(trans.ObjectId), remote.NewNetworkPubSub(host))
+	client := New(ng, string(trans.ObjectId), remote.NewNetworkPubSub(host.GetPubSub()))
 	defer client.Stop()
 
 	fut := client.Subscribe(&trans, 5*time.Second)
@@ -174,7 +174,7 @@ func TestPlayTransactions(t *testing.T) {
 	chain, err := consensus.NewSignedChainTree(treeKey.PublicKey, nodeStore)
 	require.Nil(t, err)
 
-	client := New(ng, chain.MustId(), remote.NewNetworkPubSub(host))
+	client := New(ng, chain.MustId(), remote.NewNetworkPubSub(host.GetPubSub()))
 	defer client.Stop()
 
 	var remoteTip cid.Cid
@@ -281,7 +281,7 @@ func TestSnoozedTransaction(t *testing.T) {
 	testTree, err := consensus.NewSignedChainTree(treeKey.PublicKey, nodeStore)
 	require.Nil(t, err)
 
-	client1 := New(ng, testTree.MustId(), remote.NewNetworkPubSub(host))
+	client1 := New(ng, testTree.MustId(), remote.NewNetworkPubSub(host.GetPubSub()))
 	client1.Listen()
 	defer client1.Stop()
 
@@ -330,7 +330,7 @@ func TestInvalidPreviousTipOnSnoozedTransaction(t *testing.T) {
 	testTreeA, err := consensus.NewSignedChainTree(treeKey.PublicKey, nodeStoreA)
 	require.Nil(t, err)
 
-	clientA := New(ng, testTreeA.MustId(), remote.NewNetworkPubSub(host))
+	clientA := New(ng, testTreeA.MustId(), remote.NewNetworkPubSub(host.GetPubSub()))
 	clientA.Listen()
 	defer clientA.Stop()
 
@@ -342,7 +342,7 @@ func TestInvalidPreviousTipOnSnoozedTransaction(t *testing.T) {
 	require.Nil(t, err)
 	emptyTip := testTreeB.Tip()
 
-	clientB := New(ng, testTreeB.MustId(), remote.NewNetworkPubSub(host))
+	clientB := New(ng, testTreeB.MustId(), remote.NewNetworkPubSub(host.GetPubSub()))
 	clientB.Listen()
 	defer clientB.Stop()
 
@@ -395,7 +395,7 @@ func TestNonOwnerTransactions(t *testing.T) {
 	chain, err := consensus.NewSignedChainTree(treeKey1.PublicKey, nodeStore)
 	require.Nil(t, err)
 
-	client := New(ng, chain.MustId(), remote.NewNetworkPubSub(host))
+	client := New(ng, chain.MustId(), remote.NewNetworkPubSub(host.GetPubSub()))
 	defer client.Stop()
 
 	client2 := New(ng, chain.MustId(), remote.NewNetworkPubSub(host))
