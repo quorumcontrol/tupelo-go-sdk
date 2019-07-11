@@ -1,5 +1,6 @@
 const WS = require('libp2p-websockets')
-const Multiplex = require('libp2p-mplex')
+const Multiplex = require('pull-mplex')
+// const Multiplex = require('libp2p-mplex')
 require('libp2p-crypto-secp256k1') // no need to do anything with this, just require it.
 const SECIO = require('libp2p-secio')
 const Bootstrap = require('libp2p-bootstrap')
@@ -102,6 +103,9 @@ module.exports.CreateNode = async function() {
       const peerIdStr = peerID.toB58String();
       console.log("peerIdStr ", peerIdStr);
       node.idStr = peerIdStr;
+      process.on("exit", () => {
+          node.stop();
+      });
       resolve(node);
     })
   })

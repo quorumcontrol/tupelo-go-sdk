@@ -13,8 +13,10 @@
         throw new Error("cannot export Go (neither global, window nor self is defined)");
     }
 
+    var encoder,decoder;
+
     // Map web browser API and Node.js API to a single common API (preferring web standards over Node.js API).
-    const isNodeJS = global.process && global.process.title === "node";
+    const isNodeJS = true; //global.process && global.process.title === "node";
     if (isNodeJS) {
         global.require = require;
         global.fs = require("fs");
@@ -34,8 +36,8 @@
         };
 
         const util = require("util");
-        global.TextEncoder = util.TextEncoder;
-        global.TextDecoder = util.TextDecoder;
+        encoder = new util.TextEncoder;
+        decoder = new util.TextDecoder;
     } else {
         let outputBuf = "";
         global.fs = {
@@ -70,10 +72,9 @@
                 callback(null);
             },
         };
+        encoder = new TextEncoder("utf-8");
+        decoder = new TextDecoder("utf-8");
     }
-
-    const encoder = new global.TextEncoder("utf-8");
-    const decoder = new global.TextDecoder("utf-8");
 
     global.Go = class {
         constructor() {
