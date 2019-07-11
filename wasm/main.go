@@ -96,13 +96,12 @@ func main() {
 						t.Reject(err.Error)
 					}
 				}()
-				return t.ToJS()
+				return t
 			}))
 			return jsObj
 		}),
 	)
 
-	fmt.Println("we did all the things")
 	js.Global().Get("Go").Call("readyResolver")
 
 	<-exitChan

@@ -3,17 +3,11 @@
 package pubsub
 
 import (
-	"context"
 	"fmt"
 	"syscall/js"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
-
-type underlyingSub interface {
-	Next(context.Context) (*pubsub.Message, error)
-	Cancel()
-}
 
 type underlyingPubSub interface {
 	Publish(topic string, data []byte) error

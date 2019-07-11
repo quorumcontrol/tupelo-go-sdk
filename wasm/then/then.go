@@ -83,6 +83,6 @@ func (t *Then) Reject(err interface{}) {
 	t.errorCbs = nil
 }
 
-func (t *Then) ToJS() js.Value {
+func (t *Then) JSValue() js.Value {
 	return t.wrappedJsObj
 }

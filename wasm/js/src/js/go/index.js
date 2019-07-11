@@ -72,8 +72,8 @@
         };
     }
 
-    const encoder = new TextEncoder("utf-8");
-    const decoder = new TextDecoder("utf-8");
+    const encoder = new global.TextEncoder("utf-8");
+    const decoder = new global.TextDecoder("utf-8");
 
     global.Go = class {
         constructor() {
