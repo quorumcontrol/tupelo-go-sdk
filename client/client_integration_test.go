@@ -3,6 +3,8 @@
 package client
 
 import (
+	"strings"
+	"sync"
 	"github.com/quorumcontrol/messages/build/go/services"
 	"github.com/quorumcontrol/messages/build/go/signatures"
 	"context"
@@ -396,19 +398,39 @@ func TestNonOwnerTransactions(t *testing.T) {
 	client := New(ng, chain.MustId(), remote.NewNetworkPubSub(host))
 	defer client.Stop()
 
+	client2 := New(ng, chain.MustId(), remote.NewNetworkPubSub(host))
+	defer client2.Stop()
+
 	treeKey2, err := crypto.GenerateKey()
 	require.Nil(t, err)
 
 	// transaction with non-owner key should fail
 	txn, err := chaintree.NewSetDataTransaction("down/in/the/thing", "sometestvalue")
 	require.Nil(t, err)
-	_, err = client.PlayTransactions(chain, treeKey2, nil, []*transactions.Transaction{txn})
-	require.NotNil(t, err)
 
-	// 2nd transaction with non-owner key should fail
-	txn2, err := chaintree.NewSetDataTransaction("down/in/the/thing", "someothertestvalue")
-	require.Nil(t, err)
-	remoteTip := chain.Tip()
-	_, err = client.PlayTransactions(chain, treeKey2, &remoteTip, []*transactions.Transaction{txn2})
-	require.NotNil(t, err)
+	// this test is a little narly because there aren't errors for invalid transactions
+	// so what we do is send the invalid transaction and then send the valid transaction
+	// the valid one should get signed (even though it was 2nd) and the 1st one should then
+	// error because the tip was changed underneath it
+	invalidTransactionErrorChan := make(chan error)
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
+	go func() {
+		wg.Done()
+		// send a transaction with a key that is not the owner
+		_, err = client.PlayTransactions(chain, treeKey2, nil, []*transactions.Transaction{txn})
+		invalidTransactionErrorChan <-err
+	}()
+	wg.Wait()
+	// sleep here to be doubly certain the invalid Tx went first
+	time.Sleep(100 * time.Millisecond)
+	// send a valid transaction
+	_, err = client2.PlayTransactions(chain, treeKey1, nil, []*transactions.Transaction{txn})
+	// valid transaction should succeed
+	require.Nil(t,err)
+
+	// make sure we got an error back on the invalid transaction (because the tip changed)
+	invalidErr := <-invalidTransactionErrorChan
+	require.NotNil(t, invalidErr)
+	assert.Truef(t, strings.HasPrefix(invalidErr.Error(), "error signature at same height did not match transaction new tip"), "error was: %s", invalidErr.Error())
 }

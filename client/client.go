@@ -292,6 +292,8 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 	switch respVal := uncastResp.(type) {
 	case *signatures.CurrentState:
 		resp = respVal
+	case error:
+		return nil, respVal
 	default:
 		c.log.Debugw("transaction resulted in an unrecognized response type", "response", respVal)
 		return nil, fmt.Errorf("error unrecognized response type: %T", respVal)
