@@ -1,15 +1,25 @@
+// +build wasm
+
 package main
 
 import (
 	"context"
 	"fmt"
+	"syscall/js"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/messages/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/pubsub"
 )
+
+var exitChan chan bool
+
+func init() {
+	exitChan = make(chan bool)
+}
 
 func doIt() error {
 	ctx := context.TODO()
@@ -52,9 +62,39 @@ func doIt() error {
 }
 
 func main() {
-	err := doIt()
-	if err != nil {
-		panic(err)
-	}
+	// err := doIt()
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	js.Global().Get("Go").Set("exit", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		exitChan <- true
+		return nil
+	}))
+
+	js.Global().Set(
+		"populateLibrary",
+		js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			if len(args) == 0 || !args[0].Truthy() {
+				return js.ValueOf(fmt.Errorf("error, must supply a valid object"))
+			}
+
+			jsObj := args[0]
+
+			jsObj.Set("publish", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				go func() {
+					fmt.Println("args: ", args)
+					gopub := pubsub.NewPubSubBridge(args[0])
+					gopub.Publish("test", []byte("hi"))
+				}()
+				return nil
+			}))
+			return jsObj
+		}),
+	)
+
 	fmt.Println("we did all the things")
+	js.Global().Get("Go").Call("readyResolver")
+
+	<-exitChan
 }

@@ -448,10 +448,11 @@ const runner = {
     run: async (path) => {
         const go = new Go();
         go.env = Object.assign({ TMPDIR: require("os").tmpdir() }, process.env);
-        go.exit = process.exit;
+        // go.exit = process.exit;
         const result = await WebAssembly.instantiate(fs.readFileSync(path), go.importObject)
         
         process.on("exit", (code) => { // Node.js exits if no event handler is pending
+            Go.exit();
             if (code === 0 && !go.exited) {
                 // deadlock, make Go print error and stack traces
                 go._pendingEvent = { id: 0 };
@@ -462,6 +463,9 @@ const runner = {
     },
     ready: async (path) => {
         return global.Go.readyPromise;
+    },
+    populate: (obj) => {
+        return global.populateLibrary(obj);
     }
 }
 
