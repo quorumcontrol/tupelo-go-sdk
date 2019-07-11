@@ -50,6 +50,10 @@ type Client struct {
 	stream     *eventstream.EventStream
 }
 
+type Subscription struct {
+	subscription *eventstream.Subscription
+}
+
 // New instantiates a Client specific to a ChainTree/NotaryGroup
 func New(group *types.NotaryGroup, treeDid string, pubsub remote.PubSub) *Client {
 	cache, err := lru.New(10000)
@@ -132,6 +136,8 @@ func (c *Client) TipRequest() (*signatures.CurrentState, error) {
 
 // Subscribe returns a future that will return when the height the transaction
 // is targeting is complete or an error with the transaction occurs.
+//
+// TODO: return Subscription instead of actor.Future
 func (c *Client) Subscribe(trans *services.AddBlockRequest, timeout time.Duration) *actor.Future {
 	if !c.alreadyListening() {
 		c.Listen()
@@ -191,7 +197,7 @@ func (c *Client) Subscribe(trans *services.AddBlockRequest, timeout time.Duratio
 
 // SubscribeAll accepts a callback that forwards all CurrentState messages
 // broadcasted on tupelo-commits
-func (c *Client) SubscribeAll(fn func(msg *signatures.CurrentState)) (func(), error) {
+func (c *Client) SubscribeAll(fn func(msg *signatures.CurrentState)) (*Subscription, error) {
 	if !c.alreadyListening() {
 		c.Listen()
 	}
@@ -203,8 +209,13 @@ func (c *Client) SubscribeAll(fn func(msg *signatures.CurrentState)) (func(), er
 		}
 	})
 
-	cancelFn := func() { c.stream.Unsubscribe(sub) }
-	return cancelFn, nil
+	return &Subscription{subscription: sub}, nil
+}
+
+// Unsubscribe removes subscription from eventstream
+// currently only used for SubscribeAll
+func (c *Client) Unsubscribe(s *Subscription) {
+	c.stream.Unsubscribe(s.subscription)
 }
 
 // SendTransaction sends a transaction to a signer.

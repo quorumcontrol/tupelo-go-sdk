@@ -74,11 +74,11 @@ func TestSubscribeAll(t *testing.T) {
 	states := make([]*signatures.CurrentState, 2)
 	i := 0
 
-	cancel, err := client.SubscribeAll(func(msg *signatures.CurrentState) {
+	sub, err := client.SubscribeAll(func(msg *signatures.CurrentState) {
 		states[i] = msg
 		i++
 	})
-	defer cancel()
+	defer client.Unsubscribe(sub)
 	require.Nil(t, err)
 
 	time.Sleep(100 * time.Millisecond)
