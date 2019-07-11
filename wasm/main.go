@@ -13,6 +13,7 @@ import (
 	"github.com/quorumcontrol/messages/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/pubsub"
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/then"
 )
 
 var exitChan chan bool
@@ -81,13 +82,21 @@ func main() {
 
 			jsObj := args[0]
 
+
 			jsObj.Set("publish", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				t := then.New()
 				go func() {
+					fmt.Println("publish: ", t)
 					fmt.Println("args: ", args)
 					gopub := pubsub.NewPubSubBridge(args[0])
-					gopub.Publish("test", []byte("hi"))
+					err := gopub.Publish("test", []byte("hi"))
+					if err == nil {
+						t.Resolve(true)
+					} else {
+						t.Reject(err.Error)
+					}
 				}()
-				return nil
+				return t.ToJS()
 			}))
 			return jsObj
 		}),

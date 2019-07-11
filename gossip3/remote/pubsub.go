@@ -25,16 +25,30 @@ type PubSub interface {
 	Subscribe(ctx spawner, topic string, subscribers ...*actor.PID) *actor.PID
 }
 
-type libp2pSub interface {
+type underlyingSub interface {
 	Next(context.Context) (*pubsub.Message, error)
 	Cancel()
 }
 
-type libp2pPubsub interface {
+type underlyingPubSub interface {
 	Publish(topic string, data []byte) error
 	RegisterTopicValidator(topic string, fn pubsub.Validator, opts ...pubsub.ValidatorOpt) error
 	UnregisterTopicValidator(topic string) error
-	Subscribe(topic string, opts ...pubsub.SubOpt) (*pubsub.Subscription, error)
+	Subscribe(topic string, opts ...pubsub.SubOpt) (underlyingSub, error)
+}
+
+type libp2pWrapper struct {
+	*pubsub.PubSub
+}
+
+func (lpw *libp2pWrapper) Subscribe(topic string, opts ...pubsub.SubOpt) (underlyingSub, error) {
+	return lpw.PubSub.Subscribe(topic, opts...)
+}
+
+func wrapLibp2p(libp2ppubsub *pubsub.PubSub) underlyingPubSub {
+	return &libp2pWrapper{
+		PubSub: libp2ppubsub,
+	}
 }
 
 type spawner interface {
@@ -44,13 +58,19 @@ type spawner interface {
 // NetworkPubSub implements the broadcast interface necessary
 // for the client
 type NetworkPubSub struct {
-	pubsub libp2pPubsub
+	pubsub underlyingPubSub
 	log    *zap.SugaredLogger
 }
 
 // NewNetworkPubSub returns a NetworkBroadcaster that can be used
 // to send messages.WireMessage across the p2p network using pubsub.
-func NewNetworkPubSub(pubsub libp2pPubsub) *NetworkPubSub {
+func NewNetworkPubSub(pubsub *pubsub.PubSub) *NetworkPubSub {
+	return NewWrappedPubsub(wrapLibp2p(pubsub))
+}
+
+// NewWrappedPubsub takes any pubsub that conforms to the `underlyingPubSub` interface
+// and returns a wrapped NetworkPubSub
+func NewWrappedPubsub(pubsub underlyingPubSub) *NetworkPubSub {
 	return &NetworkPubSub{
 		pubsub: pubsub,
 		log:    middleware.Log.Named("network-pubsub"),
@@ -114,8 +134,8 @@ type broadcastSubscriber struct {
 
 	subCtx       context.Context
 	cancelFunc   context.CancelFunc
-	subscription libp2pSub
-	pubsub       libp2pPubsub
+	subscription underlyingSub
+	pubsub       underlyingPubSub
 	topicName    string
 	subscribers  []*actor.PID
 	notifyParent bool
@@ -125,7 +145,7 @@ type broadcastSubscriber struct {
 // A NetworkSubscriber is a subscription to a pubsub style system for a specific message type
 // it is designed to be spawned inside another context so that it can use Parent in order to
 // deliver the messages
-func newBroadcastSubscriberProps(topic string, pubsub libp2pPubsub, notifyParent bool, subscribers ...*actor.PID) *actor.Props {
+func newBroadcastSubscriberProps(topic string, pubsub underlyingPubSub, notifyParent bool, subscribers ...*actor.PID) *actor.Props {
 	ctx, cancel := context.WithCancel(context.Background())
 	return actor.PropsFromProducer(func() actor.Actor {
 		return &broadcastSubscriber{
