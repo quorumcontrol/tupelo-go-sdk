@@ -1,11 +1,11 @@
 package client
 
 import (
-	"github.com/quorumcontrol/messages/build/go/signatures"
 	"errors"
 	"testing"
 	"time"
 
+	"github.com/quorumcontrol/messages/build/go/signatures"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/remote"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/testhelpers"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
@@ -60,4 +60,50 @@ func TestSubscription(t *testing.T) {
 		require.Nil(t, err)
 		require.IsType(t, errors.New("error"), res)
 	})
+}
+
+func TestSubscribeAll(t *testing.T) {
+	ng := types.NewNotaryGroup("testSubscriptions")
+	trans := testhelpers.NewValidTransaction(t)
+	pubSubSystem := remote.NewSimulatedPubSub()
+	did := string(trans.ObjectId)
+
+	client := New(ng, did, pubSubSystem)
+	defer client.Stop()
+
+	states := make([]*signatures.CurrentState, 2)
+	i := 0
+
+	sub, err := client.SubscribeAll(func(msg *signatures.CurrentState) {
+		states[i] = msg
+		i++
+	})
+	defer client.Unsubscribe(sub)
+	require.Nil(t, err)
+
+	time.Sleep(100 * time.Millisecond)
+	state1 := &signatures.CurrentState{
+		Signature: &signatures.Signature{
+			ObjectId: trans.ObjectId,
+			Height:   trans.Height,
+			NewTip:   trans.NewTip,
+		},
+	}
+	err = pubSubSystem.Broadcast(did, state1)
+	require.Nil(t, err)
+
+	state2 := &signatures.CurrentState{
+		Signature: &signatures.Signature{
+			ObjectId: trans.ObjectId,
+			Height:   trans.Height + 1,
+			NewTip:   trans.NewTip,
+		},
+	}
+	err = pubSubSystem.Broadcast(did, state2)
+	require.Nil(t, err)
+
+	time.Sleep(100 * time.Millisecond)
+	require.Equal(t, len(states), 2)
+	require.Equal(t, states[0], state1)
+	require.Equal(t, states[1], state2)
 }
