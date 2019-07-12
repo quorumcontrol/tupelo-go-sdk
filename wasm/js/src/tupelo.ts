@@ -20,8 +20,11 @@ class UnderlyingWasm {
     constructor() {
         this._populated = false;
     }
-    testpubsub(publisher:IPubSub) {
-        return new Promise((res,rej)=> {});
+    testpubsub(publisher:IPubSub):Promise<String>{
+        return new Promise<String>((res,rej)=> {}); // replaced by wasm
+    }
+    generateKey():Promise<Uint8Array> {
+        return new Promise<Uint8Array>((res,rej)=> {}) // replaced by wasm
     }
 }
 
@@ -43,7 +46,10 @@ export namespace TupeloWasm {
 
 export namespace Tupelo {
 
-   
+   export async function generateKey():Promise<Uint8Array> {
+       const tw = await TupeloWasm.get()
+       return tw.generateKey()
+   }
 }
 
 export default Tupelo

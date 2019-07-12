@@ -8,9 +8,8 @@ import (
 	"syscall/js"
 )
 
-// then implements the javascript thenable interface https://javascript.info/async-await
-// so that go can return something to js and js can `await` it
-
+// Then implements the javascript `Thenable` interface https://javascript.info/async-await
+// so that Go can return something to js and js can `await` it
 type Then struct {
 	result       interface{}
 	err          interface{}
@@ -42,7 +41,7 @@ func New() *Then {
 }
 
 func (t *Then) handleJSThenCall(resolve js.Value, reject js.Value) error {
-	go fmt.Println("then called")
+	go fmt.Println("then called") // make sure to do this logging in a go routine because otherwise it's a deadlock
 	if t.result != nil {
 		go resolve.Invoke(js.ValueOf(t.result))
 		return nil

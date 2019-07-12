@@ -15,6 +15,7 @@ import (
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/pubsub"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/then"
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jsclient"
 )
 
 var exitChan chan bool
@@ -83,6 +84,10 @@ func main() {
 
 			jsObj := args[0]
 
+			jsObj.Set("generateKey", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				c := jsclient.New()
+				return c.GenerateKey()
+			}))
 
 			jsObj.Set("testpubsub", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				t := then.New()
