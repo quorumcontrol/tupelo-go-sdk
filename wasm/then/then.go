@@ -42,6 +42,7 @@ func New() *Then {
 }
 
 func (t *Then) handleJSThenCall(resolve js.Value, reject js.Value) error {
+	go fmt.Println("then called")
 	if t.result != nil {
 		go resolve.Invoke(js.ValueOf(t.result))
 		return nil

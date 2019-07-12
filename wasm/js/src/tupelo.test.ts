@@ -1,11 +1,6 @@
 import './extendedglobal';
 
-import { Tupelo, TupeloWasm } from './tupelo';
-
-test('basic', async () => {
-  const res = await Tupelo.publish("test", new Uint8Array([1,2,3,4]))
-  expect(res).toBeTruthy();
-});
+import { TupeloWasm } from './tupelo';
 
 test('function population', async() => {
   const wasm = await TupeloWasm.get()

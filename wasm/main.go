@@ -3,6 +3,7 @@
 package main
 
 import (
+	"time"
 	"context"
 	"fmt"
 	"syscall/js"
@@ -83,17 +84,27 @@ func main() {
 			jsObj := args[0]
 
 
-			jsObj.Set("publish", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			jsObj.Set("testpubsub", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				t := then.New()
 				go func() {
-					fmt.Println("publish: ", t)
-					fmt.Println("args: ", args)
 					gopub := pubsub.NewPubSubBridge(args[0])
-					err := gopub.Publish("test", []byte("hi"))
+					sub,err := gopub.Subscribe("test")
+					if err != nil {
+						t.Reject(err.Error())
+					} 
+					ctx,cancel := context.WithTimeout(context.Background(), 2 * time.Second)
+					defer cancel()
+					
+					err = gopub.Publish("test", []byte("hi"))
+					if err != nil {
+						t.Reject(err.Error())
+					} 
+					
+					msg,err := sub.Next(ctx)
 					if err == nil {
-						t.Resolve(true)
+						t.Resolve(js.TypedArrayOf(msg.Data))
 					} else {
-						t.Reject(err.Error)
+						t.Reject(err.Error())
 					}
 				}()
 				return t

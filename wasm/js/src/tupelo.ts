@@ -2,11 +2,16 @@ declare const Go: any;
 
 import * as go from "./js/go"
 
-export class FakePublisher {
+class FakePublisher {
     public publish(topic:string, data:Uint8Array, cb:Function) {
         console.log("publishing ", data, " on ", topic, "cb ", cb)
         cb(null)
     }
+}
+
+export interface IPubSub {
+    publish(topic:string, data:Uint8Array, cb:Function):null
+    subscribe(topic:string, onMsg:Function, cb:Function):null
 }
 
 class UnderlyingWasm {
@@ -15,8 +20,8 @@ class UnderlyingWasm {
     constructor() {
         this._populated = false;
     }
-    publish(publisher:FakePublisher) {
-        return new Error("this should be swapped out by wasm")
+    testpubsub(publisher:IPubSub) {
+        return new Promise((res,rej)=> {});
     }
 }
 
@@ -38,10 +43,7 @@ export namespace TupeloWasm {
 
 export namespace Tupelo {
 
-    export async function publish(topic:string, data:Uint8Array):Promise<any> {
-        const tw = await TupeloWasm.get()
-        return tw.publish(new FakePublisher())
-    }
+   
 }
 
 export default Tupelo
