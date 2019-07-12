@@ -18,6 +18,8 @@ type underlyingSub interface {
 }
 
 type BridgedSubscription struct {
+	underlyingSub
+
 	topic string
 	ch    chan *libpubsub.Message
 }
@@ -45,12 +47,12 @@ func (bs *BridgedSubscription) Cancel() {
 
 func (bs *BridgedSubscription) QueueJS(msg js.Value) {
 	fmt.Println("received subscription message")
-	// pubsubMsg := &libpubsub.Message{}
 	pubsubMsg := &libpubsub.Message{
 		Message: &pb.Message{
 			From:     []byte(msg.Get("from").String()),
-			Data:     jsBufferToByes(msg.Get("data")),
-			TopicIDs: []string{msg.Get("topicIDs").Index(0).String()},
+			Seqno:    jsBufferToBytes(msg.Get("seqno")),
+			Data:     jsBufferToBytes(msg.Get("data")),
+			TopicIDs: jsStringArrayToStringSlice(msg.Get("topicIDs")),
 		},
 	}
 	fmt.Println("after assigning")
@@ -65,7 +67,16 @@ func (bs *BridgedSubscription) QueueJS(msg js.Value) {
 	//   }
 }
 
-func jsBufferToByes(buf js.Value) []byte {
+func jsStringArrayToStringSlice(jsStrArray js.Value) []string {
+	len := jsStrArray.Length()
+	strs := make([]string, len)
+	for i := 0; i < len; i++ {
+		strs[i] = jsStrArray.Index(i).String()
+	}
+	return strs
+}
+
+func jsBufferToBytes(buf js.Value) []byte {
 	len := buf.Length()
 	bits := make([]byte, len)
 	for i := 0; i < len; i++ {
