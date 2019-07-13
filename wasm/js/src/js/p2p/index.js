@@ -11,6 +11,8 @@ const multiaddr = require('multiaddr')
 const PeerInfo = require('peer-info')
 const crypto = require('libp2p-crypto').keys
 const PeerId = require('peer-id')
+const TCP = require('libp2p-tcp')
+
 
 // Find this list at: https://github.com/ipfs/js-ipfs/blob/master/src/core/runtime/config-nodejs.json
 // const bootstrapers = [
@@ -25,7 +27,10 @@ const PeerId = require('peer-id')
 //   '/ip4/104.236.151.122/tcp/4001/p2p/QmSoLju6m7xTh3DuokvT3886QRYqxAzb1kShaasnJgW36yx'
 // ]
 const bootstrapers = [
-  "/ip4/192.168.2.112/tcp/53761/ws/ipfs/Qmdo9yooFfoxLCECUv9MD3YmWcvoTt9mAMLnu3RypTYUMx"
+  "/ip4/192.168.2.112/tcp/34001/ipfs/16Uiu2HAm3TGSEKEjagcCojSJeaT5rypaeJMKejijvYSnAjviWwV5",
+  "/ip4/192.168.2.112/tcp/56106/ipfs/16Uiu2HAmDV2XhGmQLXiEpUgJMXfjaWPq1uyGkvowXuBX4cez1kyH",
+  "/ip4/192.168.2.112/tcp/56109/ipfs/16Uiu2HAkuYPjGxFPQNdSkqqSwmhWiYWsEjj14mz4MW9UqU6qoT8N",
+  "/ip4/192.168.2.112/tcp/56112/ipfs/16Uiu2HAmRJEf1SG7d1B1XPscZBEt2d8BJkL9ZLjFF1kvNoq5Cytt",
   // "/ip4/192.168.2.112/tcp/64302/ws/ipfs/QmZpDxFWd6fyVspmkeKYwhscXPwQrWHdt1C39EPEcPQpuv"
   // "/ip4/192.168.2.112/tcp/9000/http/p2p-webrtc-direct/ipfs/16Uiu2HAm3TGSEKEjagcCojSJeaT5rypaeJMKejijvYSnAjviWwV5"
 ]
@@ -43,6 +48,7 @@ class TupeloP2P extends libp2p {
       modules: {
         transport: [
           WS,
+          TCP,
         ],
         streamMuxer: [
           Multiplex
@@ -97,6 +103,7 @@ module.exports.CreateNode = async function() {
       }
       const peerID = new PeerId(digest, key, key.public);
       const peerInfo = new PeerInfo(peerID);
+      peerInfo.multiaddrs.add('/ip4/0.0.0.0/tcp/0')
       const node = new TupeloP2P({
         peerInfo
       });

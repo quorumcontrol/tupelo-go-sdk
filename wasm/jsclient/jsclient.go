@@ -3,10 +3,27 @@
 package jsclient
 
 import (
+	"context"
+	"crypto/ecdsa"
+	"fmt"
 	"syscall/js"
+
+	"github.com/quorumcontrol/messages/build/go/services"
+
+	"github.com/golang/protobuf/proto"
+
+	"github.com/pkg/errors"
+	"github.com/quorumcontrol/chaintree/nodestore"
+	"github.com/quorumcontrol/messages/build/go/transactions"
+	"github.com/quorumcontrol/tupelo-go-sdk/client"
+	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/remote"
+
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/pubsub"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/helpers"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/then"
 )
 
@@ -30,13 +47,90 @@ var hardcodedHumanConfig = &types.HumanConfig{
 
 // JSClient is a javascript bridging client
 type JSClient struct {
+	pubsub      remote.PubSub
+	notaryGroup *types.NotaryGroup
 }
 
-func New() *JSClient {
-	return &JSClient{}
+func New(pubsub *pubsub.PubSubBridge) *JSClient {
+	// for now we're just going to hard code things
+	ngConfig, err := types.HumanConfigToConfig(hardcodedHumanConfig)
+	if err != nil {
+		panic(errors.Wrap(err, "error decoding human config"))
+	}
+
+	ng := types.NewNotaryGroupFromConfig(ngConfig)
+
+	wrapped := remote.NewWrappedPubsub(pubsub)
+
+	return &JSClient{
+		pubsub:      wrapped,
+		notaryGroup: ng,
+	}
 }
 
-func (jsc *JSClient) GenerateKey() *then.Then {
+func (jsc *JSClient) PlayTransactions(jsKeyBits js.Value, jsTransactions js.Value) interface{} {
+	t := then.New()
+	go func() {
+		fmt.Println("play transactions in client")
+		transLength := jsTransactions.Length()
+		transBits := make([][]byte, transLength)
+		for i := 0; i < transLength; i++ {
+			jsVal := jsTransactions.Index(i)
+			transBits[i] = helpers.JsBufferToBytes(jsVal)
+		}
+
+		trans := make([]*transactions.Transaction, len(transBits))
+		for i, bits := range transBits {
+			tran := &transactions.Transaction{}
+			err := proto.Unmarshal(bits, tran)
+			if err != nil {
+				t.Reject(err.Error())
+				return
+			}
+			trans[i] = tran
+		}
+
+		fmt.Printf("transactions: %v", trans)
+
+		keybits := helpers.JsBufferToBytes(jsKeyBits)
+		key, err := crypto.ToECDSA(keybits)
+		if err != nil {
+			t.Reject(err.Error())
+			return
+		}
+
+		resp, err := jsc.playTransactions(key, trans)
+		if err != nil {
+			t.Reject(err.Error())
+			return
+		}
+
+		respBits, err := proto.Marshal(&services.PlayTransactionsResponse{
+			Tip: resp.Tip.String(),
+		})
+		if err != nil {
+			t.Reject(err.Error())
+			return
+		}
+		t.Resolve(js.TypedArrayOf(respBits))
+	}()
+
+	return t
+}
+
+func (jsc *JSClient) playTransactions(treeKey *ecdsa.PrivateKey, transactions []*transactions.Transaction) (*consensus.AddBlockResponse, error) {
+	fmt.Println("playtransactions in the go side")
+	did := consensus.EcdsaPubkeyToDid(treeKey.PublicKey)
+	c := client.New(jsc.notaryGroup, did, jsc.pubsub)
+
+	tree, err := consensus.NewSignedChainTree(treeKey.PublicKey, nodestore.MustMemoryStore(context.TODO()))
+	if err != nil {
+		return nil, errors.Wrap(err, "error creating tree")
+	}
+	return c.PlayTransactions(tree, treeKey, nil, transactions)
+}
+
+func GenerateKey() *then.Then {
 	t := then.New()
 	go func() {
 		key, err := crypto.GenerateKey()

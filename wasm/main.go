@@ -45,6 +45,13 @@ func testPubSub(jsPubSubLibrary js.Value) *then.Then {
 	return t
 }
 
+func testClient(args []js.Value) interface {} {
+	go fmt.Println("testclient called")
+	bridge := pubsub.NewPubSubBridge(args[0])
+	cli := jsclient.New(bridge)
+	return cli.PlayTransactions(args[1], args[2])
+}
+
 func main() {
 	js.Global().Get("Go").Set("exit", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		exitChan <- true
@@ -61,7 +68,11 @@ func main() {
 			jsObj := args[0]
 
 			jsObj.Set("generateKey", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				return jsclient.New().GenerateKey()
+				return jsclient.GenerateKey()
+			}))
+
+			jsObj.Set("testclient", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				return testClient(args)
 			}))
 
 			jsObj.Set("testpubsub", js.FuncOf(func(this js.Value, args []js.Value) interface{} {

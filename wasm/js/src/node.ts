@@ -4,6 +4,8 @@ interface INodeCreator {
     pubsub:any;
     start(cb:Function):null;
     stop():null;
+    on(evt:string, cb:Function):null;
+    once(evt:string, cb:Function):null;
 }
 
 export namespace p2p {

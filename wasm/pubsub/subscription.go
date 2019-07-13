@@ -7,18 +7,16 @@ import (
 	"fmt"
 	"syscall/js"
 
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/remote"
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/helpers"
+
 	pb "github.com/libp2p/go-libp2p-pubsub/pb"
 
 	libpubsub "github.com/libp2p/go-libp2p-pubsub"
 )
 
-type underlyingSub interface {
-	Next(context.Context) (*libpubsub.Message, error)
-	Cancel()
-}
-
 type BridgedSubscription struct {
-	underlyingSub
+	remote.UnderlyingSubscription
 
 	topic string
 	ch    chan *libpubsub.Message
@@ -47,17 +45,6 @@ func (bs *BridgedSubscription) Cancel() {
 
 func (bs *BridgedSubscription) QueueJS(msg js.Value) {
 	fmt.Println("received subscription message")
-	pubsubMsg := &libpubsub.Message{
-		Message: &pb.Message{
-			From:     []byte(msg.Get("from").String()),
-			Seqno:    jsBufferToBytes(msg.Get("seqno")),
-			Data:     jsBufferToBytes(msg.Get("data")),
-			TopicIDs: jsStringArrayToStringSlice(msg.Get("topicIDs")),
-		},
-	}
-	fmt.Println("after assigning")
-	bs.ch <- pubsubMsg
-
 	// js looks like:
 	// {
 	//     from: 'QmSWBdQGuX8Uregx8QSKxCxk1tacQPgJqX1AXnSUnzDyEM',
@@ -65,22 +52,15 @@ func (bs *BridgedSubscription) QueueJS(msg js.Value) {
 	//     seqno: <Buffer fe 54 4a ad 49 b4 94 5d 09 98 ad 0e ad 70 43 33 4c fc 4f a5>,
 	//     topicIDs: [ 'test' ]
 	//   }
-}
-
-func jsStringArrayToStringSlice(jsStrArray js.Value) []string {
-	len := jsStrArray.Length()
-	strs := make([]string, len)
-	for i := 0; i < len; i++ {
-		strs[i] = jsStrArray.Index(i).String()
+	pubsubMsg := &libpubsub.Message{
+		Message: &pb.Message{
+			From:     []byte(msg.Get("from").String()),
+			Seqno:    helpers.JsBufferToBytes(msg.Get("seqno")),
+			Data:     helpers.JsBufferToBytes(msg.Get("data")),
+			TopicIDs: helpers.JsStringArrayToStringSlice(msg.Get("topicIDs")),
+		},
 	}
-	return strs
-}
+	fmt.Println("after assigning")
+	bs.ch <- pubsubMsg
 
-func jsBufferToBytes(buf js.Value) []byte {
-	len := buf.Length()
-	bits := make([]byte, len)
-	for i := 0; i < len; i++ {
-		bits[i] = byte(uint8(buf.Index(i).Int()))
-	}
-	return bits
 }
