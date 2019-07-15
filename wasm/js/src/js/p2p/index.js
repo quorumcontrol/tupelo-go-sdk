@@ -31,9 +31,9 @@ const RoutingDiscovery = require('./discovery')
 // ]
 const bootstrapers = [
   "/ip4/192.168.2.112/tcp/34001/ipfs/16Uiu2HAm3TGSEKEjagcCojSJeaT5rypaeJMKejijvYSnAjviWwV5",
-  // "/ip4/192.168.2.112/tcp/62292/ipfs/16Uiu2HAmDV2XhGmQLXiEpUgJMXfjaWPq1uyGkvowXuBX4cez1kyH",
-  // "/ip4/192.168.2.112/tcp/62295/ipfs/16Uiu2HAmRJEf1SG7d1B1XPscZBEt2d8BJkL9ZLjFF1kvNoq5Cytt",
-  // "/ip4/192.168.2.112/tcp/62298/ipfs/16Uiu2HAkuYPjGxFPQNdSkqqSwmhWiYWsEjj14mz4MW9UqU6qoT8N",
+  "/ip4/192.168.2.112/tcp/62292/ipfs/16Uiu2HAmDV2XhGmQLXiEpUgJMXfjaWPq1uyGkvowXuBX4cez1kyH",
+  "/ip4/192.168.2.112/tcp/62295/ipfs/16Uiu2HAmRJEf1SG7d1B1XPscZBEt2d8BJkL9ZLjFF1kvNoq5Cytt",
+  "/ip4/192.168.2.112/tcp/62298/ipfs/16Uiu2HAkuYPjGxFPQNdSkqqSwmhWiYWsEjj14mz4MW9UqU6qoT8N",
   // "/ip4/192.168.2.112/tcp/64302/ws/ipfs/QmZpDxFWd6fyVspmkeKYwhscXPwQrWHdt1C39EPEcPQpuv"
   // "/ip4/192.168.2.112/tcp/9000/http/p2p-webrtc-direct/ipfs/16Uiu2HAm3TGSEKEjagcCojSJeaT5rypaeJMKejijvYSnAjviWwV5"
 ]
@@ -85,16 +85,15 @@ class TupeloP2P extends libp2p {
       }
     }
 
-
     super(mergeOptions(defaults, _options))
-    routingDiscoverer.node = this;
-    // this.once('peer:connect', () => {
-    //   routingDiscoverer.start(() => {
-    //     console.log("discovery started");
-    //   })
-    // })
+    // routingDiscoverer.node = this;
+    // // this.once('peer:connect', () => {
+    // //   routingDiscoverer.start(() => {
+    // //     console.log("discovery started");
+    // //   })
+    // // })
    
-    this._routingDiscoverer = routingDiscoverer
+    // this._routingDiscoverer = routingDiscoverer
   }
 }
 
