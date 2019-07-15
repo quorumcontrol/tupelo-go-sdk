@@ -94,7 +94,7 @@ class RoutingDiscovery extends EventEmitter {
         this.node.contentRouting.findProviders(this._nsCid, 1800, (err, providers) => {
             if (err) { throw err }
         
-            for (var peerInfo of providers) {
+            for (const peerInfo of providers) {
                 this.stub().emit('peer', peerInfo)
             }
         })
