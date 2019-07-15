@@ -1,7 +1,7 @@
 declare const Go: any;
 
 import * as go from "./js/go"
-import { Transaction } from '/Users/tobowers/code/messages/build/js/transactions/transactions_pb'
+import { Transaction } from 'tupelo-messages'
 
 class FakePublisher {
     public publish(topic:string, data:Uint8Array, cb:Function) {
