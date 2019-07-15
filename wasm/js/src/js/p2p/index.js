@@ -14,6 +14,8 @@ const PeerId = require('peer-id')
 const TCP = require('libp2p-tcp')
 const util = require('util')
 
+const RoutingDiscovery = require('./discovery')
+
 
 // Find this list at: https://github.com/ipfs/js-ipfs/blob/master/src/core/runtime/config-nodejs.json
 // const bootstrapers = [
@@ -29,15 +31,17 @@ const util = require('util')
 // ]
 const bootstrapers = [
   "/ip4/192.168.2.112/tcp/34001/ipfs/16Uiu2HAm3TGSEKEjagcCojSJeaT5rypaeJMKejijvYSnAjviWwV5",
-  "/ip4/192.168.2.112/tcp/62292/ipfs/16Uiu2HAmDV2XhGmQLXiEpUgJMXfjaWPq1uyGkvowXuBX4cez1kyH",
-  "/ip4/192.168.2.112/tcp/62295/ipfs/16Uiu2HAmRJEf1SG7d1B1XPscZBEt2d8BJkL9ZLjFF1kvNoq5Cytt",
-  "/ip4/192.168.2.112/tcp/62298/ipfs/16Uiu2HAkuYPjGxFPQNdSkqqSwmhWiYWsEjj14mz4MW9UqU6qoT8N",
+  // "/ip4/192.168.2.112/tcp/62292/ipfs/16Uiu2HAmDV2XhGmQLXiEpUgJMXfjaWPq1uyGkvowXuBX4cez1kyH",
+  // "/ip4/192.168.2.112/tcp/62295/ipfs/16Uiu2HAmRJEf1SG7d1B1XPscZBEt2d8BJkL9ZLjFF1kvNoq5Cytt",
+  // "/ip4/192.168.2.112/tcp/62298/ipfs/16Uiu2HAkuYPjGxFPQNdSkqqSwmhWiYWsEjj14mz4MW9UqU6qoT8N",
   // "/ip4/192.168.2.112/tcp/64302/ws/ipfs/QmZpDxFWd6fyVspmkeKYwhscXPwQrWHdt1C39EPEcPQpuv"
   // "/ip4/192.168.2.112/tcp/9000/http/p2p-webrtc-direct/ipfs/16Uiu2HAm3TGSEKEjagcCojSJeaT5rypaeJMKejijvYSnAjviWwV5"
 ]
 
 class TupeloP2P extends libp2p {
   constructor (_options) {
+    const routingDiscoverer = new RoutingDiscovery({namespace: 'tupelo-transaction-gossipers'});
+
     const defaults = {
       switch: {
         blacklistTTL: 2 * 60 * 1e3, // 2 minute base
@@ -58,7 +62,8 @@ class TupeloP2P extends libp2p {
           SECIO
         ],
         peerDiscovery: [
-          Bootstrap
+          Bootstrap,
+          routingDiscoverer.stub()
         ],
         dht: KadDHT
       },
@@ -71,7 +76,8 @@ class TupeloP2P extends libp2p {
           }
         },
         dht: {
-          enabled: false
+          kBucketSize: 20, // taken from https://github.com/ipfs/js-ipfs/blob/master/src/core/runtime/libp2p-nodejs.js
+          enabled: false,
         },
         EXPERIMENTAL: {
           pubsub: true
@@ -79,14 +85,23 @@ class TupeloP2P extends libp2p {
       }
     }
 
+
     super(mergeOptions(defaults, _options))
+    routingDiscoverer.node = this;
+    // this.once('peer:connect', () => {
+    //   routingDiscoverer.start(() => {
+    //     console.log("discovery started");
+    //   })
+    // })
+   
+    this._routingDiscoverer = routingDiscoverer
   }
 }
 
 module.exports.TupeloP2P = TupeloP2P
 
 module.exports.CreateNode = async function() {
-  var resolve, reject;
+  let resolve, reject;
   const p = new Promise((res,rej) => {
       resolve = res;
       reject = rej;
@@ -103,9 +118,7 @@ module.exports.CreateNode = async function() {
     const node = new TupeloP2P({
       peerInfo
     });
-    // const peerIdStr = peerID.toB58String();
     console.log("peerIdStr ", peerID.toB58String());
-    // node.idStr = peerIdStr;
     process.on("exit", () => {
         node.stop();
     });
