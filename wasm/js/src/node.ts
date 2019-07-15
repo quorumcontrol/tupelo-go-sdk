@@ -6,6 +6,7 @@ interface INodeCreator {
     stop():null;
     on(evt:string, cb:Function):null;
     once(evt:string, cb:Function):null;
+    emit(evt:string):null;
 }
 
 export namespace p2p {

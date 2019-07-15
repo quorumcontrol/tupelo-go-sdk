@@ -42,12 +42,8 @@ describe('Tupelo', () => {
     node.on('error', (err:any) => {
       console.log('error')
     })
-  
-    node.on('peer:connect', async () => {
-      console.log("peer connect")
-    })
-  
-    node.once('peer:connect', async ()=> {
+
+    node.once('enoughdiscovery', async ()=> {
       Tupelo.playTransactions(node.pubsub, key, [trans]).then(
         (success)=> {
           expect(success).to.be.an.instanceOf(Uint8Array)
@@ -57,6 +53,16 @@ describe('Tupelo', () => {
           expect(err).to.be.null
           resolve(true)
       })
+    })
+  
+    let connected = 0;
+
+    node.on('peer:connect', async ()=> {
+      console.log("peer connect")
+      connected++
+      if (connected >= 2) {
+        node.emit('enoughdiscovery')
+      }
     })
   
     node.start(()=>{

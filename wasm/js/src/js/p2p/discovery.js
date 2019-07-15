@@ -60,7 +60,7 @@ class RoutingDiscovery extends EventEmitter {
         this._stub = new RoutingStub({parent: this})
 
         this._namespace = options.namespace
-        this._interval = options.interval || 5000
+        this._interval = options.interval || 2000
         this._timer = null
     }
 
@@ -91,11 +91,13 @@ class RoutingDiscovery extends EventEmitter {
         if (!this._nsCid) {
             this._nsCid = await nsToCid(this._namespace);
         }
-        this.node.contentRouting.findProviders(this._nsCid, 5000, (err, providers) => {
+        this.node.contentRouting.findProviders(this._nsCid, 1800, (err, providers) => {
             if (err) { throw err }
         
-            console.log('Found provider:', providers[0].id.toB58String())
-          })
+            for (var peerInfo of providers) {
+                this.stub().emit('peer', peerInfo)
+            }
+        })
     }
 
     stop(callback) {
