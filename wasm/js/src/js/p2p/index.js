@@ -12,6 +12,7 @@ const PeerInfo = require('peer-info')
 const crypto = require('libp2p-crypto').keys
 const PeerId = require('peer-id')
 const TCP = require('libp2p-tcp')
+const util = require('util')
 
 
 // Find this list at: https://github.com/ipfs/js-ipfs/blob/master/src/core/runtime/config-nodejs.json
@@ -28,9 +29,9 @@ const TCP = require('libp2p-tcp')
 // ]
 const bootstrapers = [
   "/ip4/192.168.2.112/tcp/34001/ipfs/16Uiu2HAm3TGSEKEjagcCojSJeaT5rypaeJMKejijvYSnAjviWwV5",
-  "/ip4/192.168.2.112/tcp/56106/ipfs/16Uiu2HAmDV2XhGmQLXiEpUgJMXfjaWPq1uyGkvowXuBX4cez1kyH",
-  "/ip4/192.168.2.112/tcp/56109/ipfs/16Uiu2HAkuYPjGxFPQNdSkqqSwmhWiYWsEjj14mz4MW9UqU6qoT8N",
-  "/ip4/192.168.2.112/tcp/56112/ipfs/16Uiu2HAmRJEf1SG7d1B1XPscZBEt2d8BJkL9ZLjFF1kvNoq5Cytt",
+  "/ip4/192.168.2.112/tcp/62292/ipfs/16Uiu2HAmDV2XhGmQLXiEpUgJMXfjaWPq1uyGkvowXuBX4cez1kyH",
+  "/ip4/192.168.2.112/tcp/62295/ipfs/16Uiu2HAmRJEf1SG7d1B1XPscZBEt2d8BJkL9ZLjFF1kvNoq5Cytt",
+  "/ip4/192.168.2.112/tcp/62298/ipfs/16Uiu2HAkuYPjGxFPQNdSkqqSwmhWiYWsEjj14mz4MW9UqU6qoT8N",
   // "/ip4/192.168.2.112/tcp/64302/ws/ipfs/QmZpDxFWd6fyVspmkeKYwhscXPwQrWHdt1C39EPEcPQpuv"
   // "/ip4/192.168.2.112/tcp/9000/http/p2p-webrtc-direct/ipfs/16Uiu2HAm3TGSEKEjagcCojSJeaT5rypaeJMKejijvYSnAjviWwV5"
 ]
@@ -90,31 +91,25 @@ module.exports.CreateNode = async function() {
       resolve = res;
       reject = rej;
   });
-  crypto.generateKeyPair('secp256k1', (err, key) => {
+  crypto.generateKeyPair('secp256k1', async (err, key) => {
     if (err) {
       console.error("error generating key pair ", err);
       reject(err);
     }
 
-    key.public.hash((err, digest) => {
-      if (err) {
-        console.error("error hashing ", err)
-        reject(err);
-      }
-      const peerID = new PeerId(digest, key, key.public);
-      const peerInfo = new PeerInfo(peerID);
-      peerInfo.multiaddrs.add('/ip4/0.0.0.0/tcp/0')
-      const node = new TupeloP2P({
-        peerInfo
-      });
-      const peerIdStr = peerID.toB58String();
-      console.log("peerIdStr ", peerIdStr);
-      node.idStr = peerIdStr;
-      process.on("exit", () => {
-          node.stop();
-      });
-      resolve(node);
-    })
+    const peerID = await util.promisify(PeerId.createFromPrivKey)(key.bytes)
+    const peerInfo = new PeerInfo(peerID);
+    peerInfo.multiaddrs.add('/ip4/0.0.0.0/tcp/0')
+    const node = new TupeloP2P({
+      peerInfo
+    });
+    // const peerIdStr = peerID.toB58String();
+    console.log("peerIdStr ", peerID.toB58String());
+    // node.idStr = peerIdStr;
+    process.on("exit", () => {
+        node.stop();
+    });
+    resolve(node);
   })
   return p;
 }
