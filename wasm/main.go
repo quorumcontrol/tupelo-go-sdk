@@ -3,6 +3,8 @@
 package main
 
 import (
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jsstore"
+	"github.com/ipfs/go-cid"
 	"time"
 	"context"
 	"fmt"
@@ -19,9 +21,31 @@ func init() {
 	exitChan = make(chan bool)
 }
 
+func testStore(underlying js.Value, jsCidString js.Value) *then.Then {
+	t := then.New()
+	go func() {
+		wrapped := jsstore.New(underlying)
+		c, err := cid.Decode(jsCidString.String())
+		if err != nil {
+			t.Reject(err.Error)
+			return
+		}
+		fmt.Printf("received CID %s\n", c.String())
+		n, err := wrapped.Get(context.TODO(), c)
+		if err != nil {
+			t.Reject(err.Error)
+			return
+		}
+		fmt.Printf("returned node has data %s and cid %s\n", n.RawData(), n.Cid().String())
+		t.Resolve(n.Cid().String())
+	}()
+	return t
+}
+
 func testPubSub(jsPubSubLibrary js.Value) *then.Then {
 	t := then.New()
 	go func() {
+		fmt.Println("testpubsub called")
 		gopub := pubsub.NewPubSubBridge(jsPubSubLibrary)
 		sub,err := gopub.Subscribe("test")
 		if err != nil {
@@ -73,6 +97,10 @@ func main() {
 
 			jsObj.Set("testclient", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				return testClient(args)
+			}))
+
+			jsObj.Set("teststore", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				return testStore(args[0], args[1])
 			}))
 
 			jsObj.Set("testpubsub", js.FuncOf(func(this js.Value, args []js.Value) interface{} {

@@ -52,6 +52,7 @@ type JSClient struct {
 }
 
 func New(pubsub *pubsub.PubSubBridge) *JSClient {
+	fmt.Println("creating pubsub")
 	// for now we're just going to hard code things
 	ngConfig, err := types.HumanConfigToConfig(hardcodedHumanConfig)
 	if err != nil {

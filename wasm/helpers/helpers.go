@@ -19,3 +19,7 @@ func JsBufferToBytes(buf js.Value) []byte {
 	}
 	return bits
 }
+
+func SliceToJSBuffer(slice []byte) js.Value {
+	return js.Global().Get("Buffer").Call("from", js.TypedArrayOf(slice))
+}
