@@ -1,7 +1,6 @@
 package remote
 
 import (
-	"github.com/quorumcontrol/messages/build/go/services"
 	"bytes"
 	"context"
 	"crypto/ecdsa"
@@ -10,14 +9,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/quorumcontrol/messages/build/go/services"
+
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/gogo/protobuf/proto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/golang/protobuf/proto"
 )
 
 func TestPubSub(t *testing.T) {

@@ -10,7 +10,6 @@ require (
 	github.com/elastic/go-sysinfo v1.0.1 // indirect
 	github.com/ethereum/go-ethereum v1.8.25
 	github.com/gogo/protobuf v1.2.1
-	github.com/golang/protobuf v1.3.1
 	github.com/hashicorp/golang-lru v0.5.1
 	github.com/ipfs/go-bitswap v0.1.5
 	github.com/ipfs/go-blockservice v0.1.0
@@ -34,7 +33,7 @@ require (
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/prometheus/client_golang v0.9.3
 	github.com/quorumcontrol/chaintree v0.0.0-20190701175144-f8f44c3e6d4b
-	github.com/quorumcontrol/messages/build/go v0.0.0-20190603192428-dcb5ad7a31ca
+	github.com/quorumcontrol/messages/build/go v0.0.0-20190716095704-9acdbae78c93
 	github.com/santhosh-tekuri/jsonschema v1.2.4 // indirect
 	github.com/stretchr/testify v1.3.0
 	github.com/uber-go/atomic v1.3.2 // indirect

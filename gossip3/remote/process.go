@@ -8,8 +8,8 @@ import (
 	mbridge "github.com/quorumcontrol/messages/build/go/bridge"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
-	"github.com/golang/protobuf/proto"
-	ptypes "github.com/golang/protobuf/ptypes"
+	"github.com/gogo/protobuf/proto"
+	ptypes "github.com/gogo/protobuf/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/tracing"
 )
 
