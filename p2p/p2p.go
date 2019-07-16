@@ -12,17 +12,17 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p"
+	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	host "github.com/libp2p/go-libp2p-core/host"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
-	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
-	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	pnet "github.com/libp2p/go-libp2p-pnet"
 	"github.com/libp2p/go-libp2p-core/protocol"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p-core/routing"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
+	pnet "github.com/libp2p/go-libp2p-pnet"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	swarm "github.com/libp2p/go-libp2p-swarm"
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
@@ -41,15 +41,15 @@ var _ Node = (*LibP2PHost)(nil)
 type LibP2PHost struct {
 	Reporter metrics.Reporter
 
-	host             *rhost.RoutedHost
-	routing          *dht.IpfsDHT
-	publicKey        *ecdsa.PublicKey
-	bootstrapStarted bool
-	pubsub           *pubsub.PubSub
-	datastore        ds.Batching
-	parentCtx        context.Context
-	discoverers      map[string]*tupeloDiscoverer
-	discoverLock     *sync.Mutex
+	host         *rhost.RoutedHost
+	routing      *dht.IpfsDHT
+	publicKey    *ecdsa.PublicKey
+	bootstrapper *Bootstrapper
+	pubsub       *pubsub.PubSub
+	datastore    ds.Batching
+	parentCtx    context.Context
+	discoverers  map[string]*tupeloDiscoverer
+	discoverLock *sync.Mutex
 }
 
 const expectedKeySize = 32
@@ -245,10 +245,9 @@ func (h *LibP2PHost) Bootstrap(peers []string) (io.Closer, error) {
 	if len(peers) < minPeers {
 		minPeers = len(peers)
 	}
-	bootstrapper := NewBootstrapper(convertPeers(peers), h.host, h.host.Network(), h.routing,
+	h.bootstrapper = NewBootstrapper(convertPeers(peers), h.host, h.host.Network(), h.routing,
 		minPeers, 2*time.Second)
-	bootstrapper.Start(h.parentCtx)
-	h.bootstrapStarted = true
+	h.bootstrapper.Start(h.parentCtx)
 
 	for _, discoverer := range h.discoverers {
 		err := discoverer.start(h.parentCtx)
@@ -257,7 +256,7 @@ func (h *LibP2PHost) Bootstrap(peers []string) (io.Closer, error) {
 		}
 	}
 
-	return bootstrapper, nil
+	return h.bootstrapper, nil
 }
 
 func (h *LibP2PHost) StartDiscovery(namespace string) error {
@@ -284,7 +283,7 @@ func (h *LibP2PHost) StopDiscovery(namespace string) {
 }
 
 func (h *LibP2PHost) WaitForBootstrap(peerCount int, timeout time.Duration) error {
-	if !h.bootstrapStarted {
+	if h.bootstrapper == nil {
 		return fmt.Errorf("error must call Bootstrap() before calling WaitForBootstrap")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -393,6 +392,11 @@ func (h *LibP2PHost) Subscribe(topic string, opts ...pubsub.SubOpt) (*pubsub.Sub
 
 func (h *LibP2PHost) Publish(topic string, data []byte) error {
 	return h.pubsub.Publish(topic, data)
+}
+
+func (h *LibP2PHost) Close() error {
+	h.bootstrapper.Stop()
+	return h.host.Close()
 }
 
 func PeerIDFromPublicKey(publicKey *ecdsa.PublicKey) (peer.ID, error) {
