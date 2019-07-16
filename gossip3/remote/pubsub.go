@@ -6,9 +6,8 @@ import (
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/AsynkronIT/protoactor-go/plugin"
-	"github.com/golang/protobuf/proto"
-	ptypes "github.com/golang/protobuf/ptypes"
-	any "github.com/golang/protobuf/ptypes/any"
+	"github.com/gogo/protobuf/proto"
+	ptypes "github.com/gogo/protobuf/types"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
@@ -191,7 +190,7 @@ func (bs *broadcastSubscriber) handlePubSubMessage(actorContext actor.Context, p
 }
 
 func pubsubMessageToProtoMessage(pubsubMsg *pubsub.Message) (proto.Message, error) {
-	any := &any.Any{}
+	any := &ptypes.Any{}
 	err := proto.Unmarshal(pubsubMsg.Data, any)
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshaling: %v", err)

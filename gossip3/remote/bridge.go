@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"time"
 
-	ptypes "github.com/golang/protobuf/ptypes"
+	ptypes "github.com/gogo/protobuf/types"
 	mbridge "github.com/quorumcontrol/messages/build/go/bridge"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
