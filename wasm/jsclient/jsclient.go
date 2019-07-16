@@ -10,7 +10,7 @@ import (
 
 	"github.com/quorumcontrol/messages/build/go/services"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 
 	"github.com/pkg/errors"
 	"github.com/quorumcontrol/chaintree/nodestore"
