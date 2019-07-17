@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"os"
 	"strings"
@@ -99,6 +100,7 @@ func (b *Bootstrapper) Start(ctx context.Context) {
 		for {
 			select {
 			case <-b.ctx.Done():
+				fmt.Printf("Cancelling bootstrap")
 				return
 			case <-b.ticker.C:
 				b.Bootstrap(b.d.Peers())
