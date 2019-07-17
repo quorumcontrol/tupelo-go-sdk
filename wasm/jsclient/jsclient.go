@@ -91,7 +91,7 @@ func jsTransactionsToTransactions(jsTransactions js.Value) ([]*transactions.Tran
 		tran := &transactions.Transaction{}
 		err := proto.Unmarshal(bits, tran)
 		if err != nil {
-			return nil, fmt.Errorf("error unmarshaling: %v", err)
+			return nil, errors.Wrap(err, "error unmarshaling")
 		}
 		trans[i] = tran
 	}
@@ -160,7 +160,7 @@ func (jsc *JSClient) playTransactions(store nodestore.DagStore, tip cid.Cid, tre
 		consensus.DefaultTransactors,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("error creating chaintree: %v", err)
+		return nil, errors.Wrap(err, "error creating chaintree")
 	}
 
 	tree := consensus.NewSignedChainTreeFromChainTree(cTree)

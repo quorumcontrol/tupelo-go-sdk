@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"syscall/js"
+	"github.com/pkg/errors"
 
 	"github.com/quorumcontrol/chaintree/safewrap"
 
@@ -61,7 +62,7 @@ func (jss *JSStore) RemoveMany(ctx context.Context, cids []cid.Cid) error {
 	for _, n := range cids {
 		err := jss.Remove(ctx, n)
 		if err != nil {
-			return fmt.Errorf("error adding: %v", err)
+			return errors.Wrap(err, "error removing")
 		}
 	}
 	return nil
@@ -72,7 +73,7 @@ func (jss *JSStore) AddMany(ctx context.Context, nodes []format.Node) error {
 	for _, n := range nodes {
 		err := jss.Add(ctx, n)
 		if err != nil {
-			return fmt.Errorf("error adding: %v", err)
+			return errors.Wrap(err, "error adding")
 		}
 	}
 	return nil
@@ -92,7 +93,6 @@ func (jss *JSStore) Add(ctx context.Context, n format.Node) error {
 		})
 		onError := js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
 			err := fmt.Errorf("error from js: %s", args[0].String())
-			go fmt.Println("err: ", err.Error())
 			respCh <- err
 			return nil
 		})
@@ -118,7 +118,7 @@ func (jss *JSStore) Get(ctx context.Context, c cid.Cid) (format.Node, error) {
 			bits := helpers.JsBufferToBytes(jsBlock.Get("data"))
 			n := sw.Decode(bits)
 			if sw.Err != nil {
-				respCh <- fmt.Errorf("error decoding: %v", sw.Err)
+				respCh <- errors.Wrap(sw.Err, "error decoding")
 				return nil
 			}
 			respCh <- n
