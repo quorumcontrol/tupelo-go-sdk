@@ -101,6 +101,7 @@ func (b *Bootstrapper) Start(ctx context.Context) {
 			select {
 			case <-b.ctx.Done():
 				fmt.Printf("Cancelling bootstrap")
+				b.ticker.Stop()
 				return
 			case <-b.ticker.C:
 				fmt.Printf("Ticker running")
