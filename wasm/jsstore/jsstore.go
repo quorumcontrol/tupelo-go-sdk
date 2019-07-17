@@ -1,9 +1,12 @@
+// +build wasm
+
 package jsstore
 
 import (
 	"context"
 	"fmt"
 	"syscall/js"
+
 	"github.com/pkg/errors"
 
 	"github.com/quorumcontrol/chaintree/safewrap"

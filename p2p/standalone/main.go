@@ -43,7 +43,10 @@ func main() {
 	i := 0
 	for {
 		msg := fmt.Sprintf("hi - %d", i)
-		ps.Publish("test", []byte(msg))
+		err := ps.Publish("test", []byte(msg))
+		if err != nil {
+			panic(errors.Wrap(err, "error publishing"))
+		}
 		fmt.Println(msg)
 		i++
 		time.Sleep(2 * time.Second)

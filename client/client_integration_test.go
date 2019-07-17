@@ -398,7 +398,7 @@ func TestNonOwnerTransactions(t *testing.T) {
 	client := New(ng, chain.MustId(), remote.NewNetworkPubSub(host.GetPubSub()))
 	defer client.Stop()
 
-	client2 := New(ng, chain.MustId(), remote.NewNetworkPubSub(host))
+	client2 := New(ng, chain.MustId(), remote.NewNetworkPubSub(host.GetPubSub()))
 	defer client2.Stop()
 
 	treeKey2, err := crypto.GenerateKey()
