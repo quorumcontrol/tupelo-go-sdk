@@ -103,6 +103,7 @@ func (b *Bootstrapper) Start(ctx context.Context) {
 				fmt.Printf("Cancelling bootstrap")
 				return
 			case <-b.ticker.C:
+				fmt.Printf("Ticker running")
 				b.Bootstrap(b.d.Peers())
 			}
 		}
