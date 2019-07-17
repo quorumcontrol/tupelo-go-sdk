@@ -92,6 +92,8 @@ func (b *Bootstrapper) Start(ctx context.Context) {
 	b.ctx, b.cancel = context.WithCancel(ctx)
 	b.ticker = time.NewTicker(b.Period)
 
+	fmt.Printf("BW: Starting a bootstrap \n")
+
 	go func() {
 		defer b.ticker.Stop()
 		// do one to start
@@ -100,11 +102,11 @@ func (b *Bootstrapper) Start(ctx context.Context) {
 		for {
 			select {
 			case <-b.ctx.Done():
-				fmt.Printf("Cancelling bootstrap")
+				fmt.Printf("BW: Cancelling bootstrap")
 				b.ticker.Stop()
 				return
 			case <-b.ticker.C:
-				fmt.Printf("Ticker running")
+				fmt.Printf("BW: Ticker running")
 				b.Bootstrap(b.d.Peers())
 			}
 		}
