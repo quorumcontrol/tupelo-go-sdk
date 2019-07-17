@@ -1,8 +1,9 @@
 package helpers
 
 import (
-	"github.com/ipfs/go-cid"
 	"syscall/js"
+
+	"github.com/ipfs/go-cid"
 )
 
 func JsStringArrayToStringSlice(jsStrArray js.Value) []string {
@@ -25,6 +26,12 @@ func JsBufferToBytes(buf js.Value) []byte {
 
 func SliceToJSBuffer(slice []byte) js.Value {
 	return js.Global().Get("Buffer").Call("from", js.TypedArrayOf(slice))
+}
+
+func JsCidToCid(jsCid js.Value) (cid.Cid, error) {
+	buf := jsCid.Get("buffer")
+	bits := JsBufferToBytes(buf)
+	return cid.Cast(bits)
 }
 
 func CidToJSCID(c cid.Cid) js.Value {

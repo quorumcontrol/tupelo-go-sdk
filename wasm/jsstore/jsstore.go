@@ -85,10 +85,8 @@ func (jss *JSStore) GetMany(ctx context.Context, cids []cid.Cid) <-chan *format.
 func (jss *JSStore) Add(ctx context.Context, n format.Node) error {
 	respCh := make(chan error)
 	go func() {
-		go fmt.Println("Add node")
 		promise := jss.bridged.Call("put", nodeToJSBlock(n))
 		onSuccess := js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
-			go fmt.Println("put successful")
 			respCh <- nil
 			return nil
 		})

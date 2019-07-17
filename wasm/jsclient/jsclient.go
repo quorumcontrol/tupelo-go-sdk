@@ -8,9 +8,13 @@ import (
 	"fmt"
 	"syscall/js"
 
-	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jsstore"
+	"github.com/quorumcontrol/messages/build/go/signatures"
 
-	"github.com/quorumcontrol/messages/build/go/services"
+	"github.com/ipfs/go-cid"
+	"github.com/quorumcontrol/chaintree/chaintree"
+	"github.com/quorumcontrol/chaintree/dag"
+
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jsstore"
 
 	"github.com/gogo/protobuf/proto"
 
@@ -54,7 +58,7 @@ type JSClient struct {
 }
 
 func New(pubsub *pubsub.PubSubBridge) *JSClient {
-	fmt.Println("creating pubsub")
+	go fmt.Println("creating pubsub")
 	// for now we're just going to hard code things
 	ngConfig, err := types.HumanConfigToConfig(hardcodedHumanConfig)
 	if err != nil {
@@ -65,52 +69,76 @@ func New(pubsub *pubsub.PubSubBridge) *JSClient {
 
 	wrapped := remote.NewWrappedPubsub(pubsub)
 
+	go fmt.Println("returning js client")
 	return &JSClient{
 		pubsub:      wrapped,
 		notaryGroup: ng,
 	}
 }
 
-func (jsc *JSClient) PlayTransactions(jsKeyBits js.Value, jsTransactions js.Value) interface{} {
+// tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*transactions.Transaction
+
+func jsTransactionsToTransactions(jsTransactions js.Value) ([]*transactions.Transaction, error) {
+	transLength := jsTransactions.Length()
+	transBits := make([][]byte, transLength)
+	for i := 0; i < transLength; i++ {
+		jsVal := jsTransactions.Index(i)
+		transBits[i] = helpers.JsBufferToBytes(jsVal)
+	}
+
+	trans := make([]*transactions.Transaction, len(transBits))
+	for i, bits := range transBits {
+		tran := &transactions.Transaction{}
+		err := proto.Unmarshal(bits, tran)
+		if err != nil {
+			return nil, fmt.Errorf("error unmarshaling: %v", err)
+		}
+		trans[i] = tran
+	}
+	return trans, nil
+}
+
+func jsKeyBitsToPrivateKey(jsKeyBits js.Value) (*ecdsa.PrivateKey, error) {
+	keybits := helpers.JsBufferToBytes(jsKeyBits)
+	return crypto.ToECDSA(keybits)
+}
+
+func (jsc *JSClient) PlayTransactions(blockService js.Value, jsKeyBits js.Value, tip js.Value, jsTransactions js.Value) interface{} {
 	t := then.New()
 	go func() {
-		fmt.Println("play transactions in client")
-		transLength := jsTransactions.Length()
-		transBits := make([][]byte, transLength)
-		for i := 0; i < transLength; i++ {
-			jsVal := jsTransactions.Index(i)
-			transBits[i] = helpers.JsBufferToBytes(jsVal)
-		}
+		go fmt.Println("play transactions in client")
 
-		trans := make([]*transactions.Transaction, len(transBits))
-		for i, bits := range transBits {
-			tran := &transactions.Transaction{}
-			err := proto.Unmarshal(bits, tran)
-			if err != nil {
-				t.Reject(err.Error())
-				return
-			}
-			trans[i] = tran
-		}
-
-		fmt.Printf("transactions: %v", trans)
-
-		keybits := helpers.JsBufferToBytes(jsKeyBits)
-		key, err := crypto.ToECDSA(keybits)
+		trans, err := jsTransactionsToTransactions(jsTransactions)
 		if err != nil {
 			t.Reject(err.Error())
 			return
 		}
 
-		resp, err := jsc.playTransactions(key, trans)
+		key, err := jsKeyBitsToPrivateKey(jsKeyBits)
 		if err != nil {
 			t.Reject(err.Error())
 			return
 		}
 
-		respBits, err := proto.Marshal(&services.PlayTransactionsResponse{
-			Tip: resp.Tip.String(),
-		})
+		wrappedStore := jsstore.New(blockService)
+
+		tip, err := helpers.JsCidToCid(tip)
+		if err != nil {
+			t.Reject(err.Error())
+			return
+		}
+
+		resp, err := jsc.playTransactions(wrappedStore, tip, key, trans)
+		if err != nil {
+			t.Reject(err.Error())
+			return
+		}
+
+		currState := &signatures.CurrentState{
+			Signature: &resp.Signature,
+		}
+
+		respBits, err := proto.Marshal(currState)
 		if err != nil {
 			t.Reject(err.Error())
 			return
@@ -121,16 +149,29 @@ func (jsc *JSClient) PlayTransactions(jsKeyBits js.Value, jsTransactions js.Valu
 	return t
 }
 
-func (jsc *JSClient) playTransactions(treeKey *ecdsa.PrivateKey, transactions []*transactions.Transaction) (*consensus.AddBlockResponse, error) {
+func (jsc *JSClient) playTransactions(store nodestore.DagStore, tip cid.Cid, treeKey *ecdsa.PrivateKey, transactions []*transactions.Transaction) (*consensus.AddBlockResponse, error) {
 	fmt.Println("playtransactions in the go side")
-	did := consensus.EcdsaPubkeyToDid(treeKey.PublicKey)
-	c := client.New(jsc.notaryGroup, did, jsc.pubsub)
+	ctx := context.TODO()
 
-	tree, err := consensus.NewSignedChainTree(treeKey.PublicKey, nodestore.MustMemoryStore(context.TODO()))
+	cTree, err := chaintree.NewChainTree(
+		ctx,
+		dag.NewDag(ctx, tip, store),
+		nil,
+		consensus.DefaultTransactors,
+	)
 	if err != nil {
-		return nil, errors.Wrap(err, "error creating tree")
+		return nil, fmt.Errorf("error creating chaintree: %v", err)
 	}
-	return c.PlayTransactions(tree, treeKey, nil, transactions)
+
+	tree := consensus.NewSignedChainTreeFromChainTree(cTree)
+	c := client.New(jsc.notaryGroup, tree.MustId(), jsc.pubsub)
+
+	var remoteTip cid.Cid
+	if !tree.IsGenesis() {
+		remoteTip = tree.Tip()
+	}
+
+	return c.PlayTransactions(tree, treeKey, &remoteTip, transactions)
 }
 
 func GenerateKey() *then.Then {

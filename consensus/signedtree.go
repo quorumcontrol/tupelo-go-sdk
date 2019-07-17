@@ -71,6 +71,13 @@ func (sct *SignedChainTree) Authentications() ([]string, error) {
 	return auths, nil
 }
 
+func NewSignedChainTreeFromChainTree(tree *chaintree.ChainTree) *SignedChainTree {
+	return &SignedChainTree{
+		ChainTree:  tree,
+		Signatures: make(SignatureMap),
+	}
+}
+
 func NewSignedChainTree(key ecdsa.PublicKey, nodeStore nodestore.DagStore) (*SignedChainTree, error) {
 	did := EcdsaPubkeyToDid(key)
 
