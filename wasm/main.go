@@ -95,6 +95,12 @@ func main() {
 				return jsclient.GenerateKey()
 			}))
 
+			jsObj.Set("newEmptyTree", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				return jsclient.NewEmptyTree(args[0], args[1])
+			}))
+
+			// below are to remove
+
 			jsObj.Set("testclient", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				return testClient(args)
 			}))

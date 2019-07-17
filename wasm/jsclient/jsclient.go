@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"syscall/js"
 
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jsstore"
+
 	"github.com/quorumcontrol/messages/build/go/services"
 
 	"github.com/gogo/protobuf/proto"
@@ -139,8 +141,29 @@ func GenerateKey() *then.Then {
 			t.Reject(err.Error())
 			return
 		}
-		bits := js.TypedArrayOf(crypto.FromECDSA(key))
-		t.Resolve(bits)
+		privateBits := js.TypedArrayOf(crypto.FromECDSA(key))
+		publicBits := js.TypedArrayOf(crypto.FromECDSAPub(&key.PublicKey))
+		jsArray := js.Global().Get("Array").New(privateBits, publicBits)
+		t.Resolve(jsArray)
+	}()
+	return t
+}
+
+// NewEmptyTree is a little departurue from the normal Go SDK, it's a helper for JS to create
+// a new blank ChainTree given a private key. It will populate the node store and return the tip
+// of the new Dag (so javascript can reconstitute the chaintree on its side.)
+func NewEmptyTree(jsBlockService js.Value, jsPublicKeyBits js.Value) *then.Then {
+	t := then.New()
+	go func() {
+		store := jsstore.New(jsBlockService)
+		treeKey, err := crypto.UnmarshalPubkey(helpers.JsBufferToBytes(jsPublicKeyBits))
+		if err != nil {
+			t.Reject(err.Error())
+			return
+		}
+		did := consensus.EcdsaPubkeyToDid(*treeKey)
+		dag := consensus.NewEmptyTree(did, store)
+		t.Resolve(helpers.CidToJSCID(dag.Tip))
 	}()
 	return t
 }
