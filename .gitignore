@@ -18,4 +18,3 @@ vendor/
 test_results/
 
 *.wasm
-node_modules/
