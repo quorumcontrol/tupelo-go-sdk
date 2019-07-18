@@ -193,7 +193,7 @@ func WithKey(key *ecdsa.PrivateKey) Option {
 func WithListenIP(ip string, port int) Option {
 	return func(c *Config) error {
 		c.Port = port
-		c.ListenAddrs = append(c.ListenAddrs, fmt.Sprintf("/ip4/%s/tcp/%d", ip, c.Port))
+		c.ListenAddrs = []string{fmt.Sprintf("/ip4/%s/tcp/%d", ip, c.Port)}
 		return nil
 	}
 }
