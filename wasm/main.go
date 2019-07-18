@@ -3,6 +3,7 @@
 package main
 
 import (
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jslibs"
 	"fmt"
 	"syscall/js"
 
@@ -25,9 +26,21 @@ func main() {
 	js.Global().Set(
 		"populateLibrary",
 		js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			if len(args) == 0 || !args[0].Truthy() {
-				return js.ValueOf(fmt.Errorf("error, must supply a valid object"))
+			if len(args) != 2 || !args[0].Truthy() || !args[1].Truthy() {
+				err := fmt.Errorf("error, must supply a valid object")
+				panic(err)
 			}
+			
+			helperLibs := args[1]
+			cids := helperLibs.Get("cids")
+			ipfsBlock := helperLibs.Get("ipfs-block")
+			if !cids.Truthy() || !ipfsBlock.Truthy() {
+				err := fmt.Errorf("error, must supply a library object containing cids and ipfs-block")
+				go fmt.Println(err.Error())
+				panic(err)
+			}
+			jslibs.Cids = cids
+			jslibs.IpfsBlock = ipfsBlock
 
 			jsObj := args[0]
 

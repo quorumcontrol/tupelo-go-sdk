@@ -5,6 +5,8 @@ package helpers
 import (
 	"syscall/js"
 
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jslibs"
+
 	"github.com/ipfs/go-cid"
 )
 
@@ -37,8 +39,7 @@ func JsCidToCid(jsCid js.Value) (cid.Cid, error) {
 }
 
 func CidToJSCID(c cid.Cid) js.Value {
-	jsCids := js.Global().Call("require", js.ValueOf("cids"))
 	bits := c.Bytes()
 	jsBits := SliceToJSBuffer(bits)
-	return jsCids.New(jsBits)
+	return jslibs.Cids.New(jsBits)
 }

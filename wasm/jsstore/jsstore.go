@@ -3,6 +3,7 @@
 package jsstore
 
 import (
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jslibs"
 	"context"
 	"fmt"
 	"syscall/js"
@@ -150,7 +151,6 @@ func (jss *JSStore) Get(ctx context.Context, c cid.Cid) (format.Node, error) {
 }
 
 func nodeToJSBlock(n format.Node) js.Value {
-	jsBlock := js.Global().Call("require", "ipfs-block")
 	data := helpers.SliceToJSBuffer(n.RawData())
-	return jsBlock.New(data, helpers.CidToJSCID(n.Cid()))
+	return jslibs.IpfsBlock.New(data, helpers.CidToJSCID(n.Cid()))
 }
