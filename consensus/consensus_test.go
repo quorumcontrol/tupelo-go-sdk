@@ -9,6 +9,7 @@ import (
 	"github.com/quorumcontrol/messages/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIsBlockSignedBy(t *testing.T) {
@@ -153,4 +154,10 @@ func TestVerify(t *testing.T) {
 			assert.False(t, isVerified, test.Description)
 		}
 	}
+}
+
+func TestPassPhraseKey(t *testing.T) {
+	key, err := PassPhraseKey([]byte("secretPassword"), []byte("salt"))
+	require.Nil(t, err)
+	assert.Equal(t, []byte{0x5b, 0x94, 0x85, 0x8e, 0xda, 0x63, 0xd4, 0xe8, 0x12, 0xa5, 0xed, 0x98, 0xa2, 0xe0, 0xc8, 0xe0, 0xef, 0xcb, 0xf2, 0x72, 0x69, 0xca, 0xa2, 0x9d, 0xe9, 0x6c, 0x7a, 0x93, 0xcc, 0x73, 0x9, 0x14}, crypto.FromECDSA(key))
 }
