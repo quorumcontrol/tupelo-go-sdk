@@ -3,8 +3,13 @@ package consensus
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/sha256"
 	"fmt"
 	"strings"
+
+	"golang.org/x/crypto/pbkdf2"
+
+	"golang.org/x/crypto/scrypt"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -336,4 +341,46 @@ func MustObjToHash(payload interface{}) []byte {
 		panic(fmt.Sprintf("error hashing %v", payload))
 	}
 	return hsh
+}
+
+// PassPhraseKey implements a known passphrase -> private Key generator
+// following very closely the params from Warp Wallet.
+// The only difference here is that the N on scrypt is 256 instead of 218 because
+// go requires N to be a power of 2.
+// from the Warp Wallet ( https://keybase.io/warp/warp_1.0.9_SHA256_a2067491ab582bde779f4505055807c2479354633a2216b22cf1e92d1a6e4a87.html ):
+// s1	=	scrypt(key=(passphrase||0x1), salt=(salt||0x1), N=218, r=8, p=1, dkLen=32)
+// s2	=	pbkdf2(key=(passphrase||0x2), salt=(salt||0x2), c=216, dkLen=32, prf=HMAC_SHA256)
+// keypair	=	generate_bitcoin_keypair(s1 ⊕ s2)
+func PassPhraseKey(passPhrase, salt []byte) (*ecdsa.PrivateKey, error) {
+	if len(passPhrase) == 0 {
+		return nil, fmt.Errorf("error, must specify a passPhrase")
+	}
+	var firstSalt, secondSalt []byte
+	if len(salt) == 0 {
+		firstSalt = []byte{1}
+		secondSalt = []byte{2}
+	} else {
+		hashedSalt := sha256.Sum256(salt)
+		firstSalt = hashedSalt[:]
+		secondSalt = hashedSalt[:]
+	}
+
+	s1, err := scrypt.Key(passPhrase, firstSalt, 256, 8, 1, 32)
+	if err != nil {
+		return nil, fmt.Errorf("error running scyrpt: %v", err)
+	}
+	s2 := pbkdf2.Key(passPhrase, secondSalt, 216, 32, sha256.New)
+	if err != nil {
+		return nil, fmt.Errorf("error running pbkdf2: %v", err)
+	}
+	dst := make([]byte, 32)
+	safeXORBytes(dst, s1, s2, 32)
+	return crypto.ToECDSA(dst)
+}
+
+// n needs to be smaller or equal than the length of a and b.
+func safeXORBytes(dst, a, b []byte, n int) {
+	for i := 0; i < n; i++ {
+		dst[i] = a[i] ^ b[i]
+	}
 }
