@@ -4,8 +4,11 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
+
+	"github.com/quorumcontrol/messages/build/go/config"
+
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 
 	"github.com/BurntSushi/toml"
@@ -71,70 +74,74 @@ type PublicKeySet struct {
 	DestKey *ecdsa.PublicKey
 }
 
-type HumanPublicKeySet struct {
+type TomlPublicKeySet struct {
 	VerKeyHex  string
 	DestKeyHex string
 }
 
-func (hpubset *HumanPublicKeySet) ToPublicKeySet() (pubset PublicKeySet, err error) {
-	blsBits, err := hexutil.Decode(hpubset.VerKeyHex)
+// converts the toml hex-based keys to the protobuf based byte slice
+func (tpubset *TomlPublicKeySet) toConfigPublicKeySet() (pubset *config.PublicKeySet, err error) {
+	blsBits, err := hexutil.Decode(tpubset.VerKeyHex)
 	if err != nil {
 		return pubset, fmt.Errorf("error decoding verkey: %v", err)
 	}
-	ecdsaBits, err := hexutil.Decode(hpubset.DestKeyHex)
+	ecdsaBits, err := hexutil.Decode(tpubset.DestKeyHex)
 	if err != nil {
 		return pubset, fmt.Errorf("error decoding destkey: %v", err)
 	}
 
-	ecdsaPub, err := crypto.UnmarshalPubkey(ecdsaBits)
-	if err != nil {
-		return pubset, fmt.Errorf("couldn't unmarshal ECDSA pub key: %v", err)
-	}
-
-	verKey := bls.BytesToVerKey(blsBits)
-
-	return PublicKeySet{
-		DestKey: ecdsaPub,
-		VerKey:  verKey,
+	return &config.PublicKeySet{
+		DestKey: ecdsaBits,
+		VerKey:  blsBits,
 	}, nil
 }
 
-// HumanConfig is used for parsing an ondisk configuration into the application-used Config
-// struct.
-type HumanConfig struct {
-	// See Config
-	ID string
-	// See Config
-	TransactionToken string
-	// See Config
-	BurnAmount uint64
-	// See Config
-	TransactionTopic string
-	// See Config
-	CommitTopic string
-	// ValidatorGenerators is an array of strings representing which Validators
-	// should be run as part of this notary group. The validators must be registered with
-	// RegisterValidatorGenerator. The built in validators (ISOWNER, ISRECIPIENT, HASBURN at time
-	// of this comment) are already registered and the default is ["ISOWNER", "ISRECIPIENT"] if no
-	// generators are specified.
-	ValidatorGenerators []string
-	// Transactions is a slice of strings representing the Protobuf TransactionType allowed
-	// in this notary group. Default transactions (consensus.DefaultTransactors) are pre-registered
-	// otherwise you must register a transaction using RegisterTransactor. Default if unspecified
-	// is consensus.DefaultTransactors.
-	Transactions []string
-	// Signers is a slice of hex BLS VerKeys and ecdsa public keys (for libp2p)
-	Signers []HumanPublicKeySet
+type TomlConfig struct {
+	*config.NotaryGroup
+	Signers []TomlPublicKeySet
 }
 
-func HumanConfigToConfig(hc *HumanConfig) (*Config, error) {
+// converts the toml config to the standard protobuf config
+// in the messages repo. the only difference is that in toml
+// the signer keys are saved as hex instead of byte slices.
+func (tc *TomlConfig) toPBConfig() (*config.NotaryGroup, error) {
+	ngConfig := tc.NotaryGroup
+	if ngConfig == nil {
+		return nil, fmt.Errorf("no notary group config")
+	}
+	ngConfig.Signers = make([]*config.PublicKeySet, len(tc.Signers))
+	for i, tomlPubKeySet := range tc.Signers {
+		c, err := tomlPubKeySet.toConfigPublicKeySet()
+		if err != nil {
+			return nil, fmt.Errorf("error converting hex to bytes: %v", err)
+		}
+		ngConfig.Signers[i] = c
+	}
+	return ngConfig, nil
+}
+
+func bytesToKeys(pubSet *config.PublicKeySet) (retPub PublicKeySet, err error) {
+	ecdsaPub, err := crypto.UnmarshalPubkey(pubSet.DestKey)
+	if err != nil {
+		return retPub, fmt.Errorf("couldn't unmarshal ECDSA pub key: %v", err)
+	}
+
+	verKey := bls.BytesToVerKey(pubSet.VerKey)
+	return PublicKeySet{
+		VerKey:  verKey,
+		DestKey: ecdsaPub,
+	}, nil
+}
+
+func HumanConfigToConfig(hc *config.NotaryGroup) (*Config, error) {
 	defaults := DefaultConfig()
 	c := &Config{
-		ID:               hc.ID,
-		TransactionToken: hc.TransactionToken,
-		BurnAmount:       hc.BurnAmount,
-		TransactionTopic: hc.TransactionTopic,
-		CommitTopic:      hc.CommitTopic,
+		ID:                 hc.Id,
+		TransactionToken:   hc.TransactionToken,
+		BurnAmount:         hc.BurnAmount,
+		TransactionTopic:   hc.TransactionTopic,
+		CommitTopic:        hc.CommitTopic,
+		BootstrapAddresses: hc.BootstrapAddresses,
 	}
 
 	if c.ID == "" {
@@ -188,7 +195,7 @@ func HumanConfigToConfig(hc *HumanConfig) (*Config, error) {
 
 	signers := make([]PublicKeySet, len(hc.Signers))
 	for i, humanPub := range hc.Signers {
-		pub, err := humanPub.ToPublicKeySet()
+		pub, err := bytesToKeys(humanPub)
 		if err != nil {
 			return nil, fmt.Errorf("error getting signer from human: %v", err)
 		}
@@ -204,10 +211,14 @@ func HumanConfigToConfig(hc *HumanConfig) (*Config, error) {
 // to use this function, it's more to validate example files
 // and to use in tests.
 func TomlToConfig(tomlBytes string) (*Config, error) {
-	var hc HumanConfig
-	_, err := toml.Decode(tomlBytes, &hc)
+	var tc TomlConfig
+	_, err := toml.Decode(tomlBytes, &tc)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding toml: %v", err)
 	}
-	return HumanConfigToConfig(&hc)
+	hc, err := tc.toPBConfig()
+	if err != nil {
+		return nil, fmt.Errorf("error converting toml config to config")
+	}
+	return HumanConfigToConfig(hc)
 }

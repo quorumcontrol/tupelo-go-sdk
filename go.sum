@@ -466,6 +466,8 @@ github.com/quorumcontrol/messages/build/go v0.0.0-20190530182608-30c127bffefb h1
 github.com/quorumcontrol/messages/build/go v0.0.0-20190530182608-30c127bffefb/go.mod h1:b8jDN8PulcGcRJ2pQc0lbC3tPaOspGHoBIbPxfB7Jqg=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190716095704-9acdbae78c93 h1:G1VRZKIZMjG00VXDK2xpv+fj2/3cKPwRPZpK/ofb1OE=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190716095704-9acdbae78c93/go.mod h1:QLQVe/V3WcoFNglaJXmoRNs8u+KbsNd5MXeOaa77zgw=
+github.com/quorumcontrol/messages/build/go v0.0.0-20190722093818-0def9b3a6501 h1:+ye7Fu4SfzFZFzFAPzXFfjHndQbIYB6BMvXG3Bm34x0=
+github.com/quorumcontrol/messages/build/go v0.0.0-20190722093818-0def9b3a6501/go.mod h1:QLQVe/V3WcoFNglaJXmoRNs8u+KbsNd5MXeOaa77zgw=
 github.com/ryanuber/columnize v0.0.0-20160712163229-9b3edd62028f/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
 github.com/santhosh-tekuri/jsonschema v1.2.3/go.mod h1:TEAUOeZSmIxTTuHatJzrvARHiuO9LYd+cIxzgEHCQI4=
 github.com/santhosh-tekuri/jsonschema v1.2.4 h1:hNhW8e7t+H1vgY+1QeEQpveR6D4+OwKPXCfD2aieJis=
