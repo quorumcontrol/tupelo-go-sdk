@@ -80,12 +80,12 @@ type TomlPublicKeySet struct {
 }
 
 // converts the toml hex-based keys to the protobuf based byte slice
-func (hpubset *TomlPublicKeySet) toConfigBytes() (pubset *config.PublicKeySet, err error) {
-	blsBits, err := hexutil.Decode(hpubset.VerKeyHex)
+func (tpubset *TomlPublicKeySet) toConfigPublicKeySet() (pubset *config.PublicKeySet, err error) {
+	blsBits, err := hexutil.Decode(tpubset.VerKeyHex)
 	if err != nil {
 		return pubset, fmt.Errorf("error decoding verkey: %v", err)
 	}
-	ecdsaBits, err := hexutil.Decode(hpubset.DestKeyHex)
+	ecdsaBits, err := hexutil.Decode(tpubset.DestKeyHex)
 	if err != nil {
 		return pubset, fmt.Errorf("error decoding destkey: %v", err)
 	}
@@ -111,7 +111,7 @@ func (tc *TomlConfig) toPBConfig() (*config.NotaryGroup, error) {
 	}
 	ngConfig.Signers = make([]*config.PublicKeySet, len(tc.Signers))
 	for i, tomlPubKeySet := range tc.Signers {
-		c, err := tomlPubKeySet.toConfigBytes()
+		c, err := tomlPubKeySet.toConfigPublicKeySet()
 		if err != nil {
 			return nil, fmt.Errorf("error converting hex to bytes: %v", err)
 		}
