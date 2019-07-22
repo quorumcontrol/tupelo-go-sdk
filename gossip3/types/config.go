@@ -49,6 +49,8 @@ type Config struct {
 	Transactions map[transactions.Transaction_Type]chaintree.TransactorFunc
 	// Signers is the set of VerKey and DestKey necessary to validate and reach a signer
 	Signers []PublicKeySet
+	//BootstrapAddresses is a slice of PeerIDs to use for bootstrapping this notary group
+	BootstrapAddresses []string
 }
 
 func (c *Config) blockValidators(ctx context.Context, ng *NotaryGroup) ([]chaintree.BlockValidatorFunc, error) {

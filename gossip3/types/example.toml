@@ -5,6 +5,9 @@ transactionToken = "sometoken"
 burnAmount = 100
 transactionTopic = "tupelo-pubsub-topics"
 commitTopic = "tupelo-pubsub-commits"
+bootstrapAddresses = [
+    "/ipv4/0.0.0.0/tcp/1024/ipfs/Qmyadayada"
+]
 validatorGenerators = [
     "ISOWNER",
     "ISRECIPIENT",

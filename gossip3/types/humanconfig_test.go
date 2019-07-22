@@ -21,6 +21,7 @@ func TestTomlLoading(t *testing.T) {
 	assert.Equal(t, uint64(100), c.BurnAmount)
 	assert.Equal(t, "tupelo-pubsub-topics", c.TransactionTopic)
 	assert.Equal(t, "tupelo-pubsub-commits", c.CommitTopic)
+	assert.Equal(t, []string{"/ipv4/0.0.0.0/tcp/1024/ipfs/Qmyadayada"}, c.BootstrapAddresses)
 	assert.Len(t, c.Signers, 2)
 }
 
