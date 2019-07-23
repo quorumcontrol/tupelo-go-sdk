@@ -29,6 +29,7 @@ type Config struct {
 	EnableAutoRelay      bool
 	EnableBitSwap        bool
 	EnableWebsocket      bool
+	WebsocketPort        int
 	PubSubRouter         string
 	PubSubOptions        []pubsub.Option
 	PrivateKey           *ecdsa.PrivateKey
@@ -193,15 +194,17 @@ func WithKey(key *ecdsa.PrivateKey) Option {
 func WithListenIP(ip string, port int) Option {
 	return func(c *Config) error {
 		c.Port = port
+		c.PublicIP = ip
 		c.ListenAddrs = []string{fmt.Sprintf("/ip4/%s/tcp/%d", ip, c.Port)}
 		return nil
 	}
 }
 
-// WithWebSockets turns websockets on/off (default off)
-func WithWebSockets(enabled bool) Option {
+// WithWebSockets turns websockets on at specified port (default to 0)
+func WithWebSockets(port int) Option {
 	return func(c *Config) error {
-		c.EnableWebsocket = enabled
+		c.EnableWebsocket = true
+		c.WebsocketPort = port
 		return nil
 	}
 }

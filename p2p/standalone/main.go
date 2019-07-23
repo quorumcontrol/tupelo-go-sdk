@@ -20,7 +20,7 @@ func startServer(ctx context.Context) (p2p.Node, error) {
 
 	opts := []p2p.Option{
 		p2p.WithKey(key),
-		p2p.WithWebSockets(true),
+		p2p.WithWebSockets(0),
 	}
 
 	return p2p.NewHostFromOptions(ctx, opts...)

@@ -133,7 +133,11 @@ func newLibP2PHostFromConfig(ctx context.Context, c *Config) (*LibP2PHost, error
 	var idht *dht.IpfsDHT
 
 	if c.EnableWebsocket {
-		c.ListenAddrs = append(c.ListenAddrs, "/ip4/0.0.0.0/tcp/0/ws")
+		ip := c.PublicIP
+		if ip == "" {
+			ip = "0.0.0.0"
+		}
+		c.ListenAddrs = append(c.ListenAddrs, fmt.Sprintf("/ip4/%s/tcp/%d/ws", ip, c.WebsocketPort))
 	}
 
 	opts := []libp2p.Option{
