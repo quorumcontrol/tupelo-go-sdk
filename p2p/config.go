@@ -6,11 +6,11 @@ import (
 	"net"
 	"os"
 
-	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/ethereum/go-ethereum/crypto"
 	ds "github.com/ipfs/go-datastore"
 	dsync "github.com/ipfs/go-datastore/sync"
 	circuit "github.com/libp2p/go-libp2p-circuit"
+	"github.com/libp2p/go-libp2p-core/metrics"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
 
@@ -28,6 +28,8 @@ type Config struct {
 	EnableRelayHop       bool
 	EnableAutoRelay      bool
 	EnableBitSwap        bool
+	EnableWebsocket      bool
+	WebsocketPort        int
 	PubSubRouter         string
 	PubSubOptions        []pubsub.Option
 	PrivateKey           *ecdsa.PrivateKey
@@ -192,7 +194,17 @@ func WithKey(key *ecdsa.PrivateKey) Option {
 func WithListenIP(ip string, port int) Option {
 	return func(c *Config) error {
 		c.Port = port
+		c.PublicIP = ip
 		c.ListenAddrs = []string{fmt.Sprintf("/ip4/%s/tcp/%d", ip, c.Port)}
+		return nil
+	}
+}
+
+// WithWebSockets turns websockets on at specified port (default to 0)
+func WithWebSockets(port int) Option {
+	return func(c *Config) error {
+		c.EnableWebsocket = true
+		c.WebsocketPort = port
 		return nil
 	}
 }

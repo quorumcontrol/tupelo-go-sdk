@@ -12,17 +12,17 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p"
+	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	host "github.com/libp2p/go-libp2p-core/host"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
-	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
-	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	pnet "github.com/libp2p/go-libp2p-pnet"
 	"github.com/libp2p/go-libp2p-core/protocol"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p-core/routing"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
+	pnet "github.com/libp2p/go-libp2p-pnet"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	swarm "github.com/libp2p/go-libp2p-swarm"
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
@@ -131,6 +131,14 @@ func newLibP2PHostFromConfig(ctx context.Context, c *Config) (*LibP2PHost, error
 	}
 
 	var idht *dht.IpfsDHT
+
+	if c.EnableWebsocket {
+		ip := c.PublicIP
+		if ip == "" {
+			ip = "0.0.0.0"
+		}
+		c.ListenAddrs = append(c.ListenAddrs, fmt.Sprintf("/ip4/%s/tcp/%d/ws", ip, c.WebsocketPort))
+	}
 
 	opts := []libp2p.Option{
 		libp2p.ListenAddrStrings(c.ListenAddrs...),

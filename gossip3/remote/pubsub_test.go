@@ -61,8 +61,8 @@ func TestPubSub(t *testing.T) {
 		ObjectId: []byte("valid"),
 	}
 
-	networkPubsubA := NewNetworkPubSub(nodeA)
-	networkPubsubB := NewNetworkPubSub(nodeB)
+	networkPubsubA := NewNetworkPubSub(nodeA.GetPubSub())
+	networkPubsubB := NewNetworkPubSub(nodeB.GetPubSub())
 
 	topicName := "testpubsub"
 
