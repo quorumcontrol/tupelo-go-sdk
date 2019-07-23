@@ -80,8 +80,6 @@ func New(pubsub *pubsub.PubSubBridge) *JSClient {
 	}
 }
 
-// tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*transactions.Transaction
-
 func jsTransactionsToTransactions(jsTransactions js.Value) ([]*transactions.Transaction, error) {
 	transLength := jsTransactions.Length()
 	transBits := make([][]byte, transLength)
