@@ -3,10 +3,11 @@
 package jsstore
 
 import (
-	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jslibs"
 	"context"
 	"fmt"
 	"syscall/js"
+
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jslibs"
 
 	"github.com/pkg/errors"
 
@@ -62,7 +63,6 @@ func (jss *JSStore) Remove(ctx context.Context, c cid.Cid) error {
 }
 
 func (jss *JSStore) RemoveMany(ctx context.Context, cids []cid.Cid) error {
-	// for now do the slow thing and just loop over, javascript has a putMany as well, but more annoying to serialize
 	for _, n := range cids {
 		err := jss.Remove(ctx, n)
 		if err != nil {
@@ -73,7 +73,7 @@ func (jss *JSStore) RemoveMany(ctx context.Context, cids []cid.Cid) error {
 }
 
 func (jss *JSStore) AddMany(ctx context.Context, nodes []format.Node) error {
-	// for now do the slow thing and just loop over, javascript has a putMany as well, but more annoying to serialize
+	// for now do the slow thing and just loop over, javascript has a putMany[sic] as well, but more annoying to serialize
 	for _, n := range nodes {
 		err := jss.Add(ctx, n)
 		if err != nil {
@@ -84,6 +84,7 @@ func (jss *JSStore) AddMany(ctx context.Context, nodes []format.Node) error {
 }
 
 func (jss *JSStore) GetMany(ctx context.Context, cids []cid.Cid) <-chan *format.NodeOption {
+	// javascript has a getMany method, but it's complicated to use.
 	panic("don't CALL ME, I'm unimplemented and full of choclate")
 }
 
