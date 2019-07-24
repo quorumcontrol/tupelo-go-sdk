@@ -7,6 +7,10 @@ import (
 	"fmt"
 	"syscall/js"
 
+	cbornode "github.com/ipfs/go-ipld-cbor"
+
+	"github.com/ipfs/go-datastore"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/quorumcontrol/chaintree/typecaster"
 	"github.com/quorumcontrol/messages/build/go/signatures"
@@ -18,6 +22,11 @@ import (
 	hamt "github.com/quorumcontrol/go-hamt-ipld"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/then"
 )
+
+func init() {
+	typecaster.AddType(signatures.CurrentState{})
+	cbornode.RegisterCborType(signatures.CurrentState{})
+}
 
 func GetCurrentState(ctx context.Context, jsCid js.Value, jsBlockService js.Value, jsDid js.Value) *then.Then {
 	t := then.New()
@@ -36,8 +45,12 @@ func GetCurrentState(ctx context.Context, jsCid js.Value, jsBlockService js.Valu
 			t.Reject(errors.Wrap(err, "error getting hamt node").Error())
 			return
 		}
-		storedMapState, err := n.Find(ctx, fmt.Sprintf("current/%s:current", did))
+		fmt.Println("loaded node: %v", n)
+		key := datastore.KeyWithNamespaces([]string{"states", did + ":current"})
+		storedMapState, err := n.Find(ctx, key.String())
 		if err != nil {
+
+			fmt.Println("no object found")
 			t.Reject(err.Error())
 			return
 		}
@@ -51,7 +64,7 @@ func GetCurrentState(ctx context.Context, jsCid js.Value, jsBlockService js.Valu
 			t.Reject(errors.Wrap(err, "error marshaling").Error())
 			return
 		}
-		t.Resolve(bits)
+		t.Resolve(js.TypedArrayOf(bits))
 	}()
 	return t
 }
