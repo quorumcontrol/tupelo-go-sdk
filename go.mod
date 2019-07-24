@@ -12,7 +12,7 @@ require (
 	github.com/gogo/protobuf v1.2.1
 	github.com/hashicorp/golang-lru v0.5.1
 	github.com/ipfs/go-bitswap v0.1.5
-	github.com/ipfs/go-blockservice v0.1.0
+	github.com/ipfs/go-blockservice v0.1.1
 	github.com/ipfs/go-cid v0.0.2
 	github.com/ipfs/go-datastore v0.0.5
 	github.com/ipfs/go-ipfs-blockstore v0.0.1
@@ -34,6 +34,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v0.9.3
 	github.com/quorumcontrol/chaintree v0.0.0-20190701175144-f8f44c3e6d4b
+	github.com/quorumcontrol/go-hamt-ipld v0.0.0-20190708000000-747f6d05418fa23efa10ae4509659c713c567ebc
 	github.com/quorumcontrol/messages/build/go v0.0.0-20190722093818-0def9b3a6501
 	github.com/santhosh-tekuri/jsonschema v1.2.4 // indirect
 	github.com/stretchr/testify v1.3.0
