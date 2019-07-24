@@ -55,6 +55,14 @@ func main() {
 				return jsclient.GenerateKey()
 			}))
 
+			jsObj.Set("passPhraseKey", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				return jsclient.PassPhraseKey(args[0], args[1])
+			}))
+
+			jsObj.Set("keyFromPrivateBytes", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				return jsclient.KeyFromPrivateBytes(args[0])
+			}))
+
 			jsObj.Set("newEmptyTree", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				return jsclient.NewEmptyTree(args[0], args[1])
 			}))

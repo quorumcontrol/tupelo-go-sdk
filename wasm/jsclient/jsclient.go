@@ -172,6 +172,40 @@ func GenerateKey() *then.Then {
 	return t
 }
 
+func KeyFromPrivateBytes(jsBits js.Value) *then.Then {
+	t := then.New()
+	go func() {
+		key,err := jsKeyBitsToPrivateKey(jsBits)
+		if err != nil {
+			t.Reject(err)
+			return
+		}
+		privateBits := js.TypedArrayOf(crypto.FromECDSA(key))
+		publicBits := js.TypedArrayOf(crypto.FromECDSAPub(&key.PublicKey))
+		jsArray := js.Global().Get("Array").New(privateBits, publicBits)
+		t.Resolve(jsArray)
+	}()
+	return t
+}
+
+func PassPhraseKey(jsPhrase, jsSalt js.Value) *then.Then {
+	t := then.New()
+	go func() {
+		phrase := helpers.JsBufferToBytes(jsPhrase)
+		salt := helpers.JsBufferToBytes(jsSalt)
+		key,err := consensus.PassPhraseKey(phrase, salt)
+		if err != nil {
+			t.Reject(err)
+			return
+		}
+		privateBits := js.TypedArrayOf(crypto.FromECDSA(key))
+		publicBits := js.TypedArrayOf(crypto.FromECDSAPub(&key.PublicKey))
+		jsArray := js.Global().Get("Array").New(privateBits, publicBits)
+		t.Resolve(jsArray)
+	}()
+	return t
+}
+
 // NewEmptyTree is a little departurue from the normal Go SDK, it's a helper for JS to create
 // a new blank ChainTree given a private key. It will populate the node store and return the tip
 // of the new Dag (so javascript can reconstitute the chaintree on its side.)
