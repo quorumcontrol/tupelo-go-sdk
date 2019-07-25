@@ -18,8 +18,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-type addressFactory func([]ma.Multiaddr) []ma.Multiaddr
-
 // Option is a configuration option for the server
 type Option func(c *Config) error
 
@@ -34,17 +32,17 @@ type Config struct {
 	PubSubOptions        []pubsub.Option
 	PrivateKey           *ecdsa.PrivateKey
 	EnableNATMap         bool
+	ExternalAddrs        []string
 	ListenAddrs          []string
 	AddrFilters          []*net.IPNet
 	Port                 int
-	PublicIP             string
+	ListenIP             string
 	DiscoveryNamespaces  []string
 	AdditionalP2POptions []libp2p.Option
 	DataStore            ds.Batching
 	BandwidthReporter    metrics.Reporter
 	Segmenter            []byte
 	ClientOnlyDHT        bool
-	addressFactory       addressFactory
 }
 
 // This is a function, because we want to return a new datastore each time
@@ -194,7 +192,7 @@ func WithKey(key *ecdsa.PrivateKey) Option {
 func WithListenIP(ip string, port int) Option {
 	return func(c *Config) error {
 		c.Port = port
-		c.PublicIP = ip
+		c.ListenIP = ip
 		c.ListenAddrs = []string{fmt.Sprintf("/ip4/%s/tcp/%d", ip, c.Port)}
 		return nil
 	}
@@ -231,22 +229,29 @@ func WithNATMap() Option {
 	}
 }
 
-// WithExternalIP sets an arbitrary ip/port for broadcasting to swarm
-func WithExternalIP(ip string, port int) Option {
+// WithExternalAddr sets an arbitrary multiaddr formatted string for broadcasting to swarm
+func WithExternalAddr(addr string) Option {
 	return func(c *Config) error {
-		extMaddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/%d", ip, c.Port))
-
+		// Just ensure address can be casted to multiaddr successfully
+		_, err := ma.NewMultiaddr(addr)
 		if err != nil {
 			return fmt.Errorf("Error creating multiaddress: %v", err)
 		}
-
-		addressFactory := func(addrs []ma.Multiaddr) []ma.Multiaddr {
-			return append(addrs, extMaddr)
-		}
-
-		c.addressFactory = addressFactory
+		c.ExternalAddrs = append(c.ExternalAddrs, addr)
 		return nil
 	}
+}
+
+// WithExternalIP sets an arbitrary ip/port for broadcasting to swarm
+func WithExternalIP(ip string, port int) Option {
+	externalAddr := fmt.Sprintf("/ip4/%s/tcp/%d", ip, port)
+	return WithExternalAddr(externalAddr)
+}
+
+// WithWebSocketExternalIP sets an arbitrary ip/port for broadcasting ws path to swarm
+func WithWebSocketExternalIP(ip string, port int) Option {
+	externalAddr := fmt.Sprintf("/ip4/%s/tcp/%d/ws", ip, port)
+	return WithExternalAddr(externalAddr)
 }
 
 // WithClientOnlyDHT sets whether or not the DHT will be put into client/server mode

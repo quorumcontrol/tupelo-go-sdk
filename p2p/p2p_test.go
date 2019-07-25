@@ -52,6 +52,24 @@ func TestP2pBroadcastIp(t *testing.T) {
 	require.True(t, found)
 }
 
+func TestWithExternalAddrs(t *testing.T) {
+	c := &Config{}
+	err := applyOptions(c, WithExternalIP("1.1.1.1", 53))
+	require.Nil(t, err)
+	err = applyOptions(c, WithWebSocketExternalIP("1.1.1.1", 80))
+	require.Nil(t, err)
+	err = applyOptions(c, WithExternalIP("2.2.2.2", 53))
+	require.Nil(t, err)
+	err = applyOptions(c, WithWebSocketExternalIP("2.2.2.2", 80))
+	require.Nil(t, err)
+	require.ElementsMatch(t, c.ExternalAddrs, []string{
+		"/ip4/1.1.1.1/tcp/53",
+		"/ip4/1.1.1.1/tcp/80/ws",
+		"/ip4/2.2.2.2/tcp/53",
+		"/ip4/2.2.2.2/tcp/80/ws",
+	})
+}
+
 func TestNewRelayLibP2PHost(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	require.Nil(t, err)
