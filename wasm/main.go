@@ -3,12 +3,19 @@
 package main
 
 import (
-	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jslibs"
+	"context"
 	"fmt"
 	"syscall/js"
 
-	"github.com/quorumcontrol/tupelo-go-sdk/wasm/pubsub"
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jscommunity"
+
+	"github.com/pkg/errors"
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/then"
+
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jslibs"
+
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jsclient"
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/pubsub"
 )
 
 var exitChan chan bool
@@ -30,7 +37,7 @@ func main() {
 				err := fmt.Errorf("error, must supply a valid object")
 				panic(err)
 			}
-			
+
 			helperLibs := args[1]
 			cids := helperLibs.Get("cids")
 			ipfsBlock := helperLibs.Get("ipfs-block")
@@ -48,23 +55,44 @@ func main() {
 				return jsclient.GenerateKey()
 			}))
 
+			jsObj.Set("passPhraseKey", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				return jsclient.PassPhraseKey(args[0], args[1])
+			}))
+
+			jsObj.Set("keyFromPrivateBytes", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				return jsclient.KeyFromPrivateBytes(args[0])
+			}))
+
 			jsObj.Set("newEmptyTree", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				return jsclient.NewEmptyTree(args[0], args[1])
 			}))
 
-			jsObj.Set("playTransactions",  js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			jsObj.Set("getCurrentState", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				jsOpts := args[0]
+				return jscommunity.GetCurrentState(context.TODO(), jsOpts.Get("tip"), jsOpts.Get("blockService"), jsOpts.Get("did"))
+			}))
+
+			jsObj.Set("playTransactions", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				// js passes in:
 				// interface IPlayTransactionOptions {
 				//     publisher: IPubSub,
-				//     blockService: IBlockService, 
+				//     notaryGroup: Uint8Array // protobuf encoded config.NotaryGroup
+				//     blockService: IBlockService,
 				//     privateKey: Uint8Array,
-				//     tip: CID, 
-				//     transactions: Uint8Array[],
+				//     tip: CID,
+				//     transactions: Uint8Array[], // protobuf encoded array of transactions.Transaction
 				// }
 				jsOpts := args[0]
 
+				config, err := jsclient.JsConfigToHumanConfig(jsOpts.Get("notaryGroup"))
+				if err != nil {
+					t := then.New()
+					t.Reject(errors.Wrap(err, "error converting config").Error())
+					return t
+				}
+
 				bridge := pubsub.NewPubSubBridge(jsOpts.Get("publisher"))
-				cli := jsclient.New(bridge)
+				cli := jsclient.New(bridge, config)
 				go fmt.Println("play transactionst")
 				return cli.PlayTransactions(jsOpts.Get("blockService"), jsOpts.Get("privateKey"), jsOpts.Get("tip"), jsOpts.Get("transactions"))
 			}))
@@ -73,7 +101,7 @@ func main() {
 		}),
 	)
 
-	js.Global().Get("Go").Call("readyResolver")
+	go js.Global().Get("Go").Call("readyResolver")
 
 	<-exitChan
 }
