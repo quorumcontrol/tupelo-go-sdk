@@ -174,9 +174,9 @@ func GenerateKey() *then.Then {
 func KeyFromPrivateBytes(jsBits js.Value) *then.Then {
 	t := then.New()
 	go func() {
-		key,err := jsKeyBitsToPrivateKey(jsBits)
+		key, err := jsKeyBitsToPrivateKey(jsBits)
 		if err != nil {
-			t.Reject(err)
+			t.Reject(err.Error())
 			return
 		}
 		privateBits := js.TypedArrayOf(crypto.FromECDSA(key))
@@ -192,15 +192,29 @@ func PassPhraseKey(jsPhrase, jsSalt js.Value) *then.Then {
 	go func() {
 		phrase := helpers.JsBufferToBytes(jsPhrase)
 		salt := helpers.JsBufferToBytes(jsSalt)
-		key,err := consensus.PassPhraseKey(phrase, salt)
+		key, err := consensus.PassPhraseKey(phrase, salt)
 		if err != nil {
-			t.Reject(err)
+			t.Reject(err.Error())
 			return
 		}
 		privateBits := js.TypedArrayOf(crypto.FromECDSA(key))
 		publicBits := js.TypedArrayOf(crypto.FromECDSAPub(&key.PublicKey))
 		jsArray := js.Global().Get("Array").New(privateBits, publicBits)
 		t.Resolve(jsArray)
+	}()
+	return t
+}
+
+func EcdsaPubkeyToDid(jsPubKeyBits js.Value) *then.Then {
+	t := then.New()
+	go func() {
+		pubbits := helpers.JsBufferToBytes(jsPubKeyBits)
+		pubKey, err := crypto.UnmarshalPubkey(pubbits)
+		if err != nil {
+			t.Reject(err.Error())
+			return
+		}
+		t.Resolve(consensus.EcdsaPubkeyToDid(*pubKey))
 	}()
 	return t
 }
@@ -228,5 +242,5 @@ func JsConfigToHumanConfig(jsBits js.Value) (*config.NotaryGroup, error) {
 	bits := helpers.JsBufferToBytes(jsBits)
 	config := &config.NotaryGroup{}
 	err := proto.Unmarshal(bits, config)
-	return config,err
+	return config, err
 }
