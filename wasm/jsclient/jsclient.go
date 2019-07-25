@@ -43,7 +43,6 @@ type JSClient struct {
 
 func New(pubsub *pubsub.PubSubBridge, humanConfig *config.NotaryGroup) *JSClient {
 	go fmt.Println("creating pubsub")
-	// for now we're just going to hard code things
 	ngConfig, err := types.HumanConfigToConfig(humanConfig)
 	if err != nil {
 		panic(errors.Wrap(err, "error decoding human config"))
