@@ -63,6 +63,10 @@ func main() {
 				return jsclient.KeyFromPrivateBytes(args[0])
 			}))
 
+			jsObj.Set("ecdsaPubkeyToDid", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				return jsclient.EcdsaPubkeyToDid(args[0])
+			}))
+
 			jsObj.Set("newEmptyTree", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				return jsclient.NewEmptyTree(args[0], args[1])
 			}))
