@@ -133,7 +133,7 @@ func newLibP2PHostFromConfig(ctx context.Context, c *Config) (*LibP2PHost, error
 	var idht *dht.IpfsDHT
 
 	if c.EnableWebsocket {
-		ip := c.PublicIP
+		ip := c.ListenIP
 		if ip == "" {
 			ip = "0.0.0.0"
 		}
@@ -171,8 +171,19 @@ func newLibP2PHostFromConfig(ctx context.Context, c *Config) (*LibP2PHost, error
 		opts = append(opts, libp2p.FilterAddresses(c.AddrFilters...))
 	}
 
-	if c.addressFactory != nil {
-		opts = append(opts, libp2p.AddrsFactory(basichost.AddrsFactory(c.addressFactory)))
+	if len(c.ExternalAddrs) > 0 {
+		extmAddrs := make([]ma.Multiaddr, len(c.ExternalAddrs))
+		for k, addr := range c.ExternalAddrs {
+			mAddr, err := ma.NewMultiaddr(addr)
+			if err != nil {
+				return nil, fmt.Errorf("Error creating Multiaddr for ExternalAddrs: %v", err)
+			}
+			extmAddrs[k] = mAddr
+		}
+
+		opts = append(opts, libp2p.AddrsFactory(basichost.AddrsFactory(func(addrs []ma.Multiaddr) []ma.Multiaddr {
+			return append(addrs, extmAddrs...)
+		})))
 	}
 
 	if len(c.RelayOpts) > 0 {
