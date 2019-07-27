@@ -46,22 +46,24 @@ func (psb *PubSubBridge) Publish(topic string, data []byte) error {
 func (psb *PubSubBridge) Subscribe(topic string, opts ...pubsub.SubOpt) (remote.UnderlyingSubscription, error) {
 	sub := newBridgedSubscription(topic)
 	resp := make(chan error)
+	doneFunc := js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
+		if len(args) == 0 {
+			resp <- nil
+			return nil
+		}
+		resp <- fmt.Errorf("error subscribing: %s", args[0].String())
+		return nil
+	})
 	go func() {
 		psb.jspubsub.Call("subscribe", js.ValueOf(topic), js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
 			go func() {
 				sub.QueueJS(args[0])
 			}()
 			return nil
-		}), js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
-			if len(args) == 0 {
-				resp <- nil
-				return nil
-			}
-			resp <- fmt.Errorf("error subscribing: %s", args[0].String())
-			return nil
-		}))
+		}), doneFunc)
 	}()
 	err := <-resp
+	doneFunc.Release()
 	if err != nil {
 		return nil, err
 	}
