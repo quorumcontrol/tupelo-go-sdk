@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 	"time"
@@ -117,12 +118,24 @@ func (c *Client) subscriptionReceive(actorContext actor.Context) {
 
 // TipRequest requests the tip of a chain tree.
 func (c *Client) TipRequest() (*signatures.CurrentState, error) {
-	target := c.Group.GetRandomSyncer()
-	fut := actor.NewFuture(10 * time.Second)
-	actor.EmptyRootContext.RequestWithCustomSender(target, &services.GetTipRequest{
-		ChainId: c.TreeDID,
-	}, fut.PID())
-	res, err := fut.Result()
+	var attemptNo int
+	var res interface{}
+	err := retry.Do(
+		func() error {
+			var err error
+			timeout := time.Duration(math.Pow(float64(attemptNo+3), 1.2)) * time.Second
+			fut := actor.NewFuture(timeout)
+			target := c.Group.GetRandomSyncer()
+			actor.EmptyRootContext.RequestWithCustomSender(target, &services.GetTipRequest{
+				ChainId: c.TreeDID,
+			}, fut.PID())
+			res, err = fut.Result()
+			attemptNo++
+			return err
+		},
+		retry.Attempts(4),
+		retry.LastErrorOnly(true),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("error getting tip: %v", err)
 	}
