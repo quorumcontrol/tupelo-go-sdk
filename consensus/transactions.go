@@ -137,7 +137,7 @@ func (tn *TokenName) IsCanonical() bool {
 	return tn.ChainTreeDID != "" && tn.LocalName != ""
 }
 
-func tokenNameFromString(tokenName string) TokenName {
+func TokenNameFromString(tokenName string) TokenName {
 	components := strings.Split(tokenName, ":")
 	ctDIDComponents := components[:len(components)-1]
 	localName := components[len(components)-1]
@@ -147,7 +147,7 @@ func tokenNameFromString(tokenName string) TokenName {
 
 func CanonicalTokenName(tree *dag.Dag, defaultChainTreeDID, tokenName string, requireDefault bool) (*TokenName, error) {
 	if strings.HasPrefix(tokenName, "did:tupelo:") {
-		tn := tokenNameFromString(tokenName)
+		tn := TokenNameFromString(tokenName)
 		if requireDefault && tn.ChainTreeDID != defaultChainTreeDID {
 			return nil, fmt.Errorf("invalid chaintree DID in token name")
 		}
@@ -175,7 +175,7 @@ func CanonicalTokenName(tree *dag.Dag, defaultChainTreeDID, tokenName string, re
 
 	var matchedToken *TokenName
 	for token := range tokens {
-		tn := tokenNameFromString(token)
+		tn := TokenNameFromString(token)
 		if tn.LocalName == tokenName {
 			if matchedToken != nil {
 				return nil, fmt.Errorf("ambiguous token names found for %s; please provide full name", tokenName)
@@ -432,7 +432,7 @@ func GetTokenNameFromReceive(senderDag *dag.Dag) (*TokenName, chaintree.CodedErr
 		return nil, &ErrorCode{Code: 999, Memo: fmt.Sprintf("error finding token node: %v", err)}
 	}
 
-	tn := tokenNameFromString(tokenName)
+	tn := TokenNameFromString(tokenName)
 
 	return &tn, nil
 }
