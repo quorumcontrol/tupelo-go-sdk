@@ -205,16 +205,37 @@ func PassPhraseKey(jsPhrase, jsSalt js.Value) *then.Then {
 	return t
 }
 
+func jsToPubKey(jsPubKeyBits js.Value) (*ecdsa.PublicKey, error) {
+	pubbits := helpers.JsBufferToBytes(jsPubKeyBits)
+	pubKey, err := crypto.UnmarshalPubkey(pubbits)
+	if err != nil {
+		return nil, errors.Wrap(err, "error unmarshaling public key")
+	}
+	return pubKey, nil
+}
+
 func EcdsaPubkeyToDid(jsPubKeyBits js.Value) *then.Then {
 	t := then.New()
 	go func() {
-		pubbits := helpers.JsBufferToBytes(jsPubKeyBits)
-		pubKey, err := crypto.UnmarshalPubkey(pubbits)
+		pubKey, err := jsToPubKey(jsPubKeyBits)
 		if err != nil {
 			t.Reject(err.Error())
 			return
 		}
 		t.Resolve(consensus.EcdsaPubkeyToDid(*pubKey))
+	}()
+	return t
+}
+
+func EcdsaPubkeyToAddress(jsPubKeyBits js.Value) *then.Then {
+	t := then.New()
+	go func() {
+		pubKey, err := jsToPubKey(jsPubKeyBits)
+		if err != nil {
+			t.Reject(err.Error())
+			return
+		}
+		t.Resolve(crypto.PubkeyToAddress(*pubKey).String())
 	}()
 	return t
 }

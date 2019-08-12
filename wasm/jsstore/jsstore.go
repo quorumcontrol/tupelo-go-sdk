@@ -39,17 +39,21 @@ func New(bridged js.Value) nodestore.DagStore {
 
 func (jss *JSStore) Remove(ctx context.Context, c cid.Cid) error {
 	respCh := make(chan error)
+	onSuccess := js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
+		respCh <- nil
+		return nil
+	})
+	onError := js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
+		err := fmt.Errorf("error from js: %s", args[0].String())
+		respCh <- err
+		return nil
+	})
+	defer func() {
+		onSuccess.Release()
+		onError.Release()
+	}()
 	go func() {
 		promise := jss.bridged.Call("delete", helpers.CidToJSCID(c))
-		onSuccess := js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
-			respCh <- nil
-			return nil
-		})
-		onError := js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
-			err := fmt.Errorf("error from js: %s", args[0].String())
-			respCh <- err
-			return nil
-		})
 		promise.Call("then", onSuccess, onError)
 	}()
 
@@ -90,20 +94,23 @@ func (jss *JSStore) GetMany(ctx context.Context, cids []cid.Cid) <-chan *format.
 
 func (jss *JSStore) Add(ctx context.Context, n format.Node) error {
 	respCh := make(chan error)
+	onSuccess := js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
+		respCh <- nil
+		return nil
+	})
+	onError := js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
+		err := fmt.Errorf("error from js: %s", args[0].String())
+		respCh <- err
+		return nil
+	})
+	defer func() {
+		onSuccess.Release()
+		onError.Release()
+	}()
 	go func() {
 		promise := jss.bridged.Call("put", nodeToJSBlock(n))
-		onSuccess := js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
-			respCh <- nil
-			return nil
-		})
-		onError := js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
-			err := fmt.Errorf("error from js: %s", args[0].String())
-			respCh <- err
-			return nil
-		})
 		promise.Call("then", onSuccess, onError)
 	}()
-
 	select {
 	case resp := <-respCh:
 		return resp
@@ -115,25 +122,30 @@ func (jss *JSStore) Add(ctx context.Context, n format.Node) error {
 
 func (jss *JSStore) Get(ctx context.Context, c cid.Cid) (format.Node, error) {
 	respCh := make(chan interface{})
+	sw := safewrap.SafeWrap{}
+
+	onSuccess := js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
+		jsBlock := args[0]
+		bits := helpers.JsBufferToBytes(jsBlock.Get("data"))
+		n := sw.Decode(bits)
+		if sw.Err != nil {
+			respCh <- errors.Wrap(sw.Err, "error decoding")
+			return nil
+		}
+		respCh <- n
+		return nil
+	})
+	onError := js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
+		err := fmt.Errorf("error from js: %s", args[0].String())
+		respCh <- err
+		return nil
+	})
+	defer func() {
+		onSuccess.Release()
+		onError.Release()
+	}()
 	go func() {
-		sw := safewrap.SafeWrap{}
 		promise := jss.bridged.Call("get", helpers.CidToJSCID(c))
-		onSuccess := js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
-			jsBlock := args[0]
-			bits := helpers.JsBufferToBytes(jsBlock.Get("data"))
-			n := sw.Decode(bits)
-			if sw.Err != nil {
-				respCh <- errors.Wrap(sw.Err, "error decoding")
-				return nil
-			}
-			respCh <- n
-			return nil
-		})
-		onError := js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
-			err := fmt.Errorf("error from js: %s", args[0].String())
-			respCh <- err
-			return nil
-		})
 		promise.Call("then", onSuccess, onError)
 	}()
 
