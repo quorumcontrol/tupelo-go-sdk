@@ -5,7 +5,6 @@ package jsclient
 import (
 	"context"
 	"crypto/ecdsa"
-	"fmt"
 	"syscall/js"
 
 	"github.com/quorumcontrol/messages/build/go/config"
@@ -42,7 +41,6 @@ type JSClient struct {
 }
 
 func New(pubsub *pubsub.PubSubBridge, humanConfig *config.NotaryGroup) *JSClient {
-	go fmt.Println("creating pubsub")
 	ngConfig, err := types.HumanConfigToConfig(humanConfig)
 	if err != nil {
 		panic(errors.Wrap(err, "error decoding human config"))
@@ -52,7 +50,6 @@ func New(pubsub *pubsub.PubSubBridge, humanConfig *config.NotaryGroup) *JSClient
 
 	wrapped := remote.NewWrappedPubsub(pubsub)
 
-	go fmt.Println("returning js client")
 	return &JSClient{
 		pubsub:      wrapped,
 		notaryGroup: ng,
@@ -87,8 +84,6 @@ func jsKeyBitsToPrivateKey(jsKeyBits js.Value) (*ecdsa.PrivateKey, error) {
 func (jsc *JSClient) PlayTransactions(blockService js.Value, jsKeyBits js.Value, tip js.Value, jsTransactions js.Value) interface{} {
 	t := then.New()
 	go func() {
-		go fmt.Println("play transactions in client")
-
 		trans, err := jsTransactionsToTransactions(jsTransactions)
 		if err != nil {
 			t.Reject(err.Error())
@@ -131,7 +126,6 @@ func (jsc *JSClient) PlayTransactions(blockService js.Value, jsKeyBits js.Value,
 }
 
 func (jsc *JSClient) playTransactions(store nodestore.DagStore, tip cid.Cid, treeKey *ecdsa.PrivateKey, transactions []*transactions.Transaction) (*consensus.AddBlockResponse, error) {
-	fmt.Println("playtransactions in the go side")
 	ctx := context.TODO()
 
 	cTree, err := chaintree.NewChainTree(

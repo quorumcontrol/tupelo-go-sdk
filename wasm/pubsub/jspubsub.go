@@ -25,11 +25,10 @@ func NewPubSubBridge(jspubsub js.Value) *PubSubBridge {
 }
 
 func (psb *PubSubBridge) Publish(topic string, data []byte) error {
-	fmt.Println("publishing")
 	resp := make(chan error)
+	defer close(resp)
 	psb.jspubsub.Call("publish", js.ValueOf(topic), js.Global().Get("Buffer").Call("from", js.TypedArrayOf(data)), js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
 		go func() {
-			fmt.Println("publish callback called")
 			if len(args) > 0 && args[0].Truthy() {
 				resp <- fmt.Errorf("error publishing: %s", args[0].String())
 				return

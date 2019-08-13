@@ -101,7 +101,6 @@ func main() {
 
 				bridge := pubsub.NewPubSubBridge(jsOpts.Get("publisher"))
 				cli := jsclient.New(bridge, config)
-				go fmt.Println("play transactionst")
 				return cli.PlayTransactions(jsOpts.Get("blockService"), jsOpts.Get("privateKey"), jsOpts.Get("tip"), jsOpts.Get("transactions"))
 			}))
 

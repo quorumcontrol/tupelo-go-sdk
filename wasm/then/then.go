@@ -4,7 +4,6 @@ package then
 
 import (
 	"fmt"
-	"reflect"
 	"syscall/js"
 )
 
@@ -41,7 +40,6 @@ func New() *Then {
 }
 
 func (t *Then) handleJSThenCall(resolve js.Value, reject js.Value) error {
-	go fmt.Println("then called") // make sure to do this logging in a go routine because otherwise it's a deadlock
 	if t.result != nil {
 		go resolve.Invoke(js.ValueOf(t.result))
 		return nil
@@ -62,7 +60,6 @@ func (t *Then) handleJSThenCall(resolve js.Value, reject js.Value) error {
 }
 
 func (t *Then) Resolve(res interface{}) {
-	fmt.Println("resolving with: ", reflect.TypeOf(res).String())
 	t.result = res
 	for _, cb := range t.resolveCbs {
 		go func(cb js.Value) {
@@ -73,7 +70,6 @@ func (t *Then) Resolve(res interface{}) {
 }
 
 func (t *Then) Reject(err interface{}) {
-	fmt.Println("rejecting with: ", reflect.TypeOf(err).String())
 	t.err = err
 	for _, cb := range t.errorCbs {
 		go func(cb js.Value) {
