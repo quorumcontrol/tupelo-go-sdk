@@ -44,7 +44,6 @@ func (bs *BridgedSubscription) Cancel() {
 }
 
 func (bs *BridgedSubscription) QueueJS(msg js.Value) {
-	fmt.Println("received subscription message")
 	// js looks like:
 	// {
 	//     from: 'QmSWBdQGuX8Uregx8QSKxCxk1tacQPgJqX1AXnSUnzDyEM',
@@ -60,7 +59,6 @@ func (bs *BridgedSubscription) QueueJS(msg js.Value) {
 			TopicIDs: helpers.JsStringArrayToStringSlice(msg.Get("topicIDs")),
 		},
 	}
-	fmt.Println("after assigning")
 	bs.ch <- pubsubMsg
 
 }

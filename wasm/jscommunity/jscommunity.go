@@ -4,7 +4,6 @@ package jscommunity
 
 import (
 	"context"
-	"fmt"
 	"syscall/js"
 
 	cbornode "github.com/ipfs/go-ipld-cbor"
@@ -45,12 +44,9 @@ func GetCurrentState(ctx context.Context, jsCid js.Value, jsBlockService js.Valu
 			t.Reject(errors.Wrap(err, "error getting hamt node").Error())
 			return
 		}
-		fmt.Println("loaded node: %v", n)
 		key := datastore.KeyWithNamespaces([]string{"states", did + ":current"})
 		storedMapState, err := n.Find(ctx, key.String())
 		if err != nil {
-
-			fmt.Println("no object found")
 			t.Reject(err.Error())
 			return
 		}
