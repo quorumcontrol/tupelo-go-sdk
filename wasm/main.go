@@ -80,6 +80,17 @@ func main() {
 				return jscommunity.GetCurrentState(context.TODO(), jsOpts.Get("tip"), jsOpts.Get("blockService"), jsOpts.Get("did"))
 			}))
 
+			jsObj.Set("tokenPayloadForTransaction", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				jsOpts := args[0]
+				return jsclient.TokenPayloadForTransaction(
+					jsOpts.Get("blockService"),
+					jsOpts.Get("tip"),
+					jsOpts.Get("tokenName"),
+					jsOpts.Get("sendId"),
+					jsOpts.Get("jsSendTxSig"),
+				)
+			}))
+
 			jsObj.Set("playTransactions", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				// js passes in:
 				// interface IPlayTransactionOptions {
