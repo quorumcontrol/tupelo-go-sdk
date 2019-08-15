@@ -11,7 +11,7 @@ require (
 	github.com/ethereum/go-ethereum v1.8.25
 	github.com/gogo/protobuf v1.2.1
 	github.com/hashicorp/golang-lru v0.5.1
-	github.com/ipfs/go-bitswap v0.1.5
+	github.com/ipfs/go-bitswap v0.1.6
 	github.com/ipfs/go-blockservice v0.1.1
 	github.com/ipfs/go-cid v0.0.2
 	github.com/ipfs/go-datastore v0.0.5
