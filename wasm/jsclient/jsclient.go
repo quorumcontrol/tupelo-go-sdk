@@ -259,3 +259,53 @@ func JsConfigToHumanConfig(jsBits js.Value) (*config.NotaryGroup, error) {
 	err := proto.Unmarshal(bits, config)
 	return config, err
 }
+
+// func TokenPayloadForTransaction(chain *chaintree.ChainTree, tokenName *TokenName, sendTokenTxId string, sendTxSig *signatures.Signature) (*transactions.TokenPayload, error) {
+func TokenPayloadForTransaction(jsBlockService js.Value, jsTip js.Value, tokenName js.Value, sendTokenTxId js.Value, jsSendTxSigBits js.Value) *then.Then {
+	t := then.New()
+	ctx := context.TODO()
+	go func() {
+		wrappedStore := jsstore.New(jsBlockService)
+		tip, err := helpers.JsCidToCid(jsTip)
+		if err != nil {
+			t.Reject(err.Error())
+			return
+		}
+
+		tree, err := chaintree.NewChainTree(
+			ctx,
+			dag.NewDag(ctx, tip, wrappedStore),
+			nil,
+			consensus.DefaultTransactors,
+		)
+		if err != nil {
+			t.Reject(err.Error())
+			return
+		}
+
+		sigBits := helpers.JsBufferToBytes(jsSendTxSigBits)
+		sig := &signatures.Signature{}
+		err = proto.Unmarshal(sigBits, sig)
+		if err != nil {
+			t.Reject(err.Error())
+			return
+		}
+
+		canonicalTokenName := consensus.TokenNameFromString(tokenName.String())
+
+		payload, err := consensus.TokenPayloadForTransaction(tree, &canonicalTokenName, sendTokenTxId.String(), sig)
+		if err != nil {
+			t.Reject(err.Error())
+			return
+		}
+
+		bits, err := proto.Marshal(payload)
+		if err != nil {
+			t.Reject(err.Error())
+			return
+		}
+		t.Resolve(js.TypedArrayOf(bits))
+	}()
+
+	return t
+}
