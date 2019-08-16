@@ -60,7 +60,7 @@ func GetCurrentState(ctx context.Context, jsCid js.Value, jsBlockService js.Valu
 			t.Reject(errors.Wrap(err, "error marshaling").Error())
 			return
 		}
-		t.Resolve(js.TypedArrayOf(bits))
+		t.Resolve(helpers.SliceToJSArray(bits))
 	}()
 	return t
 }
