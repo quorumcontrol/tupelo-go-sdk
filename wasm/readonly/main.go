@@ -7,6 +7,11 @@ import (
 	"fmt"
 	"syscall/js"
 
+	cbornode "github.com/ipfs/go-ipld-cbor"
+
+	"github.com/quorumcontrol/chaintree/typecaster"
+	"github.com/quorumcontrol/messages/build/go/signatures"
+
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jscommunity"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jslibs"
 )
@@ -15,6 +20,8 @@ var exitChan chan bool
 
 func init() {
 	exitChan = make(chan bool)
+	typecaster.AddType(signatures.Signature{})
+	cbornode.RegisterCborType(signatures.Signature{})
 }
 
 func main() {
