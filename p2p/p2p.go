@@ -21,13 +21,16 @@ import (
 	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
+	mplex "github.com/libp2p/go-libp2p-mplex"
 	pnet "github.com/libp2p/go-libp2p-pnet"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	swarm "github.com/libp2p/go-libp2p-swarm"
+	direct "github.com/libp2p/go-libp2p-webrtc-direct"
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	ma "github.com/multiformats/go-multiaddr"
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/pion/webrtc/v2"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
 )
 
@@ -140,6 +143,14 @@ func newLibP2PHostFromConfig(ctx context.Context, c *Config) (*LibP2PHost, error
 		c.ListenAddrs = append(c.ListenAddrs, fmt.Sprintf("/ip4/%s/tcp/%d/ws", ip, c.WebsocketPort))
 	}
 
+	if c.EnableRtc {
+		ip := c.ListenIP
+		if ip == "" {
+			ip = "0.0.0.0"
+		}
+		c.ListenAddrs = append(c.ListenAddrs, fmt.Sprintf("/ip4/%s/tcp/%d/http/p2p-webrtc-direct", ip, c.WebRtcPort))
+	}
+
 	opts := []libp2p.Option{
 		libp2p.ListenAddrStrings(c.ListenAddrs...),
 		libp2p.Identity(priv),
@@ -161,6 +172,14 @@ func newLibP2PHostFromConfig(ctx context.Context, c *Config) (*LibP2PHost, error
 			}
 			return rting, err
 		}),
+	}
+
+	if c.EnableRtc {
+		transport := direct.NewTransport(
+			webrtc.Configuration{},
+			new(mplex.Transport),
+		)
+		opts = append(opts, libp2p.Transport(transport))
 	}
 
 	if c.EnableAutoRelay {

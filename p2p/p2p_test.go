@@ -107,6 +107,7 @@ func TestNewHostFromOptions(t *testing.T) {
 			WithRelayOpts(circuit.OptHop),
 			WithLibp2pOptions(libp2p.ConnectionManager(cm)),
 			WithClientOnlyDHT(true),
+			WithWebRTC(0),
 		)
 		require.Nil(t, err)
 		require.NotNil(t, h)

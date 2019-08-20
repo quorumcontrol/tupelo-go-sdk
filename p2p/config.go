@@ -27,7 +27,9 @@ type Config struct {
 	EnableAutoRelay      bool
 	EnableBitSwap        bool
 	EnableWebsocket      bool
+	EnableRtc            bool
 	WebsocketPort        int
+	WebRtcPort           int
 	PubSubRouter         string
 	PubSubOptions        []pubsub.Option
 	PrivateKey           *ecdsa.PrivateKey
@@ -203,6 +205,15 @@ func WithWebSockets(port int) Option {
 	return func(c *Config) error {
 		c.EnableWebsocket = true
 		c.WebsocketPort = port
+		return nil
+	}
+}
+
+// WithWebRTC turns webrtc on at specified port (default to 0)
+func WithWebRTC(port int) Option {
+	return func(c *Config) error {
+		c.EnableRtc = true
+		c.WebRtcPort = port
 		return nil
 	}
 }
