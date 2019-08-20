@@ -107,10 +107,11 @@ func TestNewHostFromOptions(t *testing.T) {
 			WithRelayOpts(circuit.OptHop),
 			WithLibp2pOptions(libp2p.ConnectionManager(cm)),
 			WithClientOnlyDHT(true),
-			WithWebRTC(0),
+			WithWebRTC(50002),
 		)
 		require.Nil(t, err)
 		require.NotNil(t, h)
+		cancel()
 	})
 }
 func TestUnmarshal31ByteKey(t *testing.T) {

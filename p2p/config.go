@@ -265,6 +265,12 @@ func WithWebSocketExternalIP(ip string, port int) Option {
 	return WithExternalAddr(externalAddr)
 }
 
+// WithWebSocketExternalIP sets an arbitrary ip/port for broadcasting ws path to swarm
+func WithWebRTCExternalIP(ip string, port int) Option {
+	externalAddr := fmt.Sprintf("/ip4/%s/tcp/%d/http/p2p-webrtc-direct", ip, port)
+	return WithExternalAddr(externalAddr)
+}
+
 // WithClientOnlyDHT sets whether or not the DHT will be put into client/server mode
 // client mode means it will not serve requests on the DHT
 func WithClientOnlyDHT(isClientOnly bool) Option {
