@@ -62,11 +62,14 @@ func TestWithExternalAddrs(t *testing.T) {
 	require.Nil(t, err)
 	err = applyOptions(c, WithWebSocketExternalIP("2.2.2.2", 80))
 	require.Nil(t, err)
+	err = applyOptions(c, WithWebRTCExternalIP("3.3.3.3", 90))
+	require.Nil(t, err)
 	require.ElementsMatch(t, c.ExternalAddrs, []string{
 		"/ip4/1.1.1.1/tcp/53",
 		"/ip4/1.1.1.1/tcp/80/ws",
 		"/ip4/2.2.2.2/tcp/53",
 		"/ip4/2.2.2.2/tcp/80/ws",
+		"/ip4/3.3.3.3/tcp/90/http/p2p-webrtc-direct",
 	})
 }
 
@@ -107,10 +110,17 @@ func TestNewHostFromOptions(t *testing.T) {
 			WithRelayOpts(circuit.OptHop),
 			WithLibp2pOptions(libp2p.ConnectionManager(cm)),
 			WithClientOnlyDHT(true),
-			WithWebRTC(50002),
+			WithWebRTC(0),
+			WithWebSockets(0),
 		)
 		require.Nil(t, err)
 		require.NotNil(t, h)
+		var addrs string
+		for _, addr := range h.Addresses() {
+			addrs = addrs + ";" + addr.String()
+		}
+		require.Truef(t, strings.Index(addrs, "p2p-webrtc-direct") > 0, "addrs %s did not include p2p-webrtc-direct", addrs)
+		require.Truef(t, strings.Index(addrs, "ws/ipfs") > 0, "addrs %s did not include ws/ipfs", addrs)
 		cancel()
 	})
 }

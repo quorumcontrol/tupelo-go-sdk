@@ -177,7 +177,7 @@ func newLibP2PHostFromConfig(ctx context.Context, c *Config) (*LibP2PHost, error
 	if c.EnableRtc {
 		transport := direct.NewTransport(
 			webrtc.Configuration{},
-			new(mplex.Transport),
+			mplex.DefaultTransport,
 		)
 		opts = append(opts, libp2p.Transport(transport))
 	}
