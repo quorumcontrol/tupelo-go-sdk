@@ -53,3 +53,5 @@ require (
 )
 
 replace github.com/libp2p/go-libp2p-pubsub v0.1.0 => github.com/quorumcontrol/go-libp2p-pubsub v0.0.4-0.20190528094025-e4e719f73e7a
+
+replace github.com/libp2p/go-libp2p-webrtc-direct => github.com/quorumcontrol/go-libp2p-webrtc-direct v0.0.0-20190821000000-e108b396237d359307c30f7e42197af00992ed6b
