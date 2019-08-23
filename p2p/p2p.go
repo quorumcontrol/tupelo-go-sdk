@@ -21,7 +21,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
-	mplex "github.com/libp2p/go-libp2p-mplex"
 	pnet "github.com/libp2p/go-libp2p-pnet"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	swarm "github.com/libp2p/go-libp2p-swarm"
@@ -30,7 +29,6 @@ import (
 	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	ma "github.com/multiformats/go-multiaddr"
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/pion/webrtc/v2"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
 )
 
@@ -175,11 +173,7 @@ func newLibP2PHostFromConfig(ctx context.Context, c *Config) (*LibP2PHost, error
 	}
 
 	if c.EnableRtc {
-		transport := direct.NewTransport(
-			webrtc.Configuration{},
-			mplex.DefaultTransport,
-		)
-		opts = append(opts, libp2p.Transport(transport))
+		opts = append(opts, libp2p.Transport(direct.NewTransport))
 	}
 
 	if c.EnableAutoRelay {
