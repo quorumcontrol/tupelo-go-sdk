@@ -432,8 +432,8 @@ github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndr
 github.com/prometheus/procfs v0.0.0-20181005140218-185b4288413d/go.mod h1:c3At6R/oaqEKCNdg8wHV1ftS6bRYblBhIjjI8uT2IGk=
 github.com/prometheus/procfs v0.0.0-20190425082905-87a4384529e0 h1:c8R11WC8m7KNMkTv/0+Be8vvwo4I3/Ut9AC2FW8fX3U=
 github.com/prometheus/procfs v0.0.0-20190425082905-87a4384529e0/go.mod h1:TjEm7ze935MbeOT/UhFTIMYKhuLP4wbCsTZCD3I8kEA=
-github.com/quorumcontrol/chaintree v0.0.0-20190701175144-f8f44c3e6d4b h1:vYYLk0xrGhHrPG71+cY65m0gpR5RnYod3/80ZQwXZiw=
-github.com/quorumcontrol/chaintree v0.0.0-20190701175144-f8f44c3e6d4b/go.mod h1:uvICVzJpfyiCIbvwP/dR4XSb7TSVYp/O8oL7xJ9Kfkk=
+github.com/quorumcontrol/chaintree v0.8.1 h1:wqEdW72s0Uue7SLIXfAr1W8TDGyu82hOdIFinLjLEfk=
+github.com/quorumcontrol/chaintree v0.8.1/go.mod h1:uvICVzJpfyiCIbvwP/dR4XSb7TSVYp/O8oL7xJ9Kfkk=
 github.com/quorumcontrol/go-hamt-ipld v0.0.0-20190708000000-747f6d05418fa23efa10ae4509659c713c567ebc h1:fNAP3sLQ2J+KCTPqutJjqnwvWhBcAaHX9D/gO6WEHjk=
 github.com/quorumcontrol/go-hamt-ipld v0.0.0-20190708000000-747f6d05418fa23efa10ae4509659c713c567ebc/go.mod h1:yh8hORr0OR7iK/6/6DvMTBtDk5xttfzOiFoDXrRBvRs=
 github.com/quorumcontrol/go-libp2p-pubsub v0.0.4-0.20190528094025-e4e719f73e7a h1:XDXN6yY9PODqRMHFupyf44BQOTvCetoTG0ypXPOQzqs=
