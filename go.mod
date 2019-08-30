@@ -34,7 +34,7 @@ require (
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.8.1
 	github.com/quorumcontrol/chaintree v0.8.1
-	github.com/quorumcontrol/go-hamt-ipld v0.0.0-20190827072050-493d1390e81a
+	github.com/quorumcontrol/go-hamt-ipld v0.0.0-20190829143757-edd9ec4d9ef5
 	github.com/quorumcontrol/messages/build/go v0.0.0-20190722093818-0def9b3a6501
 	github.com/santhosh-tekuri/jsonschema v1.2.4 // indirect
 	github.com/stretchr/testify v1.3.0
