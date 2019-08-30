@@ -1,6 +1,7 @@
 package signatures
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -62,4 +63,100 @@ func TestBLSAddr(t *testing.T) {
 	require.Nil(t, err)
 	assert.NotEqual(t, conditionalAddr2.String(), conditionalAddr.String())
 	assert.Len(t, conditionalAddr2, 20)
+}
+
+func TestEcdsaKeyRestore(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	msg := crypto.Keccak256([]byte("hi hi"))
+
+	sigBits, err := crypto.Sign(msg, key)
+	require.Nil(t, err)
+	sig := &Signature{
+		Ownership: &Ownership{
+			Type: KeyTypeSecp256k1,
+		},
+		Signature: sigBits,
+	}
+	err = sig.RestorePublicKey(msg)
+	require.Nil(t, err)
+	assert.Len(t, sig.PublicKey, 65)
+	assert.Equal(t, crypto.FromECDSAPub(&key.PublicKey), sig.PublicKey)
+}
+
+func TestEcdsaSigning(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	msg := crypto.Keccak256([]byte("hi hi"))
+
+	sigBits, err := crypto.Sign(msg, key)
+	require.Nil(t, err)
+	sig := &Signature{
+		Ownership: &Ownership{
+			Type: KeyTypeSecp256k1,
+		},
+		Signature: sigBits,
+	}
+	sig.RestorePublicKey(msg)
+	verified, err := sig.Valid(msg, nil)
+	require.Nil(t, err)
+	assert.True(t, verified)
+}
+
+func TestEcdsaSigningWithConditions(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	msg := crypto.Keccak256([]byte("hi hi"))
+
+	sigBits, err := crypto.Sign(msg, key)
+	require.Nil(t, err)
+	sig := &Signature{
+		Ownership: &Ownership{
+			Type:       KeyTypeSecp256k1,
+			Conditions: "false",
+		},
+		Signature: sigBits,
+	}
+	sig.RestorePublicKey(msg)
+	verified, err := sig.Valid(msg, nil)
+	require.Nil(t, err)
+	// Conditions returned false so it should not verify
+	assert.False(t, verified)
+
+	sig.Conditions = "true"
+	verified, err = sig.Valid(msg, nil)
+	require.Nil(t, err)
+	// Conditions are now TRUE so should verify
+	assert.True(t, verified)
+}
+
+func TestHashPreimageConditions(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	msg := crypto.Keccak256([]byte("hi hi"))
+
+	preImage := "secrets!"
+	hsh := crypto.Keccak256Hash([]byte(preImage)).String()
+
+	sigBits, err := crypto.Sign(msg, key)
+	require.Nil(t, err)
+	sig := &Signature{
+		Ownership: &Ownership{
+			Type:       KeyTypeSecp256k1,
+			Conditions: fmt.Sprintf(`(== hashed-preimage "%s")`, hsh),
+		},
+		Signature: sigBits,
+		PreImage:  "not the right one",
+	}
+	sig.RestorePublicKey(msg)
+	verified, err := sig.Valid(msg, nil)
+	require.Nil(t, err)
+	// Conditions returned false so it should not verify
+	assert.False(t, verified)
+
+	sig.PreImage = preImage
+	verified, err = sig.Valid(msg, nil)
+	require.Nil(t, err)
+	// Conditions are now TRUE so should verify
+	assert.True(t, verified)
 }
