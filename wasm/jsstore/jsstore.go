@@ -17,6 +17,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
+	"github.com/ipfs/go-merkledag"
 
 	"github.com/quorumcontrol/chaintree/nodestore"
 )
@@ -127,7 +128,20 @@ func (jss *JSStore) Get(ctx context.Context, c cid.Cid) (format.Node, error) {
 	onSuccess := js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
 		jsBlock := args[0]
 		bits := helpers.JsBufferToBytes(jsBlock.Get("data"))
-		n := sw.Decode(bits)
+		var n format.Node
+
+		switch c.Type() {
+		case cid.DagProtobuf:
+			protonode, err := merkledag.DecodeProtobuf(bits)
+			if err != nil {
+				respCh <- errors.Wrap(err, "error decoding")
+				return nil
+			}
+			n = protonode
+		default:
+			n = sw.Decode(bits)
+		}
+
 		if sw.Err != nil {
 			respCh <- errors.Wrap(sw.Err, "error decoding")
 			return nil
