@@ -161,7 +161,7 @@ func TestHashPreimageConditions(t *testing.T) {
 	assert.True(t, verified)
 }
 
-func BenchmarkConditions(b *testing.B) {
+func BenchmarkWithConditions(b *testing.B) {
 	key, err := crypto.GenerateKey()
 	require.Nil(b, err)
 	msg := crypto.Keccak256([]byte("hi hi"))
@@ -178,6 +178,30 @@ func BenchmarkConditions(b *testing.B) {
 		},
 		Signature: sigBits,
 		PreImage:  preImage,
+	}
+	sig.RestorePublicKey(msg)
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_, err = sig.Valid(msg, nil)
+	}
+	require.Nil(b, err)
+}
+
+func BenchmarkWithoutConditions(b *testing.B) {
+	key, err := crypto.GenerateKey()
+	require.Nil(b, err)
+	msg := crypto.Keccak256([]byte("hi hi"))
+
+	sigBits, err := crypto.Sign(msg, key)
+	require.Nil(b, err)
+	sig := &Signature{
+		Ownership: &Ownership{
+			Type:       KeyTypeSecp256k1,
+			Conditions: "",
+		},
+		Signature: sigBits,
 	}
 	sig.RestorePublicKey(msg)
 
