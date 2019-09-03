@@ -106,6 +106,10 @@ func main() {
 				return helpers.SliceToJSBuffer(jscommunity.NumberToBytes(uint64(args[0].Int())))
 			}))
 
+			jsObj.Set("getSendableEnvelopeBytes", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				return jscommunity.GetSendableBytes(helpers.JsBufferToBytes(args[0]), helpers.JsBufferToBytes(args[1]))
+			}))
+
 			jsObj.Set("playTransactions", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				// js passes in:
 				// interface IPlayTransactionOptions {

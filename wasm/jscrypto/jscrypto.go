@@ -4,7 +4,6 @@ package jscrypto
 
 import (
 	"crypto/sha256"
-	"fmt"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/helpers"
@@ -17,13 +16,11 @@ func Sign(msg []byte, keyBits []byte) *then.Then {
 		hsh := sha256.Sum256(msg)
 		key, err := crypto.ToECDSA(keyBits)
 		if err != nil {
-			fmt.Println("rejecting to key error", err)
 			t.Reject(err.Error())
 			return
 		}
 		bits, err := crypto.Sign(hsh[:], key)
 		if err != nil {
-			fmt.Println("rejecting to sign error", err)
 			t.Reject(err.Error())
 			return
 		}
