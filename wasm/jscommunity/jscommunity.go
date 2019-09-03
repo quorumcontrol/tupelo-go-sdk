@@ -4,6 +4,8 @@ package jscommunity
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
 	"syscall/js"
 
 	cbornode "github.com/ipfs/go-ipld-cbor"
@@ -25,6 +27,18 @@ import (
 func init() {
 	typecaster.AddType(signatures.CurrentState{})
 	cbornode.RegisterCborType(signatures.CurrentState{})
+}
+
+func HashToShardNumber(topicName string, shardCount int) int {
+	hsh := sha256.Sum256([]byte(topicName))
+	shardNum, _ := binary.Uvarint(hsh[:])
+	return int(shardNum % uint64(shardCount))
+}
+
+func NumberToBytes(x uint64) []byte {
+	buf := make([]byte, binary.MaxVarintLen64)
+	n := binary.PutUvarint(buf, x)
+	return buf[:n]
 }
 
 func GetCurrentState(ctx context.Context, jsCid js.Value, jsBlockService js.Value, jsDid js.Value) *then.Then {
