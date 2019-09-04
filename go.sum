@@ -454,6 +454,7 @@ github.com/quorumcontrol/go-libp2p-pubsub v0.0.4-0.20190528094025-e4e719f73e7a h
 github.com/quorumcontrol/go-libp2p-pubsub v0.0.4-0.20190528094025-e4e719f73e7a/go.mod h1:ZwlKzRSe1eGvSIdU5bD7+8RZN/Uzw0t1Bp9R1znpR/Q=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190530182608-30c127bffefb h1:x/0eUSPARsrbdV1R/3vJWIT8P3EhUaF1AIYPu9L4TKg=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190530182608-30c127bffefb/go.mod h1:b8jDN8PulcGcRJ2pQc0lbC3tPaOspGHoBIbPxfB7Jqg=
+github.com/quorumcontrol/messages/build/go v0.0.0-20190904000000-3d2df74aa512889ad7d1f7b665e9c74d754a7ad5 h1:yhxMyEbbl+lRgPKaC30lNDmoc9wPzV7ZgRZ+vvikHjk=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190904000000-3d2df74aa512889ad7d1f7b665e9c74d754a7ad5/go.mod h1:qw2lFojipAoSngsC0orDPd6ELEEL/WD3IcMmTRZv5NY=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190904000000-58fd853a9b72b1b790013846b7ef243052bb7cea h1:9dDanFU6q3CuodbXYR1cCmH2yOBTZSNyhh7lrQprs/Y=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190904000000-58fd853a9b72b1b790013846b7ef243052bb7cea/go.mod h1:qw2lFojipAoSngsC0orDPd6ELEEL/WD3IcMmTRZv5NY=

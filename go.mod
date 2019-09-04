@@ -51,5 +51,3 @@ require (
 )
 
 replace github.com/libp2p/go-libp2p-pubsub v0.1.0 => github.com/quorumcontrol/go-libp2p-pubsub v0.0.4-0.20190528094025-e4e719f73e7a
-
-replace github.com/quorumcontrol/messages/build/go => ../messages/build/go
