@@ -11,7 +11,6 @@ import (
 
 	"golang.org/x/crypto/scrypt"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	cbornode "github.com/ipfs/go-ipld-cbor"
@@ -21,7 +20,7 @@ import (
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/chaintree/typecaster"
 	"github.com/quorumcontrol/messages/build/go/signatures"
-	"github.com/quorumcontrol/tupelo-go-sdk/bls"
+	sigfuncs "github.com/quorumcontrol/tupelo-go-sdk/signatures"
 )
 
 func init() {
@@ -70,11 +69,6 @@ func (sm SignatureMap) Only(keys []string) SignatureMap {
 	return newSm
 }
 
-const (
-	KeyTypeBLSGroupSig = "BLS"
-	KeyTypeSecp256k1   = "secp256k1"
-)
-
 type StandardHeaders struct {
 	Signatures SignatureMap `refmt:"signatures,omitempty" json:"signatures,omitempty" cbor:"signatures,omitempty"`
 }
@@ -92,52 +86,6 @@ func EcdsaPubkeyToDid(key ecdsa.PublicKey) string {
 func DidToAddr(did string) string {
 	segs := strings.Split(did, ":")
 	return segs[len(segs)-1]
-}
-
-// PublicKeyToEcdsaPub returns the ecdsa typed key from the bytes in the
-// PublicKey at this time there is no error checking.
-func PublicKeyToEcdsaPub(pk *signatures.PublicKey) *ecdsa.PublicKey {
-	ecdsaPk, err := crypto.UnmarshalPubkey(pk.PublicKey)
-	if err != nil {
-		panic("Failed to unmarshal public key")
-	}
-	return ecdsaPk
-}
-
-// PublicKeyToAddr converts a public key to an address.
-func PublicKeyToAddr(key *signatures.PublicKey) string {
-	switch key.Type {
-	case KeyTypeSecp256k1:
-		ecdsaPk, err := crypto.UnmarshalPubkey(key.PublicKey)
-		if err != nil {
-			panic("Failed to unmarshal public key")
-		}
-		return crypto.PubkeyToAddress(*ecdsaPk).String()
-	case KeyTypeBLSGroupSig:
-		return BlsVerKeyToAddress(key.PublicKey).String()
-	default:
-		return ""
-	}
-}
-
-func BlsVerKeyToAddress(pubBytes []byte) common.Address {
-	return common.BytesToAddress(crypto.Keccak256(pubBytes)[12:])
-}
-
-func EcdsaToPublicKey(key *ecdsa.PublicKey) signatures.PublicKey {
-	return signatures.PublicKey{
-		Type:      KeyTypeSecp256k1,
-		PublicKey: crypto.FromECDSAPub(key),
-		Id:        crypto.PubkeyToAddress(*key).String(),
-	}
-}
-
-func BlsKeyToPublicKey(key *bls.VerKey) signatures.PublicKey {
-	return signatures.PublicKey{
-		Id:        BlsVerKeyToAddress(key.Bytes()).Hex(),
-		PublicKey: key.Bytes(),
-		Type:      KeyTypeBLSGroupSig,
-	}
 }
 
 func BlockToHash(block chaintree.Block) ([]byte, error) {
@@ -181,8 +129,10 @@ func SignBlock(blockWithHeaders *chaintree.BlockWithHeaders, key *ecdsa.PrivateK
 	addr := crypto.PubkeyToAddress(key.PublicKey).String()
 
 	sig := signatures.Signature{
+		Ownership: &signatures.Ownership{
+			Type: signatures.Ownership_KeyTypeSecp256k1,
+		},
 		Signature: sigBytes,
-		Type:      KeyTypeSecp256k1,
 	}
 
 	headers := &StandardHeaders{}
@@ -229,97 +179,24 @@ func IsBlockSignedBy(blockWithHeaders *chaintree.BlockWithHeaders, addr string) 
 		return false, fmt.Errorf("error wrapping block: %v", err)
 	}
 
-	switch sig.Type {
-	case KeyTypeSecp256k1:
-		ecdsaPubKey, err := crypto.SigToPub(hsh, sig.Signature)
+	switch sig.Ownership.Type {
+	case signatures.Ownership_KeyTypeSecp256k1:
+		err := sigfuncs.RestoreEcdsaPublicKey(sig, hsh)
 		if err != nil {
-			return false, fmt.Errorf("error getting public key: %v", err)
+			return false, fmt.Errorf("error restoring public key: %v", err)
 		}
-		if crypto.PubkeyToAddress(*ecdsaPubKey).String() != addr {
-			return false, fmt.Errorf("unsigned by genesis address %s != %s", crypto.PubkeyToAddress(*ecdsaPubKey).Hex(), addr)
+		sigAddr, err := sigfuncs.Address(sig.Ownership)
+		if err != nil {
+			return false, fmt.Errorf("error getting address from signature: %v", err)
 		}
-		return crypto.VerifySignature(crypto.FromECDSAPub(ecdsaPubKey), hsh, sig.Signature[:len(sig.Signature)-1]), nil
+		if sigAddr.String() != addr {
+			return false, fmt.Errorf("unsigned by address %s != %s", sigAddr.String(), addr)
+		}
+		return sigfuncs.Valid(sig, hsh, nil) // TODO: maybe we want to have a custom scope here?
 	}
 
 	log.Error("unknown signature type")
 	return false, fmt.Errorf("unkown signature type")
-}
-
-func BlsSign(payload interface{}, key *bls.SignKey) (*signatures.Signature, error) {
-	hsh, err := ObjToHash(payload)
-	if err != nil {
-		return nil, fmt.Errorf("error hashing block: %v", err)
-	}
-
-	sigBytes, err := key.Sign(hsh)
-	if err != nil {
-		return nil, fmt.Errorf("error signing: %v", err)
-	}
-
-	sig := &signatures.Signature{
-		Signature: sigBytes,
-		Type:      KeyTypeBLSGroupSig,
-	}
-
-	return sig, nil
-}
-
-// Sign the bytes sent in with no additional manipulation (no hashing or serializing)
-func BlsSignBytes(hsh []byte, key *bls.SignKey) (*signatures.Signature, error) {
-	sigBytes, err := key.Sign(hsh)
-	if err != nil {
-		return nil, fmt.Errorf("error signing: %v", err)
-	}
-
-	sig := &signatures.Signature{
-		Signature: sigBytes,
-		Type:      KeyTypeBLSGroupSig,
-	}
-
-	return sig, nil
-}
-
-func EcdsaSign(payload interface{}, key *ecdsa.PrivateKey) (*signatures.Signature, error) {
-	hsh, err := ObjToHash(payload)
-	if err != nil {
-		return nil, fmt.Errorf("error hashing block: %v", err)
-	}
-
-	sigBytes, err := crypto.Sign(hsh, key)
-	if err != nil {
-		return nil, fmt.Errorf("error signing: %v", err)
-	}
-	return &signatures.Signature{
-		Signature: sigBytes,
-		Type:      KeyTypeSecp256k1,
-	}, nil
-}
-
-func Verify(hsh []byte, sig signatures.Signature, key signatures.PublicKey) (bool, error) {
-	switch sig.Type {
-	case KeyTypeSecp256k1:
-		recoverdPub, err := crypto.SigToPub(hsh, sig.Signature)
-		if err != nil {
-			return false, fmt.Errorf("error recovering signature: %v", err)
-		}
-
-		if crypto.PubkeyToAddress(*recoverdPub).String() != PublicKeyToAddr(&key) {
-			return false, nil
-		}
-
-		return crypto.VerifySignature(crypto.FromECDSAPub(recoverdPub), hsh, sig.Signature[:len(sig.Signature)-1]), nil
-	case KeyTypeBLSGroupSig:
-		verKey := bls.BytesToVerKey(key.PublicKey)
-		verified, err := verKey.Verify(sig.Signature, hsh)
-		if err != nil {
-			log.Error("error verifying", "err", err)
-			return false, fmt.Errorf("error verifying: %v", err)
-		}
-		return verified, nil
-	default:
-		log.Error("unknown signature type", "type", sig.Type)
-		return false, fmt.Errorf("error: unknown signature type: %v", sig.Type)
-	}
 }
 
 func ObjToHash(payload interface{}) ([]byte, error) {

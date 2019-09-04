@@ -96,7 +96,7 @@ func IsTokenRecipient(tree *dag.Dag, blockWithHeaders *chaintree.BlockWithHeader
 // verifier function arg and returns an IsValidSignature validator function
 // (see above) that calls the given sigVerifier with the Signature and Tip it
 // receives and uses its return values to determine validity.
-func GenerateIsValidSignature(sigVerifier func(sig *signatures.Signature) (bool, error)) chaintree.BlockValidatorFunc {
+func GenerateIsValidSignature(sigVerifier func(state *signatures.TreeState) (bool, error)) chaintree.BlockValidatorFunc {
 	isValidSignature := func(tree *dag.Dag, blockWithHeaders *chaintree.BlockWithHeaders) (bool, chaintree.CodedError) {
 		// first determine if there any RECEIVE_TOKEN transactions in here
 		receiveTokens, err := getReceiveTokenPayloads(blockWithHeaders.Transactions)
@@ -111,23 +111,23 @@ func GenerateIsValidSignature(sigVerifier func(sig *signatures.Signature) (bool,
 
 		// we have at least one RECEIVE_TOKEN transaction; make sure Signature is valid for Tip
 		for _, rt := range receiveTokens {
-			sig := rt.Signature
+			receiveState := rt.TreeState
 
 			tip, err := cid.Cast(rt.Tip)
 			if err != nil {
 				return false, &consensus.ErrorCode{Code: consensus.ErrInvalidTip, Memo: fmt.Sprintf("error casting tip to CID: %v", err)}
 			}
 
-			sigNewTip, err := cid.Cast(sig.NewTip)
+			sigNewTip, err := cid.Cast(receiveState.NewTip)
 			if err != nil {
 				return false, &consensus.ErrorCode{Code: consensus.ErrInvalidTip, Memo: fmt.Sprintf("error casting tip to CID: %v", err)}
 			}
 
-			if sigNewTip != tip {
+			if !sigNewTip.Equals(tip) {
 				return false, nil
 			}
 
-			valid, err := sigVerifier(sig)
+			valid, err := sigVerifier(receiveState)
 			if err != nil {
 				return false, &consensus.ErrorCode{Code: consensus.ErrUnknown, Memo: fmt.Sprintf("error verifying signature: %v", err)}
 			}
