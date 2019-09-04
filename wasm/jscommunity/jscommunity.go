@@ -6,7 +6,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/binary"
-	"fmt"
 	"syscall/js"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -45,16 +44,14 @@ func GetSendableBytes(envelopeBits []byte, keyBits []byte) *then.Then {
 	go func() {
 		key, err := crypto.ToECDSA(keyBits)
 		if err != nil {
-			fmt.Println("rejecting to key error", err)
-			t.Reject(err.Error())
+			t.Reject(errors.Wrap(err, "error converting bytes to key").Error())
 			return
 		}
 
 		env := new(pb.Envelope)
 		err = env.Unmarshal(envelopeBits)
 		if err != nil {
-			fmt.Println("rejecting to key error", err)
-			t.Reject(err.Error())
+			t.Reject(errors.Wrap(err, "error unmarshaling envelope").Error())
 			return
 		}
 
