@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/quorumcontrol/messages/build/go/signatures"
+
 	logging "github.com/ipfs/go-log"
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 
@@ -36,38 +38,9 @@ func init() {
 	defaultScope = scope
 }
 
-//TODO: these should be ENUMs in protobufs
-const (
-	KeyTypeBLSGroupSig = "BLS"
-	KeyTypeSecp256k1   = "secp256k1"
-)
-
 var nullAddr = common.BytesToAddress([]byte{})
 
-// Ownership is also included in signature and
-// is used to create an address suitable for
-// ChainTree ownership (that can also include conditions)
-type Ownership struct {
-	// Type is an ENUM of the supported signature types
-	Type string
-	//PublicKey is optional when on a signature, some signatures contain a public key
-	PublicKey []byte
-	// Conditions is an optional parens script
-	Conditions string
-}
-
-type Signature struct {
-	*Ownership
-	// Signers is an optional array of counts of the public keys of signers
-	// used for aggregated BLS signatures where the public keys are known out-of-band of signatures
-	Signers []uint32
-	// The actual signature bytes
-	Signature []byte
-	// PreImage is an optional field used for the hash-preimage condition
-	PreImage string
-}
-
-func (o *Ownership) Address() (common.Address, error) {
+func Address(o *signatures.Ownership) (common.Address, error) {
 	// in the case of conditions, all signatures are treated similarly to produce an address
 	// and we just take the hash of the public key and the conditions and produce an address
 	if o.Conditions != "" {
@@ -76,13 +49,13 @@ func (o *Ownership) Address() (common.Address, error) {
 	}
 
 	switch o.Type {
-	case KeyTypeSecp256k1:
+	case signatures.Ownership_KeyTypeSecp256k1:
 		key, err := crypto.UnmarshalPubkey(o.PublicKey)
 		if err != nil {
 			xerrors.Errorf("error unmarshaling public key: %w", err)
 		}
 		return crypto.PubkeyToAddress(*key), nil
-	case KeyTypeBLSGroupSig:
+	case signatures.Ownership_KeyTypeBLSGroupSig:
 		return bytesToAddress(o.PublicKey), nil
 	default:
 		return nullAddr, xerrors.Errorf("unknown keytype: %s", o.Type)
@@ -93,26 +66,26 @@ func bytesToAddress(bits []byte) common.Address {
 	return common.BytesToAddress(crypto.Keccak256(bits)[12:])
 }
 
-func (s *Signature) RestorePublicKey(hsh []byte) error {
-	if s.Type != KeyTypeSecp256k1 {
+func RestorePublicKey(s *signatures.Signature, hsh []byte) error {
+	if s.Ownership.Type != signatures.Ownership_KeyTypeSecp256k1 {
 		return xerrors.Errorf("error only KeyTypeSecp256k1 supports key recovery")
 	}
 	recoveredPub, err := crypto.SigToPub(hsh, s.Signature)
 	if err != nil {
 		return fmt.Errorf("error recovering signature: %v", err)
 	}
-	s.PublicKey = crypto.FromECDSAPub(recoveredPub)
+	s.Ownership.PublicKey = crypto.FromECDSAPub(recoveredPub)
 	return nil
 }
 
-func (s *Signature) Valid(hsh []byte, scope parens.Scope) (bool, error) {
-	if len(s.PublicKey) == 0 {
+func Valid(s *signatures.Signature, hsh []byte, scope parens.Scope) (bool, error) {
+	if len(s.Ownership.PublicKey) == 0 {
 		return false, xerrors.Errorf("public key was 0, perhaps you forgot to restore it from sig?")
 	}
 	if scope == nil {
 		scope = parens.NewScope(defaultScope)
 	}
-	conditionsValid, err := s.validConditions(scope)
+	conditionsValid, err := validConditions(s, scope)
 	if err != nil {
 		return false, xerrors.Errorf("error validating conditions: %w", err)
 	}
@@ -120,11 +93,11 @@ func (s *Signature) Valid(hsh []byte, scope parens.Scope) (bool, error) {
 		return false, nil
 	}
 
-	switch s.Type {
-	case KeyTypeSecp256k1:
-		return crypto.VerifySignature(s.PublicKey, hsh, s.Signature[:len(s.Signature)-1]), nil
-	case KeyTypeBLSGroupSig:
-		verKey := bls.BytesToVerKey(s.PublicKey)
+	switch s.Ownership.Type {
+	case signatures.Ownership_KeyTypeSecp256k1:
+		return crypto.VerifySignature(s.Ownership.PublicKey, hsh, s.Signature[:len(s.Signature)-1]), nil
+	case signatures.Ownership_KeyTypeBLSGroupSig:
+		verKey := bls.BytesToVerKey(s.Ownership.PublicKey)
 		verified, err := verKey.Verify(s.Signature, hsh)
 		if err != nil {
 			logger.Warningf("error verifying signature: %v", err)
@@ -132,19 +105,19 @@ func (s *Signature) Valid(hsh []byte, scope parens.Scope) (bool, error) {
 		}
 		return verified, nil
 	default:
-		return false, xerrors.Errorf("Unknown key type %s", s.Type)
+		return false, xerrors.Errorf("Unknown key type %s", s.Ownership.Type)
 	}
 }
 
-func (s *Signature) validConditions(scope parens.Scope) (bool, error) {
-	if s.Conditions == "" {
+func validConditions(s *signatures.Signature, scope parens.Scope) (bool, error) {
+	if s.Ownership.Conditions == "" {
 		return true, nil
 	}
 	scope.Bind("hashed-preimage", func() string {
 		return crypto.Keccak256Hash([]byte(s.PreImage)).String()
 	})
 
-	res, err := parens.ExecuteStr(s.Conditions, scope)
+	res, err := parens.ExecuteStr(s.Ownership.Conditions, scope)
 	if err != nil {
 		return false, xerrors.Errorf("error executing script: %w", err)
 	}
