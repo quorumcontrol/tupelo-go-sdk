@@ -10,7 +10,7 @@ import (
 	"syscall/js"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/golang/protobuf/ptypes"
+	ptypes "github.com/gogo/protobuf/types"
 	pb "github.com/quorumcontrol/messages/build/go/community"
 
 	cbornode "github.com/ipfs/go-ipld-cbor"
@@ -57,7 +57,7 @@ func GetSendableBytes(envelopeBits []byte, keyBits []byte) *then.Then {
 		}
 
 		env := new(pb.Envelope)
-		err = proto.Unmarshal(envelopeBits, env)
+		err = env.Unmarshal(envelopeBits)
 		if err != nil {
 			fmt.Println("rejecting to key error", err)
 			t.Reject(err.Error())
@@ -72,7 +72,7 @@ func GetSendableBytes(envelopeBits []byte, keyBits []byte) *then.Then {
 			return
 		}
 
-		marshaled, err := proto.Marshal(any)
+		marshaled, err := any.Marshal()
 		if err != nil {
 			t.Reject(errors.Wrap(err, "error marshaling").Error())
 			return

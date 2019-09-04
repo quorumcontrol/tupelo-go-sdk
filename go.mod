@@ -9,7 +9,7 @@ require (
 	github.com/ethereum/go-ethereum v1.9.3
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gogo/protobuf v1.3.0
-	github.com/golang/protobuf v1.3.2
+	github.com/golang/protobuf v1.3.2 // indirect
 	github.com/hashicorp/golang-lru v0.5.1
 	github.com/ipfs/go-bitswap v0.1.6
 	github.com/ipfs/go-blockservice v0.1.1
