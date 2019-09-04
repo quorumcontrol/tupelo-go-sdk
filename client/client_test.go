@@ -25,12 +25,11 @@ func TestSubscription(t *testing.T) {
 
 		fut := client.Subscribe(&trans, 1*time.Second)
 		time.Sleep(100 * time.Millisecond)
-		currState := &signatures.CurrentState{
-			Signature: &signatures.Signature{
-				ObjectId: trans.ObjectId,
-				Height:   trans.Height,
-				NewTip:   trans.NewTip,
-			},
+		currState := &signatures.TreeState{
+			ObjectId:  trans.ObjectId,
+			Height:    trans.Height,
+			NewTip:    trans.NewTip,
+			Signature: &signatures.Signature{},
 		}
 		err := pubSubSystem.Broadcast(string(trans.ObjectId), currState)
 		require.Nil(t, err)
@@ -46,12 +45,11 @@ func TestSubscription(t *testing.T) {
 
 		fut := client.Subscribe(&trans, 1*time.Second)
 		time.Sleep(100 * time.Millisecond)
-		currState := &signatures.CurrentState{
-			Signature: &signatures.Signature{
-				ObjectId: trans.ObjectId,
-				Height:   trans.Height,
-				NewTip:   []byte("somebadtip"),
-			},
+		currState := &signatures.TreeState{
+			ObjectId:  trans.ObjectId,
+			Height:    trans.Height,
+			NewTip:    []byte("somebadtip"),
+			Signature: &signatures.Signature{},
 		}
 		err := pubSubSystem.Broadcast(string(trans.ObjectId), currState)
 		require.Nil(t, err)
@@ -71,10 +69,10 @@ func TestSubscribeAll(t *testing.T) {
 	client := New(ng, did, pubSubSystem)
 	defer client.Stop()
 
-	states := make([]*signatures.CurrentState, 2)
+	states := make([]*signatures.TreeState, 2)
 	i := 0
 
-	sub, err := client.SubscribeAll(func(msg *signatures.CurrentState) {
+	sub, err := client.SubscribeAll(func(msg *signatures.TreeState) {
 		states[i] = msg
 		i++
 	})
@@ -82,22 +80,20 @@ func TestSubscribeAll(t *testing.T) {
 	require.Nil(t, err)
 
 	time.Sleep(100 * time.Millisecond)
-	state1 := &signatures.CurrentState{
-		Signature: &signatures.Signature{
-			ObjectId: trans.ObjectId,
-			Height:   trans.Height,
-			NewTip:   trans.NewTip,
-		},
+	state1 := &signatures.TreeState{
+		ObjectId:  trans.ObjectId,
+		Height:    trans.Height,
+		NewTip:    trans.NewTip,
+		Signature: &signatures.Signature{},
 	}
 	err = pubSubSystem.Broadcast(did, state1)
 	require.Nil(t, err)
 
-	state2 := &signatures.CurrentState{
-		Signature: &signatures.Signature{
-			ObjectId: trans.ObjectId,
-			Height:   trans.Height + 1,
-			NewTip:   trans.NewTip,
-		},
+	state2 := &signatures.TreeState{
+		ObjectId:  trans.ObjectId,
+		Height:    trans.Height + 1,
+		NewTip:    trans.NewTip,
+		Signature: &signatures.Signature{},
 	}
 	err = pubSubSystem.Broadcast(did, state2)
 	require.Nil(t, err)

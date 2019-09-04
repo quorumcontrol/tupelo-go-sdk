@@ -98,17 +98,17 @@ func (c *Client) subscriptionReceive(actorContext actor.Context) {
 		if err != nil {
 			panic(fmt.Errorf("error spawning pubsub: %v", err))
 		}
-	case *signatures.CurrentState:
+	case *signatures.TreeState:
 		if msg.Signature == nil {
 			c.log.Errorw("received signatures.CurrentState message without signature")
 			return
 		}
 
-		heightString := strconv.FormatUint(msg.Signature.Height, 10)
+		heightString := strconv.FormatUint(msg.Height, 10)
 		//TODO: this needs to check the validity of the signature
 		existed, _ := c.cache.ContainsOrAdd(heightString, msg)
 		if !existed {
-			c.log.Debugw("publishing current state", "objectID", string(msg.Signature.ObjectId),
+			c.log.Debugw("publishing current state", "objectID", string(msg.ObjectId),
 				"height", heightString)
 			c.stream.Publish(msg)
 		}
@@ -118,7 +118,7 @@ func (c *Client) subscriptionReceive(actorContext actor.Context) {
 }
 
 // TipRequest requests the tip of a chain tree.
-func (c *Client) TipRequest() (*signatures.CurrentState, error) {
+func (c *Client) TipRequest() (*signatures.TreeState, error) {
 	var attemptNo int
 	var res interface{}
 	err := retry.Do(
@@ -140,12 +140,12 @@ func (c *Client) TipRequest() (*signatures.CurrentState, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting tip: %v", err)
 	}
-	if res.(*signatures.CurrentState).Signature != nil {
+	if res.(*signatures.TreeState).Signature != nil {
 		// cache the result to the LRU so future requests to height will
 		// return the answer by sending the answer to the subscriber
 		actor.EmptyRootContext.Send(c.subscriber, res)
 	}
-	return res.(*signatures.CurrentState), nil
+	return res.(*signatures.TreeState), nil
 }
 
 // Subscribe returns a future that will return when the height the transaction
@@ -165,24 +165,24 @@ func (c *Client) Subscribe(trans *services.AddBlockRequest, timeout time.Duratio
 
 	sub := c.stream.Subscribe(func(msgInter interface{}) {
 		switch msg := msgInter.(type) {
-		case *signatures.CurrentState:
+		case *signatures.TreeState:
 			// if the tips are equal then we got a great response and we can go on our merry way
-			if bytes.Equal(msg.Signature.NewTip, trans.NewTip) {
+			if bytes.Equal(msg.NewTip, trans.NewTip) {
 				actorContext.Send(fut.PID(), msg)
 				return
 			}
 
 			// if we didn't get an equal tip, but it was at the same height, it means someone else got to us first.
-			if msg.Signature.Height == trans.Height {
-				actorContext.Send(fut.PID(), fmt.Errorf("error signature at same height did not match transaction new tip. Expected %s, got %s", trans.NewTip, msg.Signature.NewTip))
+			if msg.Height == trans.Height {
+				actorContext.Send(fut.PID(), fmt.Errorf("error signature at same height did not match transaction new tip. Expected %s, got %s", trans.NewTip, msg.NewTip))
 				return
 			}
 
 			// if the height of the return was greater than this transaction than don't freak out because messages can come in out of order, but
 			// log it as an error still because we'd like to minimize these things. Also, don't send a positive, just don't send anything and
 			// let timeout handle this if it's actually an error.
-			if msg.Signature.Height > trans.Height {
-				c.log.Error("error received height %d before the height %s was looking for (%d)", msg.Signature.Height, transID, trans.Height)
+			if msg.Height > trans.Height {
+				c.log.Error("error received height %d before the height %s was looking for (%d)", msg.Height, transID, trans.Height)
 				return
 			}
 		}
@@ -211,14 +211,14 @@ func (c *Client) Subscribe(trans *services.AddBlockRequest, timeout time.Duratio
 
 // SubscribeAll accepts a callback that forwards all CurrentState messages
 // broadcasted on tupelo-commits
-func (c *Client) SubscribeAll(fn func(msg *signatures.CurrentState)) (*Subscription, error) {
+func (c *Client) SubscribeAll(fn func(msg *signatures.TreeState)) (*Subscription, error) {
 	if !c.alreadyListening() {
 		c.Listen()
 	}
 
 	sub := c.stream.Subscribe(func(msgInter interface{}) {
 		switch msg := msgInter.(type) {
-		case *signatures.CurrentState:
+		case *signatures.TreeState:
 			fn(msg)
 		}
 	})
@@ -373,9 +373,9 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 	c.log.Debugw("transaction completed successfully", "height", transaction.Height,
 		"chainTreeId", chainId)
 
-	var resp *signatures.CurrentState
+	var resp *signatures.TreeState
 	switch respVal := uncastResp.(type) {
-	case *signatures.CurrentState:
+	case *signatures.TreeState:
 		resp = respVal
 	case error:
 		return nil, respVal
@@ -384,8 +384,8 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 		return nil, fmt.Errorf("error unrecognized response type: %T", respVal)
 	}
 
-	if !bytes.Equal(resp.Signature.NewTip, expectedTip.Bytes()) {
-		respCid, _ := cid.Cast(resp.Signature.NewTip)
+	if !bytes.Equal(resp.NewTip, expectedTip.Bytes()) {
+		respCid, _ := cid.Cast(resp.NewTip)
 		return nil, fmt.Errorf("error, tree updated to different tip - expected: %v - received: %v",
 			expectedTip.String(), respCid.String())
 	}
@@ -398,9 +398,9 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 
 	tree.Signatures[c.Group.ID] = resp.Signature
 
-	newCid, err := cid.Cast(resp.Signature.NewTip)
+	newCid, err := cid.Cast(resp.NewTip)
 	if err != nil {
-		return nil, fmt.Errorf("error new tip is not parsable CID %v", string(resp.Signature.NewTip))
+		return nil, fmt.Errorf("error new tip is not parsable CID %v", string(resp.NewTip))
 	}
 
 	addResponse := &consensus.AddBlockResponse{
@@ -462,7 +462,7 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 				}
 
 				if cs.Signature != nil {
-					tip, err := cid.Cast(cs.Signature.NewTip)
+					tip, err := cid.Cast(cs.NewTip)
 					if err != nil {
 						c.log.Errorf("unable to cast remote tip to CID: %v", err)
 						return
@@ -498,8 +498,8 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 	return resp, nil
 }
 
-func (c *Client) TokenPayloadForTransaction(chain *chaintree.ChainTree, tokenName *consensus.TokenName, sendTokenTxId string, sendTxSig *signatures.Signature) (*transactions.TokenPayload, error) {
-	return consensus.TokenPayloadForTransaction(chain, tokenName, sendTokenTxId, sendTxSig)
+func (c *Client) TokenPayloadForTransaction(chain *chaintree.ChainTree, tokenName *consensus.TokenName, sendTokenTxId string, sendTxState *signatures.TreeState) (*transactions.TokenPayload, error) {
+	return consensus.TokenPayloadForTransaction(chain, tokenName, sendTokenTxId, sendTxState)
 }
 
 func getRoot(sct *consensus.SignedChainTree) (*chaintree.RootNode, error) {
