@@ -143,7 +143,7 @@ func TestHashPreimageConditions(t *testing.T) {
 	sig := &Signature{
 		Ownership: &Ownership{
 			Type:       KeyTypeSecp256k1,
-			Conditions: fmt.Sprintf(`(== hashed-preimage "%s")`, hsh),
+			Conditions: fmt.Sprintf(`(== (hashed-preimage) "%s")`, hsh),
 		},
 		Signature: sigBits,
 		PreImage:  "not the right one",
@@ -174,7 +174,7 @@ func BenchmarkWithConditions(b *testing.B) {
 	sig := &Signature{
 		Ownership: &Ownership{
 			Type:       KeyTypeSecp256k1,
-			Conditions: fmt.Sprintf(`(== hashed-preimage "%s")`, hsh),
+			Conditions: fmt.Sprintf(`(== (hashed-preimage) "%s")`, hsh),
 		},
 		Signature: sigBits,
 		PreImage:  preImage,

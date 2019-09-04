@@ -140,7 +140,9 @@ func (s *Signature) validConditions(scope parens.Scope) (bool, error) {
 	if s.Conditions == "" {
 		return true, nil
 	}
-	scope.Bind("hashed-preimage", crypto.Keccak256Hash([]byte(s.PreImage)).String())
+	scope.Bind("hashed-preimage", func() string {
+		return crypto.Keccak256Hash([]byte(s.PreImage)).String()
+	})
 
 	res, err := parens.ExecuteStr(s.Conditions, scope)
 	if err != nil {
