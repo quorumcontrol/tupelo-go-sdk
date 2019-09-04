@@ -79,10 +79,32 @@ func TestEcdsaKeyRestore(t *testing.T) {
 		},
 		Signature: sigBits,
 	}
-	err = RestorePublicKey(sig, msg)
+	err = RestoreEcdsaPublicKey(sig, msg)
 	require.Nil(t, err)
 	assert.Len(t, sig.Ownership.PublicKey, 65)
 	assert.Equal(t, crypto.FromECDSAPub(&key.PublicKey), sig.Ownership.PublicKey)
+}
+
+func TestEcdsaKeyToOwnership(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	o := EcdsaToOwnership(&key.PublicKey)
+	assert.Equal(t, o.PublicKey, crypto.FromECDSAPub(&key.PublicKey))
+	assert.Equal(t, o.Type, signatures.Ownership_KeyTypeSecp256k1)
+}
+
+func TestBlsKeyToOwnership(t *testing.T) {
+	key := bls.MustNewSignKey()
+	o := BLSToOwnership(key.MustVerKey())
+	assert.Equal(t, o.PublicKey, key.MustVerKey().Bytes())
+	assert.Equal(t, o.Type, signatures.Ownership_KeyTypeBLSGroupSig)
+}
+
+func TestSignerCount(t *testing.T) {
+	sig := &signatures.Signature{
+		Signers: []uint32{2, 0, 1},
+	}
+	assert.Equal(t, SignerCount(sig), 2)
 }
 
 func TestEcdsaSigning(t *testing.T) {
@@ -98,7 +120,7 @@ func TestEcdsaSigning(t *testing.T) {
 		},
 		Signature: sigBits,
 	}
-	RestorePublicKey(sig, msg)
+	RestoreEcdsaPublicKey(sig, msg)
 	verified, err := Valid(sig, msg, nil)
 	require.Nil(t, err)
 	assert.True(t, verified)
@@ -118,7 +140,7 @@ func TestEcdsaSigningWithConditions(t *testing.T) {
 		},
 		Signature: sigBits,
 	}
-	RestorePublicKey(sig, msg)
+	RestoreEcdsaPublicKey(sig, msg)
 	verified, err := Valid(sig, msg, nil)
 	require.Nil(t, err)
 	// Conditions returned false so it should not verify
@@ -149,7 +171,7 @@ func TestHashPreimageConditions(t *testing.T) {
 		Signature: sigBits,
 		PreImage:  "not the right one",
 	}
-	RestorePublicKey(sig, msg)
+	RestoreEcdsaPublicKey(sig, msg)
 	verified, err := Valid(sig, msg, nil)
 	require.Nil(t, err)
 	// Conditions returned false so it should not verify
@@ -180,7 +202,7 @@ func BenchmarkWithConditions(b *testing.B) {
 		Signature: sigBits,
 		PreImage:  preImage,
 	}
-	RestorePublicKey(sig, msg)
+	RestoreEcdsaPublicKey(sig, msg)
 
 	b.ResetTimer()
 
@@ -188,6 +210,26 @@ func BenchmarkWithConditions(b *testing.B) {
 		_, err = Valid(sig, msg, nil)
 	}
 	require.Nil(b, err)
+}
+
+func TestRestoreBLSPublicKey(t *testing.T) {
+	key1, err := bls.NewSignKey()
+	assert.Nil(t, err)
+
+	key2, err := bls.NewSignKey()
+	assert.Nil(t, err)
+
+	sig := &signatures.Signature{
+		Ownership: &signatures.Ownership{
+			Type: signatures.Ownership_KeyTypeBLSGroupSig,
+		},
+		Signers: []uint32{1, 2},
+	}
+	RestoreBLSPublicKey(sig, []*bls.VerKey{key1.MustVerKey(), key2.MustVerKey()})
+	assert.Equal(t, sig.Ownership.Type, signatures.Ownership_KeyTypeBLSGroupSig)
+	aggregated, err := bls.SumVerKeys([]*bls.VerKey{key1.MustVerKey(), key2.MustVerKey(), key2.MustVerKey()})
+	require.Nil(t, err)
+	assert.Equal(t, sig.Ownership.PublicKey, aggregated.Bytes())
 }
 
 func BenchmarkWithoutConditions(b *testing.B) {
@@ -204,7 +246,7 @@ func BenchmarkWithoutConditions(b *testing.B) {
 		},
 		Signature: sigBits,
 	}
-	RestorePublicKey(sig, msg)
+	RestoreEcdsaPublicKey(sig, msg)
 
 	b.ResetTimer()
 
