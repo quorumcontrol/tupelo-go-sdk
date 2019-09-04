@@ -1,6 +1,7 @@
 package signatures
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 	"time"
 
@@ -66,15 +67,41 @@ func bytesToAddress(bits []byte) common.Address {
 	return common.BytesToAddress(crypto.Keccak256(bits)[12:])
 }
 
-func RestorePublicKey(s *signatures.Signature, hsh []byte) error {
+func RestoreEcdsaPublicKey(s *signatures.Signature, hsh []byte) error {
 	if s.Ownership.Type != signatures.Ownership_KeyTypeSecp256k1 {
 		return xerrors.Errorf("error only KeyTypeSecp256k1 supports key recovery")
 	}
 	recoveredPub, err := crypto.SigToPub(hsh, s.Signature)
 	if err != nil {
-		return fmt.Errorf("error recovering signature: %v", err)
+		return xerrors.Errorf("error recovering signature: %w", err)
 	}
 	s.Ownership.PublicKey = crypto.FromECDSAPub(recoveredPub)
+	return nil
+}
+
+func RestoreBLSPublicKey(s *signatures.Signature, knownVerKeys []*bls.VerKey) error {
+	if len(knownVerKeys) != len(s.Signers) {
+		return xerrors.Errorf("error known verkeys length did not match signers length: %d != %d", len(knownVerKeys), len(s.Signers))
+	}
+	var verKeys []*bls.VerKey
+
+	var signerCount uint64
+	for i, cnt := range s.Signers {
+		if cnt > 0 {
+			signerCount++
+			verKey := knownVerKeys[i]
+			newKeys := make([]*bls.VerKey, cnt)
+			for j := uint32(0); j < cnt; j++ {
+				newKeys[j] = verKey
+			}
+			verKeys = append(verKeys, newKeys...)
+		}
+	}
+	key, err := bls.SumVerKeys(verKeys)
+	if err != nil {
+		return xerrors.Errorf("error summing keys: %w", err)
+	}
+	s.Ownership.PublicKey = key.Bytes()
 	return nil
 }
 
@@ -127,4 +154,28 @@ func validConditions(s *signatures.Signature, scope parens.Scope) (bool, error) 
 
 	logger.Debugf("conditions for signature failed")
 	return false, nil
+}
+
+func EcdsaToOwnership(key *ecdsa.PublicKey) *signatures.Ownership {
+	return &signatures.Ownership{
+		Type:      signatures.Ownership_KeyTypeSecp256k1,
+		PublicKey: crypto.FromECDSAPub(key),
+	}
+}
+
+func BLSToOwnership(key *bls.VerKey) *signatures.Ownership {
+	return &signatures.Ownership{
+		Type:      signatures.Ownership_KeyTypeBLSGroupSig,
+		PublicKey: key.Bytes(),
+	}
+}
+
+func SignerCount(sig *signatures.Signature) int {
+	signerCount := 0
+	for _, sigCount := range sig.Signers {
+		if sigCount > 0 {
+			signerCount++
+		}
+	}
+	return signerCount
 }
