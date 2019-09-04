@@ -35,7 +35,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/quorumcontrol/chaintree v0.8.1
 	github.com/quorumcontrol/go-hamt-ipld v0.0.0-20190829143757-edd9ec4d9ef5
-	github.com/quorumcontrol/messages/build/go v0.0.0-20190904000000-e4af1d2c325e0ed3fe3c33619ce58657cdb7118d
+	github.com/quorumcontrol/messages/build/go v0.0.0-20190904000000-58fd853a9b72b1b790013846b7ef243052bb7cea
 	github.com/spy16/parens v0.0.0-20190827000000-75a4133
 	github.com/stretchr/testify v1.3.0
 	github.com/uber-go/atomic v1.4.0 // indirect
