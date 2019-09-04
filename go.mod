@@ -3,9 +3,10 @@ module github.com/quorumcontrol/tupelo-go-sdk
 go 1.12
 
 require (
-	github.com/AsynkronIT/protoactor-go v0.0.0-20190429152931-21e2d03dcae5
+	github.com/AsynkronIT/protoactor-go v0.0.0-20190318154652-aa1aa20c2fa0
 	github.com/BurntSushi/toml v0.3.1
 	github.com/avast/retry-go v2.3.0+incompatible
+	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/ethereum/go-ethereum v1.9.3
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gogo/protobuf v1.3.0
