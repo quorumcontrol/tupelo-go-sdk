@@ -444,6 +444,8 @@ github.com/quorumcontrol/chaintree v0.0.0-20190904000000-24563a67f5c802d39b74e8f
 github.com/quorumcontrol/chaintree v0.0.0-20190904000000-24563a67f5c802d39b74e8f5a3c6ae1091c840b0/go.mod h1:iJY5bTKPKarMgrsXfoCVzdxPfs+AFOVIvIVL2AtUJtE=
 github.com/quorumcontrol/chaintree v0.0.0-20190904000000-44eab2698ee2ad39a1f686a2f3e83508997c4669 h1:08ZPwtAy0uKOy9LSx92BbWQrosL2MNM5a55jEgKuVHw=
 github.com/quorumcontrol/chaintree v0.0.0-20190904000000-44eab2698ee2ad39a1f686a2f3e83508997c4669/go.mod h1:uPOECb9s1pntNb8UNnqaKwkUpRRZIbcjjD05vYbpCxY=
+github.com/quorumcontrol/chaintree v0.0.0-20190904000000-e8f1e15ac12c9dc5017557bb8c02198a1f7a6f9f h1:vxY3ppXeBAxfnEaEGhvayt1JyzDuqXNRCcvhTvRwO6g=
+github.com/quorumcontrol/chaintree v0.0.0-20190904000000-e8f1e15ac12c9dc5017557bb8c02198a1f7a6f9f/go.mod h1:iJY5bTKPKarMgrsXfoCVzdxPfs+AFOVIvIVL2AtUJtE=
 github.com/quorumcontrol/chaintree v0.8.1 h1:wqEdW72s0Uue7SLIXfAr1W8TDGyu82hOdIFinLjLEfk=
 github.com/quorumcontrol/chaintree v0.8.1/go.mod h1:uvICVzJpfyiCIbvwP/dR4XSb7TSVYp/O8oL7xJ9Kfkk=
 github.com/quorumcontrol/go-hamt-ipld v0.0.0-20190829143757-edd9ec4d9ef5 h1:HFRkcnmEKbqlcK3sGm9/4x8AiwY+oEPxP9PW6NcTJOc=

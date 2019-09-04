@@ -33,7 +33,7 @@ require (
 	github.com/multiformats/go-multiaddr v0.0.4
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.8.1
-	github.com/quorumcontrol/chaintree v0.0.0-20190904000000-24563a67f5c802d39b74e8f5a3c6ae1091c840b0
+	github.com/quorumcontrol/chaintree v0.0.0-20190904000000-e8f1e15ac12c9dc5017557bb8c02198a1f7a6f9f
 	github.com/quorumcontrol/go-hamt-ipld v0.0.0-20190829143757-edd9ec4d9ef5
 	github.com/quorumcontrol/messages/build/go v0.0.0-20190904000000-3d2df74aa512889ad7d1f7b665e9c74d754a7ad5
 	github.com/spy16/parens v0.0.0-20190827000000-75a4133
