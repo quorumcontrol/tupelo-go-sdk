@@ -440,6 +440,10 @@ github.com/polydawn/refmt v0.0.0-20190408063855-01bf1e26dd14/go.mod h1:uIp+gprXx
 github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndrE9hABlRI=
 github.com/prometheus/procfs v0.0.0-20181005140218-185b4288413d h1:GoAlyOgbOEIFdaDqxJVlbOQ1DtGmZWs/Qau0hIlk+WQ=
 github.com/prometheus/procfs v0.0.0-20181005140218-185b4288413d/go.mod h1:c3At6R/oaqEKCNdg8wHV1ftS6bRYblBhIjjI8uT2IGk=
+github.com/quorumcontrol/chaintree v0.0.0-20190904000000-24563a67f5c802d39b74e8f5a3c6ae1091c840b0 h1:Hazg+mrdcrEiYy7ud8KLwIul+/0RiPLSCE2Xs8zj/B8=
+github.com/quorumcontrol/chaintree v0.0.0-20190904000000-24563a67f5c802d39b74e8f5a3c6ae1091c840b0/go.mod h1:iJY5bTKPKarMgrsXfoCVzdxPfs+AFOVIvIVL2AtUJtE=
+github.com/quorumcontrol/chaintree v0.0.0-20190904000000-44eab2698ee2ad39a1f686a2f3e83508997c4669 h1:08ZPwtAy0uKOy9LSx92BbWQrosL2MNM5a55jEgKuVHw=
+github.com/quorumcontrol/chaintree v0.0.0-20190904000000-44eab2698ee2ad39a1f686a2f3e83508997c4669/go.mod h1:uPOECb9s1pntNb8UNnqaKwkUpRRZIbcjjD05vYbpCxY=
 github.com/quorumcontrol/chaintree v0.8.1 h1:wqEdW72s0Uue7SLIXfAr1W8TDGyu82hOdIFinLjLEfk=
 github.com/quorumcontrol/chaintree v0.8.1/go.mod h1:uvICVzJpfyiCIbvwP/dR4XSb7TSVYp/O8oL7xJ9Kfkk=
 github.com/quorumcontrol/go-hamt-ipld v0.0.0-20190829143757-edd9ec4d9ef5 h1:HFRkcnmEKbqlcK3sGm9/4x8AiwY+oEPxP9PW6NcTJOc=
@@ -448,8 +452,11 @@ github.com/quorumcontrol/go-libp2p-pubsub v0.0.4-0.20190528094025-e4e719f73e7a h
 github.com/quorumcontrol/go-libp2p-pubsub v0.0.4-0.20190528094025-e4e719f73e7a/go.mod h1:ZwlKzRSe1eGvSIdU5bD7+8RZN/Uzw0t1Bp9R1znpR/Q=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190530182608-30c127bffefb h1:x/0eUSPARsrbdV1R/3vJWIT8P3EhUaF1AIYPu9L4TKg=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190530182608-30c127bffefb/go.mod h1:b8jDN8PulcGcRJ2pQc0lbC3tPaOspGHoBIbPxfB7Jqg=
+github.com/quorumcontrol/messages/build/go v0.0.0-20190904000000-3d2df74aa512889ad7d1f7b665e9c74d754a7ad5/go.mod h1:qw2lFojipAoSngsC0orDPd6ELEEL/WD3IcMmTRZv5NY=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190904000000-58fd853a9b72b1b790013846b7ef243052bb7cea h1:9dDanFU6q3CuodbXYR1cCmH2yOBTZSNyhh7lrQprs/Y=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190904000000-58fd853a9b72b1b790013846b7ef243052bb7cea/go.mod h1:qw2lFojipAoSngsC0orDPd6ELEEL/WD3IcMmTRZv5NY=
+github.com/quorumcontrol/messages/build/go v0.0.0-20190904000000-7823a7f79f31f2525761793cfd7f0448c9108894 h1:mHYEhOxs3Wn7bHcJarMMEUdVbnb0duGC1kVa/PEpj50=
+github.com/quorumcontrol/messages/build/go v0.0.0-20190904000000-7823a7f79f31f2525761793cfd7f0448c9108894/go.mod h1:qw2lFojipAoSngsC0orDPd6ELEEL/WD3IcMmTRZv5NY=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190904000000-e4af1d2c325e0ed3fe3c33619ce58657cdb7118d h1:6Y2qbY+vLpRkQKNaitcsANcuCt+VoB5X0kM696TOKDQ=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190904000000-e4af1d2c325e0ed3fe3c33619ce58657cdb7118d/go.mod h1:qw2lFojipAoSngsC0orDPd6ELEEL/WD3IcMmTRZv5NY=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190904072359-c4c4068cde98cf0244eb91d63db0cfab979c42b5 h1:IZcy8+oLu6Tk+JfI5ylM1FVKeRIwVXeNZUKdk6HuA2A=
