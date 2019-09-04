@@ -40,12 +40,6 @@ func HashToShardNumber(topicName string, shardCount int) int {
 	return int(shardNum % uint64(shardCount))
 }
 
-func NumberToBytes(x uint64) []byte {
-	buf := make([]byte, binary.MaxVarintLen64)
-	n := binary.PutUvarint(buf, x)
-	return buf[:n]
-}
-
 func GetSendableBytes(envelopeBits []byte, keyBits []byte) *then.Then {
 	t := then.New()
 	go func() {

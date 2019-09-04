@@ -102,10 +102,6 @@ func main() {
 				return jscrypto.Sign(helpers.JsBufferToBytes(args[0]), helpers.JsBufferToBytes(args[1]))
 			}))
 
-			jsObj.Set("numberToBytes", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				return helpers.SliceToJSBuffer(jscommunity.NumberToBytes(uint64(args[0].Int())))
-			}))
-
 			jsObj.Set("getSendableEnvelopeBytes", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				return jscommunity.GetSendableBytes(helpers.JsBufferToBytes(args[0]), helpers.JsBufferToBytes(args[1]))
 			}))
