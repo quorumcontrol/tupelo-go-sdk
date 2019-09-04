@@ -22,20 +22,43 @@ var logger = logging.Logger("signatures")
 
 var defaultScope parens.Scope
 
+type entry struct {
+	key string
+	val interface{}
+}
+
+func bindMany(scope parens.Scope, entries []entry) error {
+	var err error
+	for _, entry := range entries {
+		err = scope.Bind(entry.key, entry.val)
+		if err != nil {
+			return xerrors.Errorf("error binding: %w", err)
+		}
+	}
+	return nil
+}
+
 func init() {
 	scope := parens.NewScope(nil)
-	scope.Bind("cond", parens.MacroFunc(stdlib.Conditional))
-	scope.Bind("true", true)
-	scope.Bind("false", false)
-	scope.Bind("nil", false) // nil is falsy
-	// TODO: get rid of this
-	scope.Bind("println", func(str string) {
-		fmt.Println(str)
+	err := bindMany(scope, []entry{
+		{"cond", parens.MacroFunc(stdlib.Conditional)},
+		{"true", true},
+		{"false", false},
+		{"nil", false},
+		{"println", func(str string) {
+			fmt.Println(str)
+		}},
+		{"now", func() int64 {
+			return time.Now().UTC().Unix()
+		}},
 	})
-	scope.Bind("now", func() int64 {
-		return time.Now().UTC().Unix()
-	})
-	stdlib.RegisterMath(scope)
+	if err != nil {
+		panic(err)
+	}
+	err = stdlib.RegisterMath(scope)
+	if err != nil {
+		panic(err)
+	}
 	defaultScope = scope
 }
 
@@ -53,7 +76,7 @@ func Address(o *signatures.Ownership) (common.Address, error) {
 	case signatures.Ownership_KeyTypeSecp256k1:
 		key, err := crypto.UnmarshalPubkey(o.PublicKey)
 		if err != nil {
-			xerrors.Errorf("error unmarshaling public key: %w", err)
+			return nullAddr, xerrors.Errorf("error unmarshaling public key: %w", err)
 		}
 		return crypto.PubkeyToAddress(*key), nil
 	case signatures.Ownership_KeyTypeBLSGroupSig:
@@ -140,9 +163,12 @@ func validConditions(s *signatures.Signature, scope parens.Scope) (bool, error) 
 	if s.Ownership.Conditions == "" {
 		return true, nil
 	}
-	scope.Bind("hashed-preimage", func() string {
+	err := scope.Bind("hashed-preimage", func() string {
 		return crypto.Keccak256Hash([]byte(s.PreImage)).String()
 	})
+	if err != nil {
+		return false, xerrors.Errorf("error binding: %w", err)
+	}
 
 	res, err := parens.ExecuteStr(s.Ownership.Conditions, scope)
 	if err != nil {

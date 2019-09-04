@@ -120,7 +120,7 @@ func TestEcdsaSigning(t *testing.T) {
 		},
 		Signature: sigBits,
 	}
-	RestoreEcdsaPublicKey(sig, msg)
+	require.Nil(t, RestoreEcdsaPublicKey(sig, msg))
 	verified, err := Valid(sig, msg, nil)
 	require.Nil(t, err)
 	assert.True(t, verified)
@@ -140,7 +140,7 @@ func TestEcdsaSigningWithConditions(t *testing.T) {
 		},
 		Signature: sigBits,
 	}
-	RestoreEcdsaPublicKey(sig, msg)
+	require.Nil(t, RestoreEcdsaPublicKey(sig, msg))
 	verified, err := Valid(sig, msg, nil)
 	require.Nil(t, err)
 	// Conditions returned false so it should not verify
@@ -171,7 +171,7 @@ func TestHashPreimageConditions(t *testing.T) {
 		Signature: sigBits,
 		PreImage:  "not the right one",
 	}
-	RestoreEcdsaPublicKey(sig, msg)
+	require.Nil(t, RestoreEcdsaPublicKey(sig, msg))
 	verified, err := Valid(sig, msg, nil)
 	require.Nil(t, err)
 	// Conditions returned false so it should not verify
@@ -202,7 +202,7 @@ func BenchmarkWithConditions(b *testing.B) {
 		Signature: sigBits,
 		PreImage:  preImage,
 	}
-	RestoreEcdsaPublicKey(sig, msg)
+	require.Nil(b, RestoreEcdsaPublicKey(sig, msg))
 
 	b.ResetTimer()
 
@@ -225,7 +225,7 @@ func TestRestoreBLSPublicKey(t *testing.T) {
 		},
 		Signers: []uint32{1, 2},
 	}
-	RestoreBLSPublicKey(sig, []*bls.VerKey{key1.MustVerKey(), key2.MustVerKey()})
+	require.Nil(t, RestoreBLSPublicKey(sig, []*bls.VerKey{key1.MustVerKey(), key2.MustVerKey()}))
 	assert.Equal(t, sig.Ownership.Type, signatures.Ownership_KeyTypeBLSGroupSig)
 	aggregated, err := bls.SumVerKeys([]*bls.VerKey{key1.MustVerKey(), key2.MustVerKey(), key2.MustVerKey()})
 	require.Nil(t, err)
@@ -246,7 +246,7 @@ func BenchmarkWithoutConditions(b *testing.B) {
 		},
 		Signature: sigBits,
 	}
-	RestoreEcdsaPublicKey(sig, msg)
+	require.Nil(b, RestoreEcdsaPublicKey(sig, msg))
 
 	b.ResetTimer()
 
