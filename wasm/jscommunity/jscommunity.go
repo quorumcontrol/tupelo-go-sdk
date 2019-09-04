@@ -4,7 +4,13 @@ package jscommunity
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
 	"syscall/js"
+
+	"github.com/ethereum/go-ethereum/crypto"
+	ptypes "github.com/gogo/protobuf/types"
+	pb "github.com/quorumcontrol/messages/build/go/community"
 
 	cbornode "github.com/ipfs/go-ipld-cbor"
 
@@ -25,6 +31,47 @@ import (
 func init() {
 	typecaster.AddType(signatures.CurrentState{})
 	cbornode.RegisterCborType(signatures.CurrentState{})
+}
+
+func HashToShardNumber(topicName string, shardCount int) int {
+	hsh := sha256.Sum256([]byte(topicName))
+	shardNum, _ := binary.Uvarint(hsh[:])
+	return int(shardNum % uint64(shardCount))
+}
+
+func GetSendableBytes(envelopeBits []byte, keyBits []byte) *then.Then {
+	t := then.New()
+	go func() {
+		key, err := crypto.ToECDSA(keyBits)
+		if err != nil {
+			t.Reject(errors.Wrap(err, "error converting bytes to key").Error())
+			return
+		}
+
+		env := new(pb.Envelope)
+		err = env.Unmarshal(envelopeBits)
+		if err != nil {
+			t.Reject(errors.Wrap(err, "error unmarshaling envelope").Error())
+			return
+		}
+
+		env.Sign(key)
+
+		any, err := ptypes.MarshalAny(env)
+		if err != nil {
+			t.Reject(errors.Wrap(err, "error turning into any").Error())
+			return
+		}
+
+		marshaled, err := any.Marshal()
+		if err != nil {
+			t.Reject(errors.Wrap(err, "error marshaling").Error())
+			return
+		}
+		t.Resolve(helpers.SliceToJSBuffer(marshaled))
+	}()
+
+	return t
 }
 
 func GetCurrentState(ctx context.Context, jsCid js.Value, jsBlockService js.Value, jsDid js.Value) *then.Then {

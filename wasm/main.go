@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"syscall/js"
 
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/helpers"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jscommunity"
 
 	"github.com/pkg/errors"
@@ -89,6 +90,15 @@ func main() {
 					jsOpts.Get("sendId"),
 					jsOpts.Get("jsSendTxSig"),
 				)
+			}))
+
+			// hashToShard(topicName:string, shardCount:number):number
+			jsObj.Set("hashToShardNumber", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				return jscommunity.HashToShardNumber(args[0].String(), args[1].Int())
+			}))
+
+			jsObj.Set("getSendableEnvelopeBytes", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				return jscommunity.GetSendableBytes(helpers.JsBufferToBytes(args[0]), helpers.JsBufferToBytes(args[1]))
 			}))
 
 			jsObj.Set("playTransactions", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
