@@ -4,9 +4,10 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 
+	sigfuncs "github.com/quorumcontrol/tupelo-go-sdk/signatures"
+
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
-	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 )
 
@@ -20,9 +21,9 @@ type Signer struct {
 }
 
 func NewLocalSigner(dstKey *ecdsa.PublicKey, signKey *bls.SignKey) *Signer {
-	pubKey := consensus.BlsKeyToPublicKey(signKey.MustVerKey())
+	addr, _ := sigfuncs.Address(sigfuncs.BLSToOwnership(signKey.MustVerKey()))
 	return &Signer{
-		ID:      consensus.PublicKeyToAddr(&pubKey),
+		ID:      addr.String(),
 		SignKey: signKey,
 		VerKey:  signKey.MustVerKey(),
 		DstKey:  dstKey,
@@ -30,9 +31,9 @@ func NewLocalSigner(dstKey *ecdsa.PublicKey, signKey *bls.SignKey) *Signer {
 }
 
 func NewRemoteSigner(dstKey *ecdsa.PublicKey, verKey *bls.VerKey) *Signer {
-	pubKey := consensus.BlsKeyToPublicKey(verKey)
+	addr, _ := sigfuncs.Address(sigfuncs.BLSToOwnership(verKey))
 	return &Signer{
-		ID:     consensus.PublicKeyToAddr(&pubKey),
+		ID:     addr.String(),
 		VerKey: verKey,
 		DstKey: dstKey,
 	}

@@ -26,7 +26,7 @@ func ConflictSetID(objectID []byte, height uint64) string {
 	return string(crypto.Keccak256(append(objectID, uint64ToBytes(height)...)))
 }
 
-func GetSignable(sig *signatures.Signature) []byte {
+func GetSignable(sig *signatures.TreeState) []byte {
 	return appendMultiple(
 		sig.ObjectId,
 		sig.PreviousTip,
