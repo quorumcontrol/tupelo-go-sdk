@@ -300,7 +300,7 @@ func serializeNodes(nodes []format.Node) [][]byte {
 	return bytes
 }
 
-func TokenPayloadForTransaction(chain *chaintree.ChainTree, tokenName *TokenName, sendTokenTxId string, sendTxSig *signatures.Signature) (*transactions.TokenPayload, error) {
+func TokenPayloadForTransaction(chain *chaintree.ChainTree, tokenName *TokenName, sendTokenTxId string, sendTxState *signatures.TreeState) (*transactions.TokenPayload, error) {
 	if !tokenName.IsCanonical() {
 		return nil, fmt.Errorf("token name must be canonical (i.e. start with chaintree DID)")
 	}
@@ -346,7 +346,7 @@ func TokenPayloadForTransaction(chain *chaintree.ChainTree, tokenName *TokenName
 	tokenPayload := &transactions.TokenPayload{
 		TransactionId: sendTokenTxId,
 		Tip:           chain.Dag.Tip.String(),
-		Signature:     sendTxSig,
+		TreeState:     sendTxState,
 		Leaves:        serializeNodes(tokenNodes),
 	}
 
