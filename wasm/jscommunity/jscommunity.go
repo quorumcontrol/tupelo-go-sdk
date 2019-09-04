@@ -1,6 +1,6 @@
-package jscommunity
-
 // +build wasm
+
+package jscommunity
 
 import (
 	"context"
