@@ -9,7 +9,6 @@ import (
 
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/helpers"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jscommunity"
-	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jscrypto"
 
 	"github.com/pkg/errors"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/then"
@@ -96,10 +95,6 @@ func main() {
 			// hashToShard(topicName:string, shardCount:number):number
 			jsObj.Set("hashToShardNumber", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				return jscommunity.HashToShardNumber(args[0].String(), args[1].Int())
-			}))
-
-			jsObj.Set("sign", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				return jscrypto.Sign(helpers.JsBufferToBytes(args[0]), helpers.JsBufferToBytes(args[1]))
 			}))
 
 			jsObj.Set("getSendableEnvelopeBytes", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
