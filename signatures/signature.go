@@ -3,6 +3,7 @@ package signatures
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/quorumcontrol/messages/build/go/signatures"
@@ -248,6 +249,9 @@ func AggregateBLSSignatures(sigs []*signatures.Signature) (*signatures.Signature
 		sigsToAggregate[i] = sig.Signature
 		pubKeysToAggregate[i] = bls.BytesToVerKey(sig.Ownership.PublicKey)
 		for i, cnt := range sig.Signers {
+			if existing := newSig.Signers[i]; cnt > math.MaxUint32-existing || existing > math.MaxUint32-cnt {
+				return nil, xerrors.Errorf("error would overflow: %d %d", cnt, existing)
+			}
 			newSig.Signers[i] += cnt
 		}
 	}
