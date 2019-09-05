@@ -205,3 +205,63 @@ func SignerCount(sig *signatures.Signature) int {
 	}
 	return signerCount
 }
+
+func BLSSign(key *bls.SignKey, hsh []byte, signerLen, signerIndex int) (*signatures.Signature, error) {
+	if signerIndex >= signerLen {
+		return nil, xerrors.Errorf("signer index must be less than signer length i: %d, l: %d", signerLen, signerIndex)
+	}
+	verKey, err := key.VerKey()
+	if err != nil {
+		return nil, xerrors.Errorf("error getting verkey: %w", err)
+	}
+	sig, err := key.Sign(hsh)
+	if err != nil {
+		return nil, xerrors.Errorf("Error signing: %w", err)
+	}
+
+	signers := make([]uint32, signerLen)
+	signers[signerIndex] = 1
+	return &signatures.Signature{
+		Ownership: BLSToOwnership(verKey),
+		Signers:   signers,
+		Signature: sig,
+	}, nil
+}
+
+func AggregateBLSSignatures(sigs []*signatures.Signature) (*signatures.Signature, error) {
+	signerCount := len(sigs[0].Signers)
+	newSig := &signatures.Signature{
+		Ownership: &signatures.Ownership{
+			Type: signatures.Ownership_KeyTypeBLSGroupSig,
+		},
+		Signers: make([]uint32, signerCount),
+	}
+	sigsToAggregate := make([][]byte, len(sigs))
+	pubKeysToAggregate := make([]*bls.VerKey, len(sigs))
+	for i, sig := range sigs {
+		if sig.Ownership.Type != signatures.Ownership_KeyTypeBLSGroupSig {
+			return nil, xerrors.Errorf("wrong signature type, can only aggregate BLS signatures")
+		}
+		if len(sig.Signers) != signerCount {
+			return nil, xerrors.Errorf("all signatures to aggregate must have the same signer length %d != %d", len(sig.Signers), signerCount)
+		}
+		sigsToAggregate[i] = sig.Signature
+		pubKeysToAggregate[i] = bls.BytesToVerKey(sig.Ownership.PublicKey)
+		for i, cnt := range sig.Signers {
+			newSig.Signers[i] += cnt
+		}
+	}
+
+	aggregateSig, err := bls.SumSignatures(sigsToAggregate)
+	if err != nil {
+		return nil, xerrors.Errorf("error summing signatures: %w", err)
+	}
+	newSig.Signature = aggregateSig
+
+	aggregatePublic, err := bls.SumVerKeys(pubKeysToAggregate)
+	if err != nil {
+		return nil, xerrors.Errorf("error aggregating verKeys: %w", err)
+	}
+	newSig.Ownership.PublicKey = aggregatePublic.Bytes()
+	return newSig, nil
+}
