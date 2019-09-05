@@ -184,6 +184,56 @@ func TestHashPreimageConditions(t *testing.T) {
 	assert.True(t, verified)
 }
 
+func TestRestoreBLSPublicKey(t *testing.T) {
+	key1, err := bls.NewSignKey()
+	assert.Nil(t, err)
+
+	key2, err := bls.NewSignKey()
+	assert.Nil(t, err)
+
+	sig := &signatures.Signature{
+		Ownership: &signatures.Ownership{
+			Type: signatures.Ownership_KeyTypeBLSGroupSig,
+		},
+		Signers: []uint32{1, 2},
+	}
+	require.Nil(t, RestoreBLSPublicKey(sig, []*bls.VerKey{key1.MustVerKey(), key2.MustVerKey()}))
+	assert.Equal(t, sig.Ownership.Type, signatures.Ownership_KeyTypeBLSGroupSig)
+	aggregated, err := bls.SumVerKeys([]*bls.VerKey{key1.MustVerKey(), key2.MustVerKey(), key2.MustVerKey()})
+	require.Nil(t, err)
+	assert.Equal(t, sig.Ownership.PublicKey, aggregated.Bytes())
+}
+
+func TestAggregateBLSSignatures(t *testing.T) {
+	key1, err := bls.NewSignKey()
+	require.Nil(t, err)
+
+	key2, err := bls.NewSignKey()
+	require.Nil(t, err)
+
+	msg := crypto.Keccak256([]byte("hi"))
+
+	sig1, err := BLSSign(key1, msg, 2, 0)
+	require.Nil(t, err)
+
+	sig2, err := BLSSign(key2, msg, 2, 1)
+	require.Nil(t, err)
+
+	expectedAggPub, err := bls.SumVerKeys([]*bls.VerKey{key1.MustVerKey(), key2.MustVerKey()})
+	require.Nil(t, err)
+
+	expectedAggSig, err := bls.SumSignatures([][]byte{sig1.Signature, sig2.Signature})
+	require.Nil(t, err)
+
+	aggregate, err := AggregateBLSSignatures([]*signatures.Signature{sig1, sig2})
+	require.Nil(t, err)
+
+	assert.Equal(t, aggregate.Signers, []uint32{1, 1})
+	assert.Equal(t, aggregate.Ownership.Type, signatures.Ownership_KeyTypeBLSGroupSig)
+	assert.Equal(t, aggregate.Ownership.PublicKey, expectedAggPub.Bytes())
+	assert.Equal(t, aggregate.Signature, expectedAggSig)
+}
+
 func BenchmarkWithConditions(b *testing.B) {
 	key, err := crypto.GenerateKey()
 	require.Nil(b, err)
@@ -210,26 +260,6 @@ func BenchmarkWithConditions(b *testing.B) {
 		_, err = Valid(sig, msg, nil)
 	}
 	require.Nil(b, err)
-}
-
-func TestRestoreBLSPublicKey(t *testing.T) {
-	key1, err := bls.NewSignKey()
-	assert.Nil(t, err)
-
-	key2, err := bls.NewSignKey()
-	assert.Nil(t, err)
-
-	sig := &signatures.Signature{
-		Ownership: &signatures.Ownership{
-			Type: signatures.Ownership_KeyTypeBLSGroupSig,
-		},
-		Signers: []uint32{1, 2},
-	}
-	require.Nil(t, RestoreBLSPublicKey(sig, []*bls.VerKey{key1.MustVerKey(), key2.MustVerKey()}))
-	assert.Equal(t, sig.Ownership.Type, signatures.Ownership_KeyTypeBLSGroupSig)
-	aggregated, err := bls.SumVerKeys([]*bls.VerKey{key1.MustVerKey(), key2.MustVerKey(), key2.MustVerKey()})
-	require.Nil(t, err)
-	assert.Equal(t, sig.Ownership.PublicKey, aggregated.Bytes())
 }
 
 func BenchmarkWithoutConditions(b *testing.B) {
