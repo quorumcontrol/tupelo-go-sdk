@@ -3,6 +3,9 @@ package p2p
 import (
 	"context"
 
+	"github.com/quorumcontrol/chaintree/cachedblockstore"
+	"golang.org/x/xerrors"
+
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
@@ -37,15 +40,19 @@ type BitswapPeer struct {
 func NewBitswapPeer(ctx context.Context, host *LibP2PHost) (*BitswapPeer, error) {
 	bs := blockstore.NewBlockstore(host.datastore)
 	bs = blockstore.NewIdStore(bs)
+	wrapped, err := cachedblockstore.WrapInCache(bs)
+	if err != nil {
+		return nil, xerrors.Errorf("error wrapping: %w", err)
+	}
 
 	bswapnet := network.NewFromIpfsHost(host.host, host.routing)
-	bswap := bitswap.New(ctx, bswapnet, bs)
-	bserv := blockservice.New(bs, bswap)
+	bswap := bitswap.New(ctx, bswapnet, wrapped)
+	bserv := blockservice.New(wrapped, bswap)
 
 	dags := merkledag.NewDAGService(bserv)
 	return &BitswapPeer{
 		DAGService: dags,
-		bstore:     bs,
+		bstore:     wrapped,
 	}, nil
 }
 
