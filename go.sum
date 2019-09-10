@@ -444,6 +444,7 @@ github.com/quorumcontrol/chaintree v1.0.2-0.20190910185105-5ed2053d9dea/go.mod h
 github.com/quorumcontrol/go-hamt-ipld v0.0.0-20190829143757-edd9ec4d9ef5 h1:HFRkcnmEKbqlcK3sGm9/4x8AiwY+oEPxP9PW6NcTJOc=
 github.com/quorumcontrol/go-hamt-ipld v0.0.0-20190829143757-edd9ec4d9ef5/go.mod h1:raAVvAGMvKeivh8G1LR+9zQNFmsGsMSxCKIIGJwan+g=
 github.com/quorumcontrol/go-hamt-ipld v0.0.2-0.20190910204338-5674bdff845f/go.mod h1:UeJYp0F0fOFBCUVR7NJoVVP1tLSeluFDgzzex06z7nI=
+github.com/quorumcontrol/go-hamt-ipld v0.0.2-0.20190910212505-eb51e55eb367/go.mod h1:UeJYp0F0fOFBCUVR7NJoVVP1tLSeluFDgzzex06z7nI=
 github.com/quorumcontrol/go-libp2p-pubsub v0.0.4-0.20190528094025-e4e719f73e7a h1:XDXN6yY9PODqRMHFupyf44BQOTvCetoTG0ypXPOQzqs=
 github.com/quorumcontrol/go-libp2p-pubsub v0.0.4-0.20190528094025-e4e719f73e7a/go.mod h1:ZwlKzRSe1eGvSIdU5bD7+8RZN/Uzw0t1Bp9R1znpR/Q=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190530182608-30c127bffefb h1:x/0eUSPARsrbdV1R/3vJWIT8P3EhUaF1AIYPu9L4TKg=
