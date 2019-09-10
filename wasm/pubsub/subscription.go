@@ -19,7 +19,7 @@ type BridgedSubscription struct {
 	remote.UnderlyingSubscription
 
 	pubsub *PubSubBridge
-	jsFunc js.Value
+	jsFunc js.Func
 	topic  string
 	ch     chan *libpubsub.Message
 }
@@ -42,7 +42,7 @@ func (bs *BridgedSubscription) Next(ctx context.Context) (*libpubsub.Message, er
 }
 
 func (bs *BridgedSubscription) Cancel() {
-	bs.pubsub.Call("unsubscribe", js.ValueOf(bs.topic), bs.jsFunc)
+	go bs.pubsub.jspubsub.Call("unsubscribe", js.ValueOf(bs.topic), bs.jsFunc)
 	bs.jsFunc.Release()
 }
 
