@@ -44,6 +44,7 @@ func (psb *PubSubBridge) Publish(topic string, data []byte) error {
 
 func (psb *PubSubBridge) Subscribe(topic string, opts ...pubsub.SubOpt) (remote.UnderlyingSubscription, error) {
 	sub := newBridgedSubscription(topic)
+	sub.pubsub = psb
 	resp := make(chan error)
 	doneFunc := js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
 		if len(args) == 0 {
@@ -54,12 +55,14 @@ func (psb *PubSubBridge) Subscribe(topic string, opts ...pubsub.SubOpt) (remote.
 		return nil
 	})
 	go func() {
-		psb.jspubsub.Call("subscribe", js.ValueOf(topic), js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
+		subFunc := js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
 			go func() {
 				sub.QueueJS(args[0])
 			}()
 			return nil
-		}), doneFunc)
+		})
+		sub.jsFunc = subFunc
+		psb.jspubsub.Call("subscribe", js.ValueOf(topic), subFunc, doneFunc)
 	}()
 	err := <-resp
 	doneFunc.Release()
