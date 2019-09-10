@@ -140,6 +140,7 @@ func (jsc *JSClient) playTransactions(store nodestore.DagStore, tip cid.Cid, tre
 
 	tree := consensus.NewSignedChainTreeFromChainTree(cTree)
 	c := client.New(jsc.notaryGroup, tree.MustId(), jsc.pubsub)
+	defer c.Stop()
 
 	var remoteTip cid.Cid
 	if !tree.IsGenesis() {

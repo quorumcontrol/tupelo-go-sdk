@@ -18,8 +18,10 @@ import (
 type BridgedSubscription struct {
 	remote.UnderlyingSubscription
 
-	topic string
-	ch    chan *libpubsub.Message
+	pubsub *PubSubBridge
+	jsFunc js.Value
+	topic  string
+	ch     chan *libpubsub.Message
 }
 
 func newBridgedSubscription(topic string) *BridgedSubscription {
@@ -40,7 +42,8 @@ func (bs *BridgedSubscription) Next(ctx context.Context) (*libpubsub.Message, er
 }
 
 func (bs *BridgedSubscription) Cancel() {
-	// do nothing for now
+	bs.pubsub.Call("unsubscribe", js.ValueOf(bs.topic), bs.jsFunc)
+	bs.jsFunc.Release()
 }
 
 func (bs *BridgedSubscription) QueueJS(msg js.Value) {
