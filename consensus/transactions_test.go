@@ -49,9 +49,11 @@ func TestEstablishTokenTransactionWithMaximum(t *testing.T) {
 	_, err = testTree.ProcessBlock(context.TODO(), &blockWithHeaders)
 	assert.Nil(t, err)
 
-	maximum, _, err := testTree.Dag.Resolve(context.TODO(), []string{"tree", "_tupelo", "tokens", tokenFullName, "monetaryPolicy", "maximum"})
+	monetaryPolicy := transactions.TokenMonetaryPolicy{}
+	err = testTree.Dag.ResolveInto(context.TODO(), []string{"tree", "_tupelo", "tokens", tokenFullName, "monetaryPolicy"}, &monetaryPolicy)
+
 	assert.Nil(t, err)
-	assert.Equal(t, maximum, uint64(42))
+	assert.Equal(t, monetaryPolicy.Maximum, uint64(42))
 
 	mints, _, err := testTree.Dag.Resolve(context.TODO(), []string{"tree", "_tupelo", "tokens", tokenFullName, "mints"})
 	assert.Nil(t, err)
