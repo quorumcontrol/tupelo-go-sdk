@@ -7,7 +7,6 @@ import (
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/dag"
-	"github.com/quorumcontrol/chaintree/typecaster"
 	"github.com/quorumcontrol/messages/build/go/transactions"
 )
 
@@ -235,18 +234,13 @@ func (l *TreeLedger) MintToken(amount uint64) (*dag.Dag, error) {
 	}
 
 	monetaryPolicyPath := append(tokenPath, MonetaryPolicyLabel)
-	uncastMonetaryPolicy, _, err := l.tree.Resolve(context.TODO(), monetaryPolicyPath)
+	monetaryPolicy := &transactions.TokenMonetaryPolicy{}
+	err = l.tree.ResolveInto(context.TODO(), monetaryPolicyPath, &monetaryPolicy)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching monetary policy at path %v: %v", monetaryPolicyPath, err)
 	}
-	if uncastMonetaryPolicy == nil {
+	if monetaryPolicy == nil {
 		return nil, fmt.Errorf("error, token at path %v is missing a monetary policy", tokenPath)
-	}
-
-	monetaryPolicy := &transactions.TokenMonetaryPolicy{}
-	err = typecaster.ToType(uncastMonetaryPolicy, monetaryPolicy)
-	if err != nil {
-		return nil, fmt.Errorf("error typecasting monetary policy: %v", err)
 	}
 
 	mintCids, err := l.tokenTransactionCidsForType(TokenMintLabel)
