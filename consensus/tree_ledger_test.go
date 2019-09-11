@@ -211,7 +211,7 @@ func TestTreeLedger_Balance(t *testing.T) {
 	}{
 		{"existing token", "test-token", 32, nil},
 		{"non-existent token", "non-existent", 0, fmt.Errorf(
-			"error resolving token balance: path elements remaining: [fake-did:non-existent balance]")},
+			"error resolving token: merkledag: not found")},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
