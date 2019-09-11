@@ -155,22 +155,13 @@ func (l *TreeLedger) Balance() (uint64, error) {
 		return 0, err
 	}
 
-	balancePath := append(tokenPath, TokenBalanceLabel)
-	balanceObj, remaining, err := l.tree.Resolve(context.TODO(), balancePath)
+	token := Token{}
+	err = l.tree.ResolveInto(context.TODO(), tokenPath, &token)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("error resolving token: %v", err)
 	}
 
-	if len(remaining) > 0 {
-		return 0, fmt.Errorf("error resolving token balance: path elements remaining: %v", remaining)
-	}
-
-	balance, ok := balanceObj.(uint64)
-	if !ok {
-		return 0, fmt.Errorf("error resolving token balance; node type (%T) is not a uint64", balanceObj)
-	}
-
-	return balance, nil
+	return token.Balance, nil
 }
 
 func (l *TreeLedger) TokenExists() (bool, error) {
