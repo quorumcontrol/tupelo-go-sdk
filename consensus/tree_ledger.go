@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/typecaster"
@@ -137,13 +137,13 @@ func (l *TreeLedger) sumTokenTransactions(cids []cid.Cid) (uint64, error) {
 			return 0, fmt.Errorf("error fetching node %v: %v", c, err)
 		}
 
-		amount, _, err := node.Resolve([]string{"amount"})
-
+		rec := TokenReceive{}
+		err = cbornode.DecodeInto(node.RawData(), &rec)
 		if err != nil {
 			return 0, fmt.Errorf("error fetching amount from %v: %v", node, err)
 		}
 
-		sum = sum + amount.(uint64)
+		sum = sum + rec.Amount
 	}
 
 	return sum, nil
