@@ -40,7 +40,8 @@ type BitswapPeer struct {
 func NewBitswapPeer(ctx context.Context, host *LibP2PHost) (*BitswapPeer, error) {
 	bs := blockstore.NewBlockstore(host.datastore)
 	bs = blockstore.NewIdStore(bs)
-	wrapped, err := cachedblockstore.WrapInCache(bs)
+	// TODO: make this cachesize configurable
+	wrapped, err := cachedblockstore.WrapInCache(bs, 100)
 	if err != nil {
 		return nil, xerrors.Errorf("error wrapping: %w", err)
 	}

@@ -435,6 +435,11 @@ github.com/prometheus/procfs v0.0.0-20181005140218-185b4288413d h1:GoAlyOgbOEIFd
 github.com/prometheus/procfs v0.0.0-20181005140218-185b4288413d/go.mod h1:c3At6R/oaqEKCNdg8wHV1ftS6bRYblBhIjjI8uT2IGk=
 github.com/quorumcontrol/chaintree v0.8.2 h1:pIaIYUGHbwmStxdRRIfzXa+0Wu3OnGAg5W2oC8NWKO0=
 github.com/quorumcontrol/chaintree v0.8.2/go.mod h1:44bFGFfyV9CFMGNRfVQGjQBeQcTjkSzIomXpRhKfK3A=
+github.com/quorumcontrol/chaintree v0.8.3-0.20190911104858-504d687749ec h1:dh4ly1wbTc5LpBngUTeFdrWrk33seObJXOmagHVZlZo=
+github.com/quorumcontrol/chaintree v0.8.3-0.20190911104858-504d687749ec/go.mod h1:44bFGFfyV9CFMGNRfVQGjQBeQcTjkSzIomXpRhKfK3A=
+github.com/quorumcontrol/chaintree v0.8.3-0.20190911105807-50f3dbb651d1 h1:58bWgp4lXSey4UNeOrUADDy10aUNy0kqGi0fxS9+ixU=
+github.com/quorumcontrol/chaintree v0.8.3-0.20190911105807-50f3dbb651d1/go.mod h1:44bFGFfyV9CFMGNRfVQGjQBeQcTjkSzIomXpRhKfK3A=
+github.com/quorumcontrol/chaintree v5.1.1+incompatible h1:bAvhEuWCIsHq98SRdJ7EaKxL8uw+ceZnASt55mqHHGI=
 github.com/quorumcontrol/go-hamt-ipld v0.0.0-20190829143757-edd9ec4d9ef5 h1:HFRkcnmEKbqlcK3sGm9/4x8AiwY+oEPxP9PW6NcTJOc=
 github.com/quorumcontrol/go-hamt-ipld v0.0.0-20190829143757-edd9ec4d9ef5/go.mod h1:raAVvAGMvKeivh8G1LR+9zQNFmsGsMSxCKIIGJwan+g=
 github.com/quorumcontrol/go-libp2p-pubsub v0.0.4-0.20190528094025-e4e719f73e7a h1:XDXN6yY9PODqRMHFupyf44BQOTvCetoTG0ypXPOQzqs=
