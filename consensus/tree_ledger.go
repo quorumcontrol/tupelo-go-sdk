@@ -37,6 +37,10 @@ type TokenReceive struct {
 	Amount                 uint64
 }
 
+// TODO: Consider removing from the CBOR atlas to allow us to resolve the child
+// nodes into their native objects directly by navigating through Token nodes.
+// This would require changing the balance field to a composite object so we can
+// resolve the balance without integer overflow
 type Token struct {
 	MonetaryPolicy *cid.Cid
 	Mints          *cid.Cid

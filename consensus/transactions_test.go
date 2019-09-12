@@ -413,17 +413,26 @@ func TestSendToken(t *testing.T) {
 	assert.Nil(t, err)
 	height++
 
-	sends, _, err := testTree.Dag.Resolve(context.TODO(), []string{"tree", "_tupelo", "tokens", tokenFullName, "sends", "0"})
+	token := consensus.Token{}
+	err = testTree.Dag.ResolveInto(ctx, []string{"tree", "_tupelo", "tokens", tokenFullName}, &token)
 	assert.Nil(t, err)
-	assert.NotNil(t, sends)
 
-	sendsMap := sends.(map[string]interface{})
-	assert.Equal(t, "1234", sendsMap["id"])
-	assert.Equal(t, uint64(30), sendsMap["amount"])
-	lastSendAmount := sendsMap["amount"].(uint64)
-	assert.Equal(t, targetTreeDID, sendsMap["destination"])
+	sendsArrayNode, err := testTree.Dag.Get(ctx, *token.Sends)
+	assert.Nil(t, err)
 
-	overSpendTxn, err := chaintree.NewSendTokenTransaction("1234", tokenName, (maximumAmount-lastSendAmount)+1, targetTreeDID)
+	sendNodeCid := sendsArrayNode.Links()[0].Cid
+	sendNode, err := testTree.Dag.Get(ctx, sendNodeCid)
+	assert.Nil(t, err)
+
+	send := consensus.TokenSend{}
+	err = cbornode.DecodeInto(sendNode.RawData(), &send)
+	assert.Nil(t, err)
+
+	assert.Equal(t, "1234", send.Id)
+	assert.Equal(t, uint64(30), send.Amount)
+	assert.Equal(t, targetTreeDID, send.Destination)
+
+	overSpendTxn, err := chaintree.NewSendTokenTransaction("1234", tokenName, (maximumAmount-send.Amount)+1, targetTreeDID)
 	assert.Nil(t, err)
 
 	overSpendBlockWithHeaders := &chaintree.BlockWithHeaders{
@@ -434,7 +443,7 @@ func TestSendToken(t *testing.T) {
 		},
 	}
 
-	_, err = testTree.ProcessBlock(context.TODO(), overSpendBlockWithHeaders)
+	_, err = testTree.ProcessBlock(ctx, overSpendBlockWithHeaders)
 	assert.NotNil(t, err)
 }
 
