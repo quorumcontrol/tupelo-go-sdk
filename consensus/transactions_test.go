@@ -166,7 +166,7 @@ func TestEstablishTokenTransactionWithoutMonetaryPolicy(t *testing.T) {
 	payload := &transactions.EstablishTokenPayload{Name: tokenName}
 
 	txn := &transactions.Transaction{
-		Type:                  transactions.Transaction_ESTABLISHTOKEN,
+		Type: transactions.Transaction_ESTABLISHTOKEN,
 		EstablishTokenPayload: payload,
 	}
 
@@ -359,10 +359,11 @@ func TestSetOwnership(t *testing.T) {
 }
 
 func TestSendToken(t *testing.T) {
+	ctx := context.TODO()
 	key, err := crypto.GenerateKey()
 	assert.Nil(t, err)
 
-	store := nodestore.MustMemoryStore(context.TODO())
+	store := nodestore.MustMemoryStore(ctx)
 	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
 	emptyTree := consensus.NewEmptyTree(treeDID, store)
 
@@ -386,10 +387,10 @@ func TestSendToken(t *testing.T) {
 		},
 	}
 
-	testTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
+	testTree, err := chaintree.NewChainTree(ctx, emptyTree, nil, consensus.DefaultTransactors)
 	assert.Nil(t, err)
 
-	_, err = testTree.ProcessBlock(context.TODO(), blockWithHeaders)
+	_, err = testTree.ProcessBlock(ctx, blockWithHeaders)
 	assert.Nil(t, err)
 	height++
 
@@ -408,7 +409,7 @@ func TestSendToken(t *testing.T) {
 		},
 	}
 
-	_, err = testTree.ProcessBlock(context.TODO(), sendBlockWithHeaders)
+	_, err = testTree.ProcessBlock(ctx, sendBlockWithHeaders)
 	assert.Nil(t, err)
 	height++
 
@@ -417,10 +418,10 @@ func TestSendToken(t *testing.T) {
 	assert.NotNil(t, sends)
 
 	sendsMap := sends.(map[string]interface{})
-	assert.Equal(t, sendsMap["id"], "1234")
-	assert.Equal(t, sendsMap["amount"], uint64(30))
+	assert.Equal(t, "1234", sendsMap["id"])
+	assert.Equal(t, uint64(30), sendsMap["amount"])
 	lastSendAmount := sendsMap["amount"].(uint64)
-	assert.Equal(t, sendsMap["destination"], targetTreeDID)
+	assert.Equal(t, targetTreeDID, sendsMap["destination"])
 
 	overSpendTxn, err := chaintree.NewSendTokenTransaction("1234", tokenName, (maximumAmount-lastSendAmount)+1, targetTreeDID)
 	assert.Nil(t, err)
