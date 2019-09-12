@@ -20,6 +20,31 @@ var transactionTypes = map[string][]string{
 	"debit":  {TokenSendLabel},
 }
 
+// TODO: These token struct types should probably be protobufs in the messages
+// repo.
+type TokenMint struct {
+	Amount uint64
+}
+
+type TokenSend struct {
+	Id          string
+	Amount      uint64
+	Destination string
+}
+
+type TokenReceive struct {
+	SendTokenTransactionId string
+	Amount                 uint64
+}
+
+type Token struct {
+	MonetaryPolicy *cid.Cid
+	Mints          *cid.Cid
+	Sends          *cid.Cid
+	Receives       *cid.Cid
+	Balance        uint64
+}
+
 type TokenLedger interface {
 	TokenExists() (bool, error)
 	Balance() (uint64, error)
@@ -35,14 +60,6 @@ type TreeLedger struct {
 }
 
 var _ TokenLedger = &TreeLedger{}
-
-type Token struct {
-	MonetaryPolicy *cid.Cid
-	Mints          *cid.Cid
-	Sends          *cid.Cid
-	Receives       *cid.Cid
-	Balance        uint64
-}
 
 func NewTreeLedger(tree *dag.Dag, tokenName *TokenName) *TreeLedger {
 	return &TreeLedger{
@@ -219,10 +236,6 @@ func (l *TreeLedger) EstablishToken(monetaryPolicy transactions.TokenMonetaryPol
 	return newTree, nil
 }
 
-type TokenMint struct {
-	Amount uint64
-}
-
 func (l *TreeLedger) MintToken(amount uint64) (*dag.Dag, error) {
 	if amount == 0 {
 		return nil, fmt.Errorf("error, must mint amount greater than 0")
@@ -288,12 +301,6 @@ func (l *TreeLedger) MintToken(amount uint64) (*dag.Dag, error) {
 	return newTree, nil
 }
 
-type TokenSend struct {
-	Id          string
-	Amount      uint64
-	Destination string
-}
-
 func (l *TreeLedger) SendToken(txId, destination string, amount uint64) (*dag.Dag, error) {
 	// TODO: verify destination is chaintree address?
 
@@ -345,11 +352,6 @@ func (l *TreeLedger) SendToken(txId, destination string, amount uint64) (*dag.Da
 	l.tree = newTree
 
 	return newTree, nil
-}
-
-type TokenReceive struct {
-	SendTokenTransactionId string
-	Amount                 uint64
 }
 
 func (l *TreeLedger) ReceiveToken(sendTokenTxId string, amount uint64) (*dag.Dag, error) {
