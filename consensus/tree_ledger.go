@@ -237,6 +237,7 @@ func (l *TreeLedger) EstablishToken(monetaryPolicy transactions.TokenMonetaryPol
 }
 
 func (l *TreeLedger) MintToken(amount uint64) (*dag.Dag, error) {
+	ctx := context.TODO()
 	if amount == 0 {
 		return nil, fmt.Errorf("error, must mint amount greater than 0")
 	}
@@ -246,14 +247,21 @@ func (l *TreeLedger) MintToken(amount uint64) (*dag.Dag, error) {
 		return nil, fmt.Errorf("error getting token path: %v", err)
 	}
 
-	monetaryPolicyPath := append(tokenPath, MonetaryPolicyLabel)
-	monetaryPolicy := &transactions.TokenMonetaryPolicy{}
-	err = l.tree.ResolveInto(context.TODO(), monetaryPolicyPath, &monetaryPolicy)
+	token := Token{}
+	err = l.tree.ResolveInto(ctx, tokenPath, &token)
 	if err != nil {
-		return nil, fmt.Errorf("error fetching monetary policy at path %v: %v", monetaryPolicyPath, err)
+		return nil, fmt.Errorf("error fetching token at path %v: %v", tokenPath, err)
 	}
-	if monetaryPolicy == nil {
-		return nil, fmt.Errorf("error, token at path %v is missing a monetary policy", tokenPath)
+
+	policyNode, err := l.tree.Get(ctx, *token.MonetaryPolicy)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching token monetary policy: %v", err)
+	}
+
+	monetaryPolicy := &transactions.TokenMonetaryPolicy{}
+	err = cbornode.DecodeInto(policyNode.RawData(), &monetaryPolicy)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding token monetary policy: %v", err)
 	}
 
 	mintCids, err := l.tokenTransactionCidsForType(TokenMintLabel)
