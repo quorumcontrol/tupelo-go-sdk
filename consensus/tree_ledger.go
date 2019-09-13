@@ -251,19 +251,8 @@ func (l *TreeLedger) MintToken(amount uint64) (*dag.Dag, error) {
 		return nil, fmt.Errorf("error getting token path: %v", err)
 	}
 
-	token := Token{}
-	err = l.tree.ResolveInto(ctx, tokenPath, &token)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching token at path %v: %v", tokenPath, err)
-	}
-
-	policyNode, err := l.tree.Get(ctx, *token.MonetaryPolicy)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching token monetary policy: %v", err)
-	}
-
 	monetaryPolicy := &transactions.TokenMonetaryPolicy{}
-	err = cbornode.DecodeInto(policyNode.RawData(), &monetaryPolicy)
+	err = l.tree.ResolveInto(ctx, append(tokenPath, MonetaryPolicyLabel), monetaryPolicy)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding token monetary policy: %v", err)
 	}
