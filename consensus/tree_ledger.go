@@ -15,11 +15,6 @@ const (
 	TokenBalanceLabel   = "balance"
 )
 
-var transactionTypes = map[string][]string{
-	"credit": {TokenMintLabel, TokenReceiveLabel},
-	"debit":  {TokenSendLabel},
-}
-
 // TODO: These token struct types should probably be protobufs in the messages
 // repo.
 type TokenMint struct {
@@ -129,22 +124,6 @@ func (l *TreeLedger) tokenTransactionCidsForType(txType string) ([]cid.Cid, erro
 	}
 
 	return cids, nil
-}
-
-func (l *TreeLedger) tokenTransactionCids() (map[string][]cid.Cid, error) {
-	allCids := make(map[string][]cid.Cid)
-
-	for _, txTypes := range transactionTypes {
-		for _, txType := range txTypes {
-			cids, err := l.tokenTransactionCidsForType(txType)
-			if err != nil {
-				return nil, err
-			}
-			allCids[txType] = cids
-		}
-	}
-
-	return allCids, nil
 }
 
 func (l *TreeLedger) sumTokenTransactions(cids []cid.Cid) (uint64, error) {
