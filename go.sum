@@ -447,6 +447,8 @@ github.com/quorumcontrol/chaintree v0.8.3 h1:2gIWmbGBwfGc6KrIFYhLoOPcjJaqDbF47+T
 github.com/quorumcontrol/chaintree v0.8.3/go.mod h1:44bFGFfyV9CFMGNRfVQGjQBeQcTjkSzIomXpRhKfK3A=
 github.com/quorumcontrol/chaintree v1.0.2-0.20190910185105-5ed2053d9dea h1:FKX/BjlFFZWZTFp217QEBMUbQABIBym4LBi7KzFHDF8=
 github.com/quorumcontrol/chaintree v1.0.2-0.20190910185105-5ed2053d9dea/go.mod h1:skFar/FIivzUKnC5/Ndmjehc7ZeAeQHimJCCWZbbW9g=
+github.com/quorumcontrol/chaintree v1.0.2-0.20190917094057-ee67adc23862 h1:7hR/tYoDapC0JomjJBQeHsjAD+ru83FSAhWgFVC7Pgs=
+github.com/quorumcontrol/chaintree v1.0.2-0.20190917094057-ee67adc23862/go.mod h1:skFar/FIivzUKnC5/Ndmjehc7ZeAeQHimJCCWZbbW9g=
 github.com/quorumcontrol/chaintree v5.1.1+incompatible h1:bAvhEuWCIsHq98SRdJ7EaKxL8uw+ceZnASt55mqHHGI=
 github.com/quorumcontrol/go-hamt-ipld v0.0.0-20190829143757-edd9ec4d9ef5 h1:HFRkcnmEKbqlcK3sGm9/4x8AiwY+oEPxP9PW6NcTJOc=
 github.com/quorumcontrol/go-hamt-ipld v0.0.0-20190829143757-edd9ec4d9ef5/go.mod h1:raAVvAGMvKeivh8G1LR+9zQNFmsGsMSxCKIIGJwan+g=
@@ -461,6 +463,8 @@ github.com/quorumcontrol/messages/build/go v0.0.0-20190904072359-c4c4068cde98 h1
 github.com/quorumcontrol/messages/build/go v0.0.0-20190904072359-c4c4068cde98/go.mod h1:qw2lFojipAoSngsC0orDPd6ELEEL/WD3IcMmTRZv5NY=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190904072359-c4c4068cde98cf0244eb91d63db0cfab979c42b5 h1:IZcy8+oLu6Tk+JfI5ylM1FVKeRIwVXeNZUKdk6HuA2A=
 github.com/quorumcontrol/messages/build/go v0.0.0-20190904072359-c4c4068cde98cf0244eb91d63db0cfab979c42b5/go.mod h1:qw2lFojipAoSngsC0orDPd6ELEEL/WD3IcMmTRZv5NY=
+github.com/quorumcontrol/messages/build/go v0.0.0-20190916172743-fed64641cd55 h1:kInaQ23ne9dUGCcVgPAuftsOcMuqG3tF3tVyvcdy17M=
+github.com/quorumcontrol/messages/build/go v0.0.0-20190916172743-fed64641cd55/go.mod h1:qw2lFojipAoSngsC0orDPd6ELEEL/WD3IcMmTRZv5NY=
 github.com/ryanuber/columnize v0.0.0-20160712163229-9b3edd62028f/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
 github.com/santhosh-tekuri/jsonschema v1.2.3 h1:pbT7hdS0LabuC3s0VTbE767bkdqFsZsPjTOFcmed4Ak=
 github.com/santhosh-tekuri/jsonschema v1.2.3/go.mod h1:TEAUOeZSmIxTTuHatJzrvARHiuO9LYd+cIxzgEHCQI4=
