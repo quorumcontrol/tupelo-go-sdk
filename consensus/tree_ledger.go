@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/dag"
-	"github.com/quorumcontrol/chaintree/typecaster"
 	"github.com/quorumcontrol/messages/build/go/transactions"
 )
 
@@ -16,9 +15,33 @@ const (
 	TokenBalanceLabel   = "balance"
 )
 
-var transactionTypes = map[string][]string{
-	"credit": {TokenMintLabel, TokenReceiveLabel},
-	"debit":  {TokenSendLabel},
+// TODO: These token struct types should probably be protobufs in the messages
+// repo.
+type TokenMint struct {
+	Amount uint64
+}
+
+type TokenSend struct {
+	Id          string
+	Amount      uint64
+	Destination string
+}
+
+type TokenReceive struct {
+	SendTokenTransactionId string
+	Amount                 uint64
+}
+
+// TODO: Consider removing from the CBOR atlas to allow us to resolve the child
+// nodes into their native objects directly by navigating through Token nodes.
+// This would require changing the balance field to a composite object so we can
+// resolve the balance without integer overflow
+type Token struct {
+	MonetaryPolicy *cid.Cid
+	Mints          *cid.Cid
+	Sends          *cid.Cid
+	Receives       *cid.Cid
+	Balance        uint64
 }
 
 type TokenLedger interface {
@@ -36,14 +59,6 @@ type TreeLedger struct {
 }
 
 var _ TokenLedger = &TreeLedger{}
-
-type Token struct {
-	MonetaryPolicy *cid.Cid
-	Mints          *cid.Cid
-	Sends          *cid.Cid
-	Receives       *cid.Cid
-	Balance        uint64
-}
 
 func NewTreeLedger(tree *dag.Dag, tokenName *TokenName) *TreeLedger {
 	return &TreeLedger{
@@ -111,22 +126,6 @@ func (l *TreeLedger) tokenTransactionCidsForType(txType string) ([]cid.Cid, erro
 	return cids, nil
 }
 
-func (l *TreeLedger) tokenTransactionCids() (map[string][]cid.Cid, error) {
-	allCids := make(map[string][]cid.Cid)
-
-	for _, txTypes := range transactionTypes {
-		for _, txType := range txTypes {
-			cids, err := l.tokenTransactionCidsForType(txType)
-			if err != nil {
-				return nil, err
-			}
-			allCids[txType] = cids
-		}
-	}
-
-	return allCids, nil
-}
-
 func (l *TreeLedger) sumTokenTransactions(cids []cid.Cid) (uint64, error) {
 	var sum uint64
 
@@ -137,13 +136,13 @@ func (l *TreeLedger) sumTokenTransactions(cids []cid.Cid) (uint64, error) {
 			return 0, fmt.Errorf("error fetching node %v: %v", c, err)
 		}
 
-		amount, _, err := node.Resolve([]string{"amount"})
-
+		rec := TokenReceive{}
+		err = cbornode.DecodeInto(node.RawData(), &rec)
 		if err != nil {
 			return 0, fmt.Errorf("error fetching amount from %v: %v", node, err)
 		}
 
-		sum = sum + amount.(uint64)
+		sum = sum + rec.Amount
 	}
 
 	return sum, nil
@@ -155,22 +154,13 @@ func (l *TreeLedger) Balance() (uint64, error) {
 		return 0, err
 	}
 
-	balancePath := append(tokenPath, TokenBalanceLabel)
-	balanceObj, remaining, err := l.tree.Resolve(context.TODO(), balancePath)
+	token := Token{}
+	err = l.tree.ResolveInto(context.TODO(), tokenPath, &token)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("error resolving token: %v", err)
 	}
 
-	if len(remaining) > 0 {
-		return 0, fmt.Errorf("error resolving token balance: path elements remaining: %v", remaining)
-	}
-
-	balance, ok := balanceObj.(uint64)
-	if !ok {
-		return 0, fmt.Errorf("error resolving token balance; node type (%T) is not a uint64", balanceObj)
-	}
-
-	return balance, nil
+	return token.Balance, nil
 }
 
 func (l *TreeLedger) TokenExists() (bool, error) {
@@ -229,11 +219,8 @@ func (l *TreeLedger) EstablishToken(monetaryPolicy transactions.TokenMonetaryPol
 	return newTree, nil
 }
 
-type TokenMint struct {
-	Amount uint64
-}
-
 func (l *TreeLedger) MintToken(amount uint64) (*dag.Dag, error) {
+	ctx := context.TODO()
 	if amount == 0 {
 		return nil, fmt.Errorf("error, must mint amount greater than 0")
 	}
@@ -243,19 +230,10 @@ func (l *TreeLedger) MintToken(amount uint64) (*dag.Dag, error) {
 		return nil, fmt.Errorf("error getting token path: %v", err)
 	}
 
-	monetaryPolicyPath := append(tokenPath, MonetaryPolicyLabel)
-	uncastMonetaryPolicy, _, err := l.tree.Resolve(context.TODO(), monetaryPolicyPath)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching monetary policy at path %v: %v", monetaryPolicyPath, err)
-	}
-	if uncastMonetaryPolicy == nil {
-		return nil, fmt.Errorf("error, token at path %v is missing a monetary policy", tokenPath)
-	}
-
 	monetaryPolicy := &transactions.TokenMonetaryPolicy{}
-	err = typecaster.ToType(uncastMonetaryPolicy, monetaryPolicy)
+	err = l.tree.ResolveInto(ctx, append(tokenPath, MonetaryPolicyLabel), monetaryPolicy)
 	if err != nil {
-		return nil, fmt.Errorf("error typecasting monetary policy: %v", err)
+		return nil, fmt.Errorf("error decoding token monetary policy: %v", err)
 	}
 
 	mintCids, err := l.tokenTransactionCidsForType(TokenMintLabel)
@@ -301,12 +279,6 @@ func (l *TreeLedger) MintToken(amount uint64) (*dag.Dag, error) {
 	l.tree = newTree
 
 	return newTree, nil
-}
-
-type TokenSend struct {
-	Id          string
-	Amount      uint64
-	Destination string
 }
 
 func (l *TreeLedger) SendToken(txId, destination string, amount uint64) (*dag.Dag, error) {
@@ -360,11 +332,6 @@ func (l *TreeLedger) SendToken(txId, destination string, amount uint64) (*dag.Da
 	l.tree = newTree
 
 	return newTree, nil
-}
-
-type TokenReceive struct {
-	SendTokenTransactionId string
-	Amount                 uint64
 }
 
 func (l *TreeLedger) ReceiveToken(sendTokenTxId string, amount uint64) (*dag.Dag, error) {

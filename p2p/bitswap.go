@@ -6,13 +6,13 @@ import (
 	"github.com/quorumcontrol/chaintree/cachedblockstore"
 	"golang.org/x/xerrors"
 
-	"github.com/ipfs/go-bitswap"
+	bitswap "github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
-	"github.com/ipfs/go-blockservice"
+	blockservice "github.com/ipfs/go-blockservice"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/ipfs/go-merkledag"
+	merkledag "github.com/ipfs/go-merkledag"
 
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	dag "github.com/ipfs/go-merkledag"
 

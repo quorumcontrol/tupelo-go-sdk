@@ -370,9 +370,6 @@ func PassPhraseKey(passPhrase, salt []byte) (*ecdsa.PrivateKey, error) {
 		return nil, fmt.Errorf("error running scyrpt: %v", err)
 	}
 	s2 := pbkdf2.Key(passPhrase, secondSalt, 216, 32, sha256.New)
-	if err != nil {
-		return nil, fmt.Errorf("error running pbkdf2: %v", err)
-	}
 	dst := make([]byte, 32)
 	safeXORBytes(dst, s1, s2, 32)
 	return crypto.ToECDSA(dst)
