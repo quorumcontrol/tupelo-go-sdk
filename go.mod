@@ -28,7 +28,7 @@ require (
 	github.com/libp2p/go-libp2p-discovery v0.1.0
 	github.com/libp2p/go-libp2p-kad-dht v0.1.1
 	github.com/libp2p/go-libp2p-pnet v0.1.0
-	github.com/libp2p/go-libp2p-pubsub v0.1.0
+	github.com/libp2p/go-libp2p-pubsub v0.1.1
 	github.com/libp2p/go-libp2p-swarm v0.1.1
 	github.com/multiformats/go-multiaddr v0.0.4
 	github.com/opentracing/opentracing-go v1.1.0
@@ -48,5 +48,3 @@ require (
 	golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4
 	golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7
 )
-
-replace github.com/libp2p/go-libp2p-pubsub v0.1.0 => github.com/quorumcontrol/go-libp2p-pubsub v0.0.4-0.20190528094025-e4e719f73e7a
