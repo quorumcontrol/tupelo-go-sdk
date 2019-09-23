@@ -22,14 +22,12 @@ func JsStringArrayToStringSlice(jsStrArray js.Value) []string {
 func JsBufferToBytes(buf js.Value) []byte {
 	len := buf.Length()
 	bits := make([]byte, len)
-	for i := 0; i < len; i++ {
-		bits[i] = byte(uint8(buf.Index(i).Int()))
-	}
+	js.CopyBytesToGo(bits, buf)
 	return bits
 }
 
 func SliceToJSBuffer(slice []byte) js.Value {
-	return js.Global().Get("Buffer").Call("from", js.TypedArrayOf(slice))
+	return js.Global().Get("Buffer").Call("from", SliceToJSArray(slice))
 }
 
 func JsCidToCid(jsCid js.Value) (cid.Cid, error) {
@@ -42,4 +40,10 @@ func CidToJSCID(c cid.Cid) js.Value {
 	bits := c.Bytes()
 	jsBits := SliceToJSBuffer(bits)
 	return jslibs.Cids.New(jsBits)
+}
+
+func SliceToJSArray(slice []byte) js.Value {
+	jsArry := js.Global().Get("Uint8Array").New(len(slice))
+	js.CopyBytesToJS(jsArry, slice)
+	return jsArry
 }

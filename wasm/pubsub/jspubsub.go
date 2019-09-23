@@ -7,6 +7,7 @@ import (
 	"syscall/js"
 
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/remote"
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/helpers"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
@@ -27,7 +28,7 @@ func NewPubSubBridge(jspubsub js.Value) *PubSubBridge {
 func (psb *PubSubBridge) Publish(topic string, data []byte) error {
 	resp := make(chan error)
 	defer close(resp)
-	psb.jspubsub.Call("publish", js.ValueOf(topic), js.Global().Get("Buffer").Call("from", js.TypedArrayOf(data)), js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
+	psb.jspubsub.Call("publish", js.ValueOf(topic), helpers.SliceToJSBuffer(data), js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
 		go func() {
 			if len(args) > 0 && args[0].Truthy() {
 				resp <- fmt.Errorf("error publishing: %s", args[0].String())

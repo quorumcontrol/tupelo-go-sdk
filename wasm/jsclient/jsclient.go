@@ -119,7 +119,7 @@ func (jsc *JSClient) PlayTransactions(blockService js.Value, jsKeyBits js.Value,
 			t.Reject(err.Error())
 			return
 		}
-		t.Resolve(js.TypedArrayOf(respBits))
+		t.Resolve(helpers.SliceToJSArray(respBits))
 	}()
 
 	return t
@@ -158,8 +158,8 @@ func GenerateKey() *then.Then {
 			t.Reject(err.Error())
 			return
 		}
-		privateBits := js.TypedArrayOf(crypto.FromECDSA(key))
-		publicBits := js.TypedArrayOf(crypto.FromECDSAPub(&key.PublicKey))
+		privateBits := helpers.SliceToJSArray(crypto.FromECDSA(key))
+		publicBits := helpers.SliceToJSArray(crypto.FromECDSAPub(&key.PublicKey))
 		jsArray := js.Global().Get("Array").New(privateBits, publicBits)
 		t.Resolve(jsArray)
 	}()
@@ -174,8 +174,8 @@ func KeyFromPrivateBytes(jsBits js.Value) *then.Then {
 			t.Reject(err.Error())
 			return
 		}
-		privateBits := js.TypedArrayOf(crypto.FromECDSA(key))
-		publicBits := js.TypedArrayOf(crypto.FromECDSAPub(&key.PublicKey))
+		privateBits := helpers.SliceToJSArray(crypto.FromECDSA(key))
+		publicBits := helpers.SliceToJSArray(crypto.FromECDSAPub(&key.PublicKey))
 		jsArray := js.Global().Get("Array").New(privateBits, publicBits)
 		t.Resolve(jsArray)
 	}()
@@ -192,8 +192,8 @@ func PassPhraseKey(jsPhrase, jsSalt js.Value) *then.Then {
 			t.Reject(err.Error())
 			return
 		}
-		privateBits := js.TypedArrayOf(crypto.FromECDSA(key))
-		publicBits := js.TypedArrayOf(crypto.FromECDSAPub(&key.PublicKey))
+		privateBits := helpers.SliceToJSArray(crypto.FromECDSA(key))
+		publicBits := helpers.SliceToJSArray(crypto.FromECDSAPub(&key.PublicKey))
 		jsArray := js.Global().Get("Array").New(privateBits, publicBits)
 		t.Resolve(jsArray)
 	}()
@@ -305,7 +305,7 @@ func TokenPayloadForTransaction(jsBlockService js.Value, jsTip js.Value, tokenNa
 			t.Reject(err.Error())
 			return
 		}
-		t.Resolve(js.TypedArrayOf(bits))
+		t.Resolve(helpers.SliceToJSArray(bits))
 	}()
 
 	return t
