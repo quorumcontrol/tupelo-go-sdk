@@ -33,7 +33,7 @@ require (
 	github.com/multiformats/go-multiaddr v0.0.4
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.8.1
-	github.com/quorumcontrol/chaintree v1.0.2-0.20190917094057-ee67adc23862
+	github.com/quorumcontrol/chaintree v0.8.4
 	github.com/quorumcontrol/go-hamt-ipld v0.0.2-0.20190913132514-52eecd11b85f
 	github.com/quorumcontrol/messages/build/go v0.0.0-20190916172743-fed64641cd55
 	github.com/stretchr/testify v1.3.0
