@@ -1,0 +1,10 @@
+name: Run tests
+
+on: [push]
+
+jobs:
+  test:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v1
+      - run: ./scripts/test-within-docker.sh
