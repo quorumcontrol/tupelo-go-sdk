@@ -22,7 +22,7 @@ jobs:
           repository: quorumcontrol/tupelo
           ref: master
           fetch-depth: 1
-          path: ${{ runner.workspace }}/tupelo
+          path: ${{ runner.workspace }}/../tupelo
       - name: run integration tests w/ tupelo master
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
