@@ -7,13 +7,13 @@ chmod 600 ~/.ssh/id_rsa
 eval "$(ssh-agent -s)" > /dev/null 2>&1
 ssh-add ~/.ssh/id_rsa > /dev/null 2>&1
 
+export GOPATH=${HOME}/go
+
 go mod download
 
-echo "GOPATH: ${GOPATH}"
+mkdir -p ${GOPATH}/bin
 
-mkdir -p ~/go/bin
-
-export PATH="${HOME}/go/bin:${PATH}"
+export PATH="${GOPATH}/bin:${PATH}"
 
 make lint
 
