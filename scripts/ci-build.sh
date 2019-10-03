@@ -8,6 +8,9 @@ eval "$(ssh-agent -s)" > /dev/null 2>&1
 ssh-add ~/.ssh/id_rsa > /dev/null 2>&1
 
 go mod download
+
+mkdir -p ~/go/bin
+
 make lint
 
 if [[ "${CI}" == "true" ]]; then
