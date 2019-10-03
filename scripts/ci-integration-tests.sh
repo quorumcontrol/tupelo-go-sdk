@@ -16,10 +16,14 @@ mkdir -p ${GOPATH}/bin
 
 export PATH="${GOPATH}/bin:${PATH}"
 
-make lint
+# TODO: Run latest release too
+git clone git@github.com:quorumcontrol/tupelo.git ~/tupelo
+pushd ~/tupelo
+make vendor
+docker-compose up --build --remove-orphans --force-recreate
+popd
 
-if [[ "${CI}" == "true" ]]; then
-  make ci-test
-else
-  make test
-fi
+echo "Waiting for Tupelo signers to be ready"
+sleep 10
+
+make integration-test
