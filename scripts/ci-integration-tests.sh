@@ -20,7 +20,7 @@ export PATH="${GOPATH}/bin:${PATH}"
 git clone git@github.com:quorumcontrol/tupelo.git ~/tupelo
 pushd ~/tupelo
 make vendor
-docker-compose up --build --remove-orphans --force-recreate
+docker-compose up --build --remove-orphans --force-recreate -d
 popd
 
 echo "Waiting for Tupelo signers to be ready"
