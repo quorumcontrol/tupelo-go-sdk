@@ -16,7 +16,7 @@ mkdir -p ${GOPATH}/bin
 
 export PATH="${GOPATH}/bin:${PATH}"
 
-pushd ${GITHUB_WORKSPACE}/tupelo
+pushd ${GITHUB_WORKSPACE}/../tupelo
 make vendor
 docker-compose up --build --remove-orphans --force-recreate -d
 popd
