@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e
+set -eo pipefail
 
 git config --global url."ssh://git@github.com/".insteadOf "https://github.com/"
 
