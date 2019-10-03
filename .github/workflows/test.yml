@@ -13,7 +13,13 @@ jobs:
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: scripts/ci-build.sh
-      - name: run integration tests
+      - uses: actions/checkout@v1
+        with:
+          repository: quorumcontrol/tupelo
+          ref: master
+          fetch-depth: 1
+          path: $HOME/tupelo
+      - name: run integration tests w/ tupelo master
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: scripts/ci-integration-tests.sh

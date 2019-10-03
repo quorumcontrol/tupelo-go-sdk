@@ -17,7 +17,7 @@ mkdir -p ${GOPATH}/bin
 export PATH="${GOPATH}/bin:${PATH}"
 
 # TODO: Run latest release too
-git clone git@github.com:quorumcontrol/tupelo.git ~/tupelo
+#git clone git@github.com:quorumcontrol/tupelo.git ~/tupelo
 pushd ~/tupelo
 make vendor
 docker-compose up --build --remove-orphans --force-recreate -d
