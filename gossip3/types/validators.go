@@ -8,6 +8,7 @@ import (
 	"github.com/quorumcontrol/messages/build/go/signatures"
 
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
 
 	"github.com/quorumcontrol/chaintree/typecaster"
 
@@ -79,6 +80,7 @@ func IsTokenRecipient(tree *dag.Dag, blockWithHeaders *chaintree.BlockWithHeader
 		}
 
 		if id.(string) != sendToken.Destination {
+			middleware.Log.Debugw("sendToken destination is not our ID: ", "ours", id.(string), "send token", sendToken.Destination)
 			return false, nil
 		}
 	}
@@ -124,6 +126,7 @@ func GenerateIsValidSignature(sigVerifier func(sig *signatures.Signature) (bool,
 			}
 
 			if sigNewTip != tip {
+				middleware.Log.Debugw("invalid signature, tips not equal")
 				return false, nil
 			}
 
@@ -133,6 +136,7 @@ func GenerateIsValidSignature(sigVerifier func(sig *signatures.Signature) (bool,
 			}
 
 			if !valid {
+				middleware.Log.Debugw("invalid signature")
 				return false, nil
 			}
 		}
@@ -174,6 +178,7 @@ func HasBurnGenerator(ctx context.Context, ng *NotaryGroup) (chaintree.BlockVali
 				return true, nil
 			}
 		}
+		middleware.Log.Debugw("no burn on tx")
 		return false, nil
 	}
 	return burnValidator, nil
@@ -221,6 +226,7 @@ func IsOwner(tree *dag.Dag, blockWithHeaders *chaintree.BlockWithHeaders) (bool,
 			return true, nil
 		}
 	}
+	middleware.Log.Debugw("tx sender is not tree owner")
 
 	return false, nil
 }
