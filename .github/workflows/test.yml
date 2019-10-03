@@ -12,5 +12,4 @@ jobs:
       - name: run tests
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          GOPATH: ~/go
         run: scripts/ci-build.sh

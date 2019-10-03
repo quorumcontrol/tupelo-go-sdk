@@ -9,7 +9,11 @@ ssh-add ~/.ssh/id_rsa > /dev/null 2>&1
 
 go mod download
 
+echo "GOPATH: ${GOPATH}"
+
 mkdir -p ~/go/bin
+
+export PATH="${HOME}/go/bin:${PATH}"
 
 make lint
 
