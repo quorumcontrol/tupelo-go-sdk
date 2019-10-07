@@ -3,10 +3,6 @@
 package client
 
 import (
-	"strings"
-	"sync"
-	"github.com/quorumcontrol/messages/build/go/services"
-	"github.com/quorumcontrol/messages/build/go/signatures"
 	"context"
 	"crypto/ecdsa"
 	"encoding/base64"
@@ -15,8 +11,13 @@ import (
 	"io/ioutil"
 	"path"
 	"runtime"
+	"strings"
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/quorumcontrol/messages/build/go/services"
+	"github.com/quorumcontrol/messages/build/go/signatures"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -202,6 +203,15 @@ func TestPlayTransactions(t *testing.T) {
 		txn3, err := chaintree.NewSetDataTransaction("down/in/the/thing", "sometestvalue")
 		require.Nil(t, err)
 		resp, err = client.PlayTransactions(chain, treeKey, &remoteTip, []*transactions.Transaction{txn3})
+		require.Nil(t, err)
+		assert.Equal(t, resp.Tip.Bytes(), chain.Tip().Bytes())
+	})
+
+	t.Run("works when setting a different branch of the tree", func(t *testing.T) {
+		remoteTip := chain.Tip()
+		txn2, err := chaintree.NewSetDataTransaction("over/yonder/in/the/hill", "sometestvalue")
+		require.Nil(t, err)
+		resp, err := client.PlayTransactions(chain, treeKey, &remoteTip, []*transactions.Transaction{txn2})
 		require.Nil(t, err)
 		assert.Equal(t, resp.Tip.Bytes(), chain.Tip().Bytes())
 	})
@@ -419,7 +429,7 @@ func TestNonOwnerTransactions(t *testing.T) {
 		wg.Done()
 		// send a transaction with a key that is not the owner
 		_, err = client.PlayTransactions(chain, treeKey2, nil, []*transactions.Transaction{txn})
-		invalidTransactionErrorChan <-err
+		invalidTransactionErrorChan <- err
 	}()
 	wg.Wait()
 	// sleep here to be doubly certain the invalid Tx went first
@@ -427,7 +437,7 @@ func TestNonOwnerTransactions(t *testing.T) {
 	// send a valid transaction
 	_, err = client2.PlayTransactions(chain, treeKey1, nil, []*transactions.Transaction{txn})
 	// valid transaction should succeed
-	require.Nil(t,err)
+	require.Nil(t, err)
 
 	// make sure we got an error back on the invalid transaction (because the tip changed)
 	invalidErr := <-invalidTransactionErrorChan
