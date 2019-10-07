@@ -16,12 +16,8 @@ mkdir -p ${GOPATH}/bin
 
 export PATH="${GOPATH}/bin:${PATH}"
 
-pushd ${GITHUB_WORKSPACE}/../tupelo
-make vendor
-docker-compose up --build --remove-orphans --force-recreate -d
-popd
+# Run integration tests against tupelo master
+make integration-test TUPELO=master
 
-echo "Waiting for Tupelo signers to be ready"
-sleep 10
-
-make integration-test
+# Run integration tests against tupelo latest release
+make integration-test TUPELO=latest
