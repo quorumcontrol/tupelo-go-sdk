@@ -33,10 +33,28 @@ ci-test: $(gosources) go.mod go.sum $(FIRSTGOPATH)/bin/gotestsum
 	mkdir -p test_results/unit_tests
 	gotestsum --junitfile=test_results/unit_tests/results.xml -- -mod=readonly -run $(TESTS_TO_RUN) ./...
 
-integration-test: docker-image
-	docker run -e TUPELO_BOOTSTRAP_NODES=/ip4/172.16.238.10/tcp/34001/ipfs/\
+TUPELO ?= master
+ifeq ($(TUPELO), local)
+    TUPELO_DIR ?= ../tupelo
+    TUPELO_BUILD_PULL = build
+else
+    TUPELO_DIR = integration
+    TUPELO_BUILD_PULL = pull
+endif
+
+integration-test: docker-image integration/* integration/configs/*
+	cd $(TUPELO_DIR) && docker-compose -p tupelo down || true
+ifeq ($(TUPELO_BUILD_PULL), build)
+	cd $(TUPELO_DIR) && make vendor
+endif
+	cd $(TUPELO_DIR) && docker-compose -p tupelo $(TUPELO_BUILD_PULL) &&\
+	docker-compose -p tupelo up --remove-orphans --force-recreate -d
+	sleep 5
+	docker run -e TUPELO_BOOTSTRAP_NODES=/ip4/172.16.246.10/tcp/34001/ipfs/\
 16Uiu2HAm3TGSEKEjagcCojSJeaT5rypaeJMKejijvYSnAjviWwV5 --net tupelo_default \
-quorumcontrol/tupelo-go-sdk go test -mod=vendor -tags=integration -timeout=2m -run $(TESTS_TO_RUN) ./...
+quorumcontrol/tupelo-go-sdk go test -mod=vendor -tags=integration -timeout=2m -run $(TESTS_TO_RUN) ./... \
+	|| (cd $(TUPELO_DIR); docker-compose -p tupelo down; exit 1)
+	cd $(TUPELO_DIR) && docker-compose -p tupelo down || true
 
 docker-image: vendor $(gosources) Dockerfile .dockerignore
 	docker build -t quorumcontrol/tupelo-go-sdk:$(TAG) .
