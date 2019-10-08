@@ -11,8 +11,6 @@ import (
 	"io/ioutil"
 	"path"
 	"runtime"
-	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -408,9 +406,6 @@ func TestNonOwnerTransactions(t *testing.T) {
 	client := New(ng, chain.MustId(), remote.NewNetworkPubSub(host.GetPubSub()))
 	defer client.Stop()
 
-	client2 := New(ng, chain.MustId(), remote.NewNetworkPubSub(host.GetPubSub()))
-	defer client2.Stop()
-
 	treeKey2, err := crypto.GenerateKey()
 	require.Nil(t, err)
 
@@ -418,29 +413,6 @@ func TestNonOwnerTransactions(t *testing.T) {
 	txn, err := chaintree.NewSetDataTransaction("down/in/the/thing", "sometestvalue")
 	require.Nil(t, err)
 
-	// this test is a little narly because there aren't errors for invalid transactions
-	// so what we do is send the invalid transaction and then send the valid transaction
-	// the valid one should get signed (even though it was 2nd) and the 1st one should then
-	// error because the tip was changed underneath it
-	invalidTransactionErrorChan := make(chan error)
-	wg := new(sync.WaitGroup)
-	wg.Add(1)
-	go func() {
-		wg.Done()
-		// send a transaction with a key that is not the owner
-		_, err = client.PlayTransactions(chain, treeKey2, nil, []*transactions.Transaction{txn})
-		invalidTransactionErrorChan <- err
-	}()
-	wg.Wait()
-	// sleep here to be doubly certain the invalid Tx went first
-	time.Sleep(100 * time.Millisecond)
-	// send a valid transaction
-	_, err = client2.PlayTransactions(chain, treeKey1, nil, []*transactions.Transaction{txn})
-	// valid transaction should succeed
-	require.Nil(t, err)
-
-	// make sure we got an error back on the invalid transaction (because the tip changed)
-	invalidErr := <-invalidTransactionErrorChan
-	require.NotNil(t, invalidErr)
-	assert.Truef(t, strings.HasPrefix(invalidErr.Error(), "error signature at same height did not match transaction new tip"), "error was: %s", invalidErr.Error())
+	_, err = client.PlayTransactions(chain, treeKey2, nil, []*transactions.Transaction{txn})
+	require.NotNil(t, err)
 }

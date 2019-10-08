@@ -277,6 +277,16 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 	tracker := wrapStoreForRefCounting(tree.ChainTree.Dag.Store)
 	tree.ChainTree.Dag.Store = tracker
 
+	if len(tree.ChainTree.BlockValidators) == 0 {
+		// we run the block validators to save devs from themselves
+		// and catch anything we know will be rejected by the NotaryGroup
+		validators, err := c.Group.BlockValidators(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("error getting validators: %v", err)
+		}
+		tree.ChainTree.BlockValidators = validators
+	}
+
 	storedTip := tree.Tip()
 
 	newChainTree, valid, err := tree.ChainTree.ProcessBlockImmutable(ctx, blockWithHeaders)
@@ -287,10 +297,15 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 	// and then reset the store back to what it was originally
 	tree.ChainTree.Dag.Store = tracker.DagStore
 
-	// Grab the nodes that were actually used:
-	nodes, err := tracker.touchedNodes(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error getting node: %v", err)
+	var state [][]byte
+	// only need state after the first Tx
+	if blockWithHeaders.Height > 0 {
+		// Grab the nodes that were actually used:
+		nodes, err := tracker.touchedNodes(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("error getting node: %v", err)
+		}
+		state = nodesToBytes(nodes)
 	}
 
 	// If you're trying to see the payload of the nodes, this is helpful for debugging:
@@ -312,7 +327,7 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 		Payload:     sw.WrapObject(blockWithHeaders).RawData(),
 		NewTip:      expectedTip.Bytes(),
 		ObjectId:    []byte(chainId),
-		State:       nodesToBytes(nodes),
+		State:       state,
 	}
 
 	fut := c.Subscribe(&transaction, 10*time.Second)
