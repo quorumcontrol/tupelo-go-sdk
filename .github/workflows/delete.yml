@@ -6,10 +6,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
-    - name: Docker Delete Tag
-      uses: ./.github/actions/docker-delete-tag
+    - name: Docker Login
+      run: docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
       env:
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-      with:
-        args: quorumcontrol/tupelo-go-sdk
+    - name: Docker Delete Tag
+      run: IMAGE_REF=$(echo ${{ github.ref }} | rev | cut -d / -f 1 | rev); docker delete quorumcontrol/tupelo-go-sdk:$IMAGE_REF
