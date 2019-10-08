@@ -272,9 +272,19 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 		return nil, fmt.Errorf("error signing: %v", err)
 	}
 
-	nodes, err := nodesForTransaction(tree)
-	if err != nil {
-		return nil, fmt.Errorf("error generating nodes for transaction %v", err)
+	// keep track of every node the transactions actually need and send them along
+	// we do this by swapping the dag store
+	tracker := wrapStoreForRefCounting(tree.ChainTree.Dag.Store)
+	tree.ChainTree.Dag.Store = tracker
+
+	if len(tree.ChainTree.BlockValidators) == 0 {
+		// we run the block validators to save devs from themselves
+		// and catch anything we know will be rejected by the NotaryGroup
+		validators, err := c.Group.BlockValidators(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("error getting validators: %v", err)
+		}
+		tree.ChainTree.BlockValidators = validators
 	}
 
 	storedTip := tree.Tip()
@@ -283,6 +293,27 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 	if !valid || err != nil {
 		return nil, fmt.Errorf("error processing block (valid: %t): %v", valid, err)
 	}
+
+	// and then reset the store back to what it was originally
+	tree.ChainTree.Dag.Store = tracker.DagStore
+
+	var state [][]byte
+	// only need state after the first Tx
+	if blockWithHeaders.Height > 0 {
+		// Grab the nodes that were actually used:
+		nodes, err := tracker.touchedNodes(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("error getting node: %v", err)
+		}
+		state = nodesToBytes(nodes)
+	}
+
+	// If you're trying to see the payload of the nodes, this is helpful for debugging:
+	// reconstructed, err := dag.NewDagWithNodes(ctx, nodestore.MustMemoryStore(ctx), nodes...)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("test code err: %v", err)
+	// }
+	// fmt.Println(reconstructed.Dump(ctx))
 
 	expectedTip := newChainTree.Dag.Tip
 	chainId, err := tree.Id()
@@ -296,7 +327,7 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 		Payload:     sw.WrapObject(blockWithHeaders).RawData(),
 		NewTip:      expectedTip.Bytes(),
 		ObjectId:    []byte(chainId),
-		State:       nodesToBytes(nodes),
+		State:       state,
 	}
 
 	fut := c.Subscribe(&transaction, 10*time.Second)
@@ -476,54 +507,11 @@ func getRoot(sct *consensus.SignedChainTree) (*chaintree.RootNode, error) {
 	return root, nil
 }
 
-// This method should calculate all necessary nodes that need to be sent for verification.
-// Currently this takes
-// - the entire resolved tree/ of the existing tree
-// - the nodes for chain/end, but not resolving through the previous tip
-func nodesForTransaction(existingSignedTree *consensus.SignedChainTree) ([]format.Node, error) {
-	ctx := context.TODO()
-	existingTree := existingSignedTree.ChainTree
-
-	treeNodes, err := existingTree.Dag.NodesForPathWithDecendants(ctx, []string{"tree"})
-	if err != nil {
-		return nil, fmt.Errorf("error getting tree nodes: %v", err)
-	}
-
-	// Validation needs all the nodes for chain/end, but not past chain/end. aka no need to
-	// resolve the end node, since that would fetch all the nodes of from the previous tip.
-	// Also, on genesis state chain/end is nil, so deal with that
-	var chainNodes []format.Node
-	if existingSignedTree.IsGenesis() {
-		chainNodes, err = existingTree.Dag.NodesForPath(ctx, []string{chaintree.ChainLabel})
-	} else {
-		chainNodes, err = existingTree.Dag.NodesForPath(ctx, []string{chaintree.ChainLabel, chaintree.ChainEndLabel})
-	}
-	if err != nil {
-		return nil, fmt.Errorf("error getting chain nodes: %v", err)
-	}
-
-	// subtract 1 to only include tip node once
-	nodes := make([]format.Node, len(treeNodes)+len(chainNodes)-1)
-	i := 0
-	for _, node := range treeNodes {
-		nodes[i] = node
-		i++
-	}
-	for _, node := range chainNodes {
-		if node.Cid().Equals(existingTree.Dag.Tip) {
-			continue
-		}
-		nodes[i] = node
-		i++
-	}
-
-	return nodes, nil
-}
-
 func nodesToBytes(nodes []format.Node) [][]byte {
 	returnBytes := make([][]byte, len(nodes))
 	for i, n := range nodes {
 		returnBytes[i] = n.RawData()
 	}
+
 	return returnBytes
 }

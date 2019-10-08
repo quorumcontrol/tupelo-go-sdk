@@ -439,6 +439,16 @@ github.com/quorumcontrol/chaintree v0.8.4 h1:oy002KDuTcQpvhrg/FhWnF4XP2AABj3GEcn
 github.com/quorumcontrol/chaintree v0.8.4/go.mod h1:skFar/FIivzUKnC5/Ndmjehc7ZeAeQHimJCCWZbbW9g=
 github.com/quorumcontrol/chaintree v0.8.5 h1:qnU5FmGY2sekZEEakmwD+BmLKvOUwRMAe6/dwpoIhp8=
 github.com/quorumcontrol/chaintree v0.8.5/go.mod h1:skFar/FIivzUKnC5/Ndmjehc7ZeAeQHimJCCWZbbW9g=
+github.com/quorumcontrol/chaintree v0.8.6-0.20191007093648-6b84a9ae1baf h1:8JTnkHiCqdMgFPo8r7/njX8tdnBYuOsg6oDcn/dQJ4I=
+github.com/quorumcontrol/chaintree v0.8.6-0.20191007093648-6b84a9ae1baf/go.mod h1:skFar/FIivzUKnC5/Ndmjehc7ZeAeQHimJCCWZbbW9g=
+github.com/quorumcontrol/chaintree v0.8.6-0.20191007095103-f6c28e626765 h1:3H5prysiUpAYpLPwLNXXK0Dk/aaBSMFq3jLjNfd8Ybs=
+github.com/quorumcontrol/chaintree v0.8.6-0.20191007095103-f6c28e626765/go.mod h1:skFar/FIivzUKnC5/Ndmjehc7ZeAeQHimJCCWZbbW9g=
+github.com/quorumcontrol/chaintree v0.8.6-0.20191007100733-640853f28aad h1:CrN4Ui9xNmKzOPPeRzPBelAvoJuNWmUVV2eJgs1nnos=
+github.com/quorumcontrol/chaintree v0.8.6-0.20191007100733-640853f28aad/go.mod h1:skFar/FIivzUKnC5/Ndmjehc7ZeAeQHimJCCWZbbW9g=
+github.com/quorumcontrol/chaintree v0.8.6-0.20191007102144-dc44ee121e06 h1:pmq4pdJyaQ5SRhTGaqDqAsY3F0pI3Zr5i7uW6nfCKNQ=
+github.com/quorumcontrol/chaintree v0.8.6-0.20191007102144-dc44ee121e06/go.mod h1:skFar/FIivzUKnC5/Ndmjehc7ZeAeQHimJCCWZbbW9g=
+github.com/quorumcontrol/chaintree v0.8.6-0.20191007111216-51a819c15c38 h1:NNzfdDs1DGnYyLwVBu2g1pHew/sTbljNK8cufNGiuoQ=
+github.com/quorumcontrol/chaintree v0.8.6-0.20191007111216-51a819c15c38/go.mod h1:skFar/FIivzUKnC5/Ndmjehc7ZeAeQHimJCCWZbbW9g=
 github.com/quorumcontrol/chaintree v5.1.1+incompatible h1:bAvhEuWCIsHq98SRdJ7EaKxL8uw+ceZnASt55mqHHGI=
 github.com/quorumcontrol/go-hamt-ipld v0.0.2-0.20190913132514-52eecd11b85f h1:U68Z68zPoYpahrrA58rgInnV4mJOdMvtvIgZgsD55+A=
 github.com/quorumcontrol/go-hamt-ipld v0.0.2-0.20190913132514-52eecd11b85f/go.mod h1:ZusHxzOPfi9rUsQ0/MW6+FMcZsRvwBf2H09vE2mhT10=
