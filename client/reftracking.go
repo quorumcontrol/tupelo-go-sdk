@@ -26,15 +26,21 @@ type storeWrapper struct {
 }
 
 func (sw *storeWrapper) Get(ctx context.Context, id cid.Cid) (format.Node, error) {
-	if _, ok := sw.newNodes[id]; !ok {
-		sw.touched[id] = struct{}{}
+	n, err := sw.DagStore.Get(ctx, id)
+	if err == nil && n != nil {
+		if _, ok := sw.newNodes[id]; !ok {
+			sw.touched[id] = struct{}{}
+		}
 	}
-	return sw.DagStore.Get(ctx, id)
+	return n, err
 }
 
 func (sw *storeWrapper) Add(ctx context.Context, n format.Node) error {
-	sw.newNodes[n.Cid()] = struct{}{}
-	return sw.DagStore.Add(ctx, n)
+	err := sw.DagStore.Add(ctx, n)
+	if err == nil {
+		sw.newNodes[n.Cid()] = struct{}{}
+	}
+	return err
 }
 
 func (sw *storeWrapper) touchedCids() []cid.Cid {
