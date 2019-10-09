@@ -16,8 +16,8 @@ mkdir -p ${GOPATH}/bin
 
 export PATH="${GOPATH}/bin:${PATH}"
 
-# Run integration tests against tupelo master
+echo -e "\n\nRunning integration tests against tupelo master"
 make integration-test TUPELO=master
 
-# Run integration tests against tupelo latest release
+echo -e "\n\nRunning integration tests against tupelo latest release"
 make integration-test TUPELO=latest
