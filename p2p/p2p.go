@@ -10,6 +10,7 @@ import (
 	"time"
 
 	ds "github.com/ipfs/go-datastore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p"
 	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
@@ -28,7 +29,9 @@ import (
 	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	ma "github.com/multiformats/go-multiaddr"
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/quorumcontrol/chaintree/cachedblockstore"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
+	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("tupelop2p")
@@ -47,6 +50,7 @@ type LibP2PHost struct {
 	bootstrapStarted bool
 	pubsub           *pubsub.PubSub
 	datastore        ds.Batching
+	blockstore       blockstore.Blockstore
 	parentCtx        context.Context
 	discoverers      map[string]*tupeloDiscoverer
 	discoverLock     *sync.Mutex
@@ -225,6 +229,21 @@ func newLibP2PHostFromConfig(ctx context.Context, c *Config) (*LibP2PHost, error
 		return nil, fmt.Errorf("error creating new gossip sub: %v", err)
 	}
 
+	var hostBlockStore blockstore.Blockstore
+
+	if c.Blockstore == nil {
+		// create a default blockstore
+		bs := blockstore.NewBlockstore(c.DataStore)
+		bs = blockstore.NewIdStore(bs)
+		wrapped, err := cachedblockstore.WrapInCache(bs, 100)
+		if err != nil {
+			return nil, xerrors.Errorf("error wrapping: %w", err)
+		}
+		hostBlockStore = wrapped
+	} else {
+		hostBlockStore = c.Blockstore
+	}
+
 	h := &LibP2PHost{
 		host:         routedHost,
 		routing:      idht,
@@ -233,6 +252,7 @@ func newLibP2PHostFromConfig(ctx context.Context, c *Config) (*LibP2PHost, error
 		pubsub:       pub,
 		parentCtx:    ctx,
 		datastore:    c.DataStore,
+		blockstore:   hostBlockStore,
 		discoverLock: new(sync.Mutex),
 		discoverers:  make(map[string]*tupeloDiscoverer),
 	}
