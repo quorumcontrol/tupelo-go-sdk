@@ -158,7 +158,11 @@ func VerifyCurrentState(humanConfig *config.NotaryGroup, state *signatures.Curre
 			panic(errors.Wrap(err, "error decoding human config"))
 		}
 
-		ng := types.NewNotaryGroupFromConfig(ngConfig)
+		ng, err := ngConfig.NotaryGroup(nil)
+		if err != nil {
+			t.Reject(err.Error())
+			return
+		}
 		valid, err := client.VerifyCurrentState(context.TODO(), ng, state)
 		if err != nil {
 			t.Reject(err.Error())
