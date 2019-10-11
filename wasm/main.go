@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"syscall/js"
 
+	"github.com/quorumcontrol/messages/build/go/signatures"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/helpers"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jscommunity"
 
@@ -99,6 +100,25 @@ func main() {
 
 			jsObj.Set("getSendableEnvelopeBytes", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				return jscommunity.GetSendableBytes(helpers.JsBufferToBytes(args[0]), helpers.JsBufferToBytes(args[1]))
+			}))
+
+			jsObj.Set("verifyCurrentState", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				// JS gives us a js config and the protobuf bits from a current state
+				config, err := jsclient.JsConfigToHumanConfig(args[0])
+				if err != nil {
+					t := then.New()
+					t.Reject(errors.Wrap(err, "error converting config").Error())
+					return t
+				}
+
+				state := &signatures.CurrentState{}
+				err = state.Unmarshal(helpers.JsBufferToBytes(args[1]))
+				if err != nil {
+					t := then.New()
+					t.Reject(errors.Wrap(err, "error converting config").Error())
+					return t
+				}
+				return jsclient.VerifyCurrentState(config, state)
 			}))
 
 			jsObj.Set("playTransactions", js.FuncOf(func(this js.Value, args []js.Value) interface{} {

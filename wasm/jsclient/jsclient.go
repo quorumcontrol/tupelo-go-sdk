@@ -150,6 +150,31 @@ func (jsc *JSClient) playTransactions(store nodestore.DagStore, tip cid.Cid, tre
 	return c.PlayTransactions(tree, treeKey, &remoteTip, transactions)
 }
 
+func VerifyCurrentState(humanConfig *config.NotaryGroup, state *signatures.CurrentState) *then.Then {
+	t := then.New()
+	go func() {
+		ngConfig, err := types.HumanConfigToConfig(humanConfig)
+		if err != nil {
+			panic(errors.Wrap(err, "error decoding human config"))
+		}
+
+		ng, err := ngConfig.NotaryGroup(nil)
+		if err != nil {
+			t.Reject(err.Error())
+			return
+		}
+		valid, err := client.VerifyCurrentState(context.TODO(), ng, state)
+		if err != nil {
+			t.Reject(err.Error())
+			return
+		}
+		t.Resolve(valid)
+		return
+	}()
+
+	return t
+}
+
 func GenerateKey() *then.Then {
 	t := then.New()
 	go func() {
