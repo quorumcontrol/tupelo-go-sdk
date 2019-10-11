@@ -12,7 +12,8 @@ import (
 )
 
 func VerifyCurrentState(ctx context.Context, group *types.NotaryGroup, state *signatures.CurrentState) (bool, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "verifyCurrentState")
+	var sp opentracing.Span
+	sp, ctx = opentracing.StartSpanFromContext(ctx, "verifyCurrentState")
 	defer sp.Finish()
 
 	var verKeys [][]byte
