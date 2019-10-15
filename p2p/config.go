@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	ds "github.com/ipfs/go-datastore"
 	dsync "github.com/ipfs/go-datastore/sync"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	circuit "github.com/libp2p/go-libp2p-circuit"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -40,6 +41,7 @@ type Config struct {
 	DiscoveryNamespaces  []string
 	AdditionalP2POptions []libp2p.Option
 	DataStore            ds.Batching
+	Blockstore           blockstore.Blockstore
 	BandwidthReporter    metrics.Reporter
 	Segmenter            []byte
 	ClientOnlyDHT        bool
@@ -166,6 +168,16 @@ func WithPubSubOptions(opts ...pubsub.Option) Option {
 func WithDatastore(store ds.Batching) Option {
 	return func(c *Config) error {
 		c.DataStore = store
+		return nil
+	}
+}
+
+// WithBlockStore sets the datastore used by the host
+// defaults to nil which will wrap the underlying
+// node datastore.
+func WithBlockstore(store blockstore.Blockstore) Option {
+	return func(c *Config) error {
+		c.Blockstore = store
 		return nil
 	}
 }

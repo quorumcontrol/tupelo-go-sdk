@@ -9,6 +9,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
+	ds "github.com/ipfs/go-datastore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p"
 	circuit "github.com/libp2p/go-libp2p-circuit"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
@@ -98,6 +100,8 @@ func TestNewHostFromOptions(t *testing.T) {
 
 		cm := connmgr.NewConnManager(20, 100, 20*time.Second)
 
+		bs := blockstore.NewBlockstore(ds.NewMapDatastore())
+
 		h, err := NewHostFromOptions(
 			ctx,
 			WithKey(key),
@@ -107,9 +111,11 @@ func TestNewHostFromOptions(t *testing.T) {
 			WithRelayOpts(circuit.OptHop),
 			WithLibp2pOptions(libp2p.ConnectionManager(cm)),
 			WithClientOnlyDHT(true),
+			WithBlockstore(bs),
 		)
 		require.Nil(t, err)
 		require.NotNil(t, h)
+		require.Equal(t, bs, h.blockstore)
 	})
 }
 func TestUnmarshal31ByteKey(t *testing.T) {

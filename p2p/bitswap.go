@@ -3,9 +3,6 @@ package p2p
 import (
 	"context"
 
-	"github.com/quorumcontrol/chaintree/cachedblockstore"
-	"golang.org/x/xerrors"
-
 	bitswap "github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	blockservice "github.com/ipfs/go-blockservice"
@@ -38,22 +35,14 @@ type BitswapPeer struct {
 // It is important that you bootstrap *after* creating this peer. There is a helper function:
 // NewHostAndBitSwapPeer which can create both the host and this peer at the same time.
 func NewBitswapPeer(ctx context.Context, host *LibP2PHost) (*BitswapPeer, error) {
-	bs := blockstore.NewBlockstore(host.datastore)
-	bs = blockstore.NewIdStore(bs)
-	// TODO: make this cachesize configurable
-	wrapped, err := cachedblockstore.WrapInCache(bs, 100)
-	if err != nil {
-		return nil, xerrors.Errorf("error wrapping: %w", err)
-	}
-
 	bswapnet := network.NewFromIpfsHost(host.host, host.routing)
-	bswap := bitswap.New(ctx, bswapnet, wrapped)
-	bserv := blockservice.New(wrapped, bswap)
+	bswap := bitswap.New(ctx, bswapnet, host.blockstore)
+	bserv := blockservice.New(host.blockstore, bswap)
 
 	dags := merkledag.NewDAGService(bserv)
 	return &BitswapPeer{
 		DAGService: dags,
-		bstore:     wrapped,
+		bstore:     host.blockstore,
 	}, nil
 }
 
