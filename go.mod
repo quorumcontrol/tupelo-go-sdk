@@ -9,14 +9,14 @@ require (
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/ethereum/go-ethereum v1.9.3
 	github.com/go-stack/stack v1.8.0 // indirect
-	github.com/gogo/protobuf v1.3.0
+	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.3.2 // indirect
 	github.com/hashicorp/golang-lru v0.5.3
-	github.com/ipfs/go-bitswap v0.1.8
+	github.com/ipfs/go-bitswap v0.1.9-0.20191015150653-291b2674f1f1
 	github.com/ipfs/go-blockservice v0.1.1
 	github.com/ipfs/go-cid v0.0.3
-	github.com/ipfs/go-datastore v0.1.0
-	github.com/ipfs/go-ipfs-blockstore v0.0.1
+	github.com/ipfs/go-datastore v0.1.1
+	github.com/ipfs/go-ipfs-blockstore v0.1.0
 	github.com/ipfs/go-ipld-cbor v0.0.3
 	github.com/ipfs/go-ipld-format v0.0.2
 	github.com/ipfs/go-log v0.0.1
