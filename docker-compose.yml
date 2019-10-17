@@ -1,0 +1,22 @@
+version: "3"
+services:
+  bootstrap:
+    build: .
+    command: "go run -mod=vendor ./tester/bootstrap"   
+    networks:
+      default:
+        ipv4_address: 172.16.245.10
+    ports:
+      - "34001:34001"
+
+  swapper1:
+    build: .
+    command: "go run -mod=vendor ./tester/swapper -puts"
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.16.245.0/24
