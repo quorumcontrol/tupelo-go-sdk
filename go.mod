@@ -49,4 +49,4 @@ require (
 	golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7
 )
 
-replace github.com/libp2p/go-libp2p-core => github.com/quorumcontrol/go-libp2p-core v0.2.3
+replace github.com/libp2p/go-libp2p-core => github.com/quorumcontrol/go-libp2p-core v0.2.4-0.20191017172042-69fe90d32d39
