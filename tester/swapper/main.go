@@ -30,6 +30,8 @@ func getNode(ctx context.Context) (p2p.Node, *p2p.BitswapPeer, error) {
 }
 
 func main() {
+	logging.SetLogLevel("swapper-main", "info")
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	n, peer, err := getNode(ctx)
@@ -47,6 +49,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	fmt.Println("swapper started")
 
 	sw := &safewrap.SafeWrap{}
 
@@ -77,3 +81,5 @@ func main() {
 	fmt.Println("swapper launched")
 	select {}
 }
+
+//swapper1_1   | 15:39:58.187  INFO swapper-ma: --------- finished put blocks main.go:78

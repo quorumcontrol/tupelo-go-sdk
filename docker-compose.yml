@@ -13,6 +13,26 @@ services:
     build: .
     command: "go run -mod=vendor ./tester/swapper -puts"
 
+  swapper2:
+    build: .
+    command: "go run -mod=vendor ./tester/swapper"
+
+  swapper3:
+    build: .
+    command: "go run -mod=vendor ./tester/swapper"    
+
+  swapper4:
+    build: .
+    command: "go run -mod=vendor ./tester/swapper"    
+
+  swapper5:
+    build: .
+    command: "go run -mod=vendor ./tester/swapper"    
+
+  swapper6:
+    build: .
+    command: "go run -mod=vendor ./tester/swapper"    
+
 networks:
   default:
     driver: bridge
