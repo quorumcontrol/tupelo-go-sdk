@@ -34,9 +34,9 @@ type BitswapPeer struct {
 // NewBitswapPeer creates a new block-swapping peer from an existing *LibP2PHost
 // It is important that you bootstrap *after* creating this peer. There is a helper function:
 // NewHostAndBitSwapPeer which can create both the host and this peer at the same time.
-func NewBitswapPeer(ctx context.Context, host *LibP2PHost) (*BitswapPeer, error) {
+func NewBitswapPeer(ctx context.Context, host *LibP2PHost, bitswapOpts ...bitswap.Option) (*BitswapPeer, error) {
 	bswapnet := network.NewFromIpfsHost(host.host, host.routing)
-	bswap := bitswap.New(ctx, bswapnet, host.blockstore)
+	bswap := bitswap.New(ctx, bswapnet, host.blockstore, bitswapOpts...)
 	bserv := blockservice.New(host.blockstore, bswap)
 
 	dags := merkledag.NewDAGService(bserv)

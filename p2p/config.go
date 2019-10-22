@@ -6,6 +6,8 @@ import (
 	"net"
 	"os"
 
+	bitswap "github.com/ipfs/go-bitswap"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	ds "github.com/ipfs/go-datastore"
 	dsync "github.com/ipfs/go-datastore/sync"
@@ -26,7 +28,6 @@ type Config struct {
 	RelayOpts            []circuit.RelayOpt
 	EnableRelayHop       bool
 	EnableAutoRelay      bool
-	EnableBitSwap        bool
 	EnableWebsocket      bool
 	WebsocketPort        int
 	PubSubRouter         string
@@ -45,6 +46,7 @@ type Config struct {
 	BandwidthReporter    metrics.Reporter
 	Segmenter            []byte
 	ClientOnlyDHT        bool
+	BitswapOptions       []bitswap.Option
 }
 
 // This is a function, because we want to return a new datastore each time
@@ -279,6 +281,13 @@ func WithClientOnlyDHT(isClientOnly bool) Option {
 func WithLibp2pOptions(opts ...libp2p.Option) Option {
 	return func(c *Config) error {
 		c.AdditionalP2POptions = opts
+		return nil
+	}
+}
+
+func WithBitswapOptions(opts ...bitswap.Option) Option {
+	return func(c *Config) error {
+		c.BitswapOptions = opts
 		return nil
 	}
 }
