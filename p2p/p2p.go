@@ -82,11 +82,19 @@ func PeerFromEcdsaKey(publicKey *ecdsa.PublicKey) (peer.ID, error) {
 }
 
 func NewHostAndBitSwapPeer(ctx context.Context, userOpts ...Option) (*LibP2PHost, *BitswapPeer, error) {
-	h, err := NewHostFromOptions(ctx, userOpts...)
+	c := &Config{}
+	opts := append(defaultOptions(), userOpts...)
+	err := applyOptions(c, opts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error applying opts: %v", opts)
+	}
+
+	h, err := newLibP2PHostFromConfig(ctx, c)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error generating libp2p host: %v", err)
 	}
-	peer, err := NewBitswapPeer(ctx, h)
+
+	peer, err := NewBitswapPeer(ctx, h, c.BitswapOptions...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error generating bitswap peer: %v", err)
 	}
