@@ -206,3 +206,47 @@ func TestPeerIDToPubkeyConversions(t *testing.T) {
 	require.Nil(t, err)
 	require.Equal(t, crypto.FromECDSAPub(convertedPubkey), crypto.FromECDSAPub(&key.PublicKey))
 }
+
+func TestConnectAndDisconnect(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	bh, err := NewHostFromOptions(ctx)
+	require.Nil(t, err)
+
+	h1, err := NewHostFromOptions(ctx)
+	require.Nil(t, err)
+
+	h2, err := NewHostFromOptions(ctx)
+	require.Nil(t, err)
+
+	_, err = h1.Bootstrap(bootstrapAddresses(bh))
+	require.Nil(t, err)
+
+	_, err = h2.Bootstrap(bootstrapAddresses(bh))
+	require.Nil(t, err)
+
+	err = h1.WaitForBootstrap(1, 10*time.Second)
+	require.Nil(t, err)
+
+	err = h2.WaitForBootstrap(1, 10*time.Second)
+	require.Nil(t, err)
+
+	// Seems h1 <=> h2 are already connected in this test setup
+	err = h1.Disconnect(ctx, h2.PublicKey())
+	require.Nil(t, err)
+	require.Len(t, h1.host.Network().Peers(), 1)
+	time.Sleep(10 * time.Millisecond) // Give disconnect a brief moment to resolve on other host
+	require.Len(t, h2.host.Network().Peers(), 1)
+
+	err = h1.Connect(ctx, h2.PublicKey())
+	require.Nil(t, err)
+	require.Len(t, h1.host.Network().Peers(), 2)
+	require.Len(t, h2.host.Network().Peers(), 2)
+
+	err = h2.Disconnect(ctx, h1.PublicKey())
+	require.Nil(t, err)
+	require.Len(t, h2.host.Network().Peers(), 1)
+	time.Sleep(10 * time.Millisecond) // Give disconnect a brief moment to resolve on other host
+	require.Len(t, h1.host.Network().Peers(), 1)
+}

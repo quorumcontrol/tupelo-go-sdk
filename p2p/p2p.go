@@ -401,6 +401,30 @@ func (h *LibP2PHost) NewStreamWithPeerID(ctx context.Context, peerID peer.ID, pr
 	}
 }
 
+// Connect ensures there is a connection between this host and the peer with
+// given public key. This is useful for bitswap exchanges where peers are known,
+// allowing blocks to be exchanged directly, skipping the expensive DHT provides.
+//
+// Connections are generally persisted, use Disconnect to clean up unused connections.
+func (h *LibP2PHost) Connect(ctx context.Context, publicKey *ecdsa.PublicKey) error {
+	peerID, err := peer.IDFromPublicKey(p2pPublicKeyFromEcdsaPublic(publicKey))
+	if err != nil {
+		return fmt.Errorf("Could not convert public key to peer id: %v", err)
+	}
+
+	return h.host.Connect(ctx, peer.AddrInfo{ID: peerID})
+}
+
+// Disconnect closes all connections to the given peer.
+func (h *LibP2PHost) Disconnect(ctx context.Context, publicKey *ecdsa.PublicKey) error {
+	peerID, err := peer.IDFromPublicKey(p2pPublicKeyFromEcdsaPublic(publicKey))
+	if err != nil {
+		return fmt.Errorf("Could not convert public key to peer id: %v", err)
+	}
+
+	return h.host.Network().ClosePeer(peerID)
+}
+
 func (h *LibP2PHost) Send(publicKey *ecdsa.PublicKey, protocol protocol.ID, payload []byte) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
