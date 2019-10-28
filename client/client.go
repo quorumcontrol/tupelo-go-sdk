@@ -25,6 +25,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/quorumcontrol/chaintree/chaintree"
+	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/safewrap"
 
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
@@ -272,11 +273,6 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 		return nil, fmt.Errorf("error signing: %v", err)
 	}
 
-	// keep track of every node the transactions actually need and send them along
-	// we do this by swapping the dag store
-	tracker := wrapStoreForRefCounting(tree.ChainTree.Dag.Store)
-	tree.ChainTree.Dag.Store = tracker
-
 	if len(tree.ChainTree.BlockValidators) == 0 {
 		// we run the block validators to save devs from themselves
 		// and catch anything we know will be rejected by the NotaryGroup
@@ -288,14 +284,30 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 	}
 
 	storedTip := tree.Tip()
+	validators := tree.ChainTree.BlockValidators
+	transactors := tree.ChainTree.Transactors
 
-	newChainTree, valid, err := tree.ChainTree.ProcessBlockImmutable(ctx, blockWithHeaders)
+	// the code below ensures that only the necessary nodes are sent to the signers for a block
+	//
+	// this is done by creating a 2nd dag & chaintree with a tracked datastore, executing the
+	// ProcessBlock on that chaintree, and then asking the tracker for what nodes were accessed.
+	originalStore := tree.ChainTree.Dag.Store
+	tracker := wrapStoreForRefCounting(originalStore)
+	trackedTree, err := chaintree.NewChainTree(ctx, dag.NewDag(ctx, storedTip, tracker), validators, transactors)
+	if err != nil {
+		return nil, fmt.Errorf("error creating tracked chaintree: %v", err)
+	}
+
+	valid, err := trackedTree.ProcessBlock(ctx, blockWithHeaders)
 	if !valid || err != nil {
 		return nil, fmt.Errorf("error processing block (valid: %t): %v", valid, err)
 	}
 
-	// and then reset the store back to what it was originally
-	tree.ChainTree.Dag.Store = tracker.DagStore
+	// now create a new tree with original dag store, but using tip from ProcessBlock
+	newChainTree, err := chaintree.NewChainTree(ctx, dag.NewDag(ctx, trackedTree.Dag.Tip, originalStore), validators, transactors)
+	if err != nil {
+		return nil, fmt.Errorf("error creating new chaintree: %v", err)
+	}
 
 	var state [][]byte
 	// only need state after the first Tx
