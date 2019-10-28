@@ -81,6 +81,20 @@ func PeerFromEcdsaKey(publicKey *ecdsa.PublicKey) (peer.ID, error) {
 	return peer.IDFromPublicKey(p2pPublicKeyFromEcdsaPublic(publicKey))
 }
 
+func EcdsaKeyFromPeer(pid peer.ID) (*ecdsa.PublicKey, error) {
+	pubkey, err := pid.ExtractPublicKey()
+	if err != nil {
+		return nil, fmt.Errorf("error extracting pubkey from peer: %v", err)
+	}
+
+	asSecp256k1PublicKey, ok := pubkey.(*libp2pcrypto.Secp256k1PublicKey)
+	if !ok {
+		return nil, fmt.Errorf("unsupported key type %s from peer id, must be Secp256k1", pubkey.Type().String())
+	}
+
+	return (*ecdsa.PublicKey)(asSecp256k1PublicKey), nil
+}
+
 func NewHostAndBitSwapPeer(ctx context.Context, userOpts ...Option) (*LibP2PHost, *BitswapPeer, error) {
 	c := &Config{}
 	opts := append(defaultOptions(), userOpts...)

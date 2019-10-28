@@ -190,3 +190,19 @@ func TestNewDiscoverers(t *testing.T) {
 	err = h2.WaitForDiscovery(ns, 1, 2*time.Second)
 	require.Nil(t, err)
 }
+
+func TestPeerIDToPubkeyConversions(t *testing.T) {
+	keyBytes, err := hexutil.Decode("0x133f18ab84b61b2f217e972d1a5abe9c3a5ae8b52b13b4c4635bb69cbd5212b0")
+	require.Nil(t, err)
+
+	key, err := crypto.ToECDSA(keyBytes)
+	require.Nil(t, err)
+
+	peerID, err := PeerFromEcdsaKey(&key.PublicKey)
+	require.Nil(t, err)
+	require.Equal(t, peerID.Pretty(), "16Uiu2HAmQeLpoMMcZr1hLH6Kw53xFE5Xm8ri4ckGk5vL63sJLLBZ")
+
+	convertedPubkey, err := EcdsaKeyFromPeer(peerID)
+	require.Nil(t, err)
+	require.Equal(t, crypto.FromECDSAPub(convertedPubkey), crypto.FromECDSAPub(&key.PublicKey))
+}
