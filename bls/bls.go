@@ -1,6 +1,7 @@
 package bls
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 
@@ -127,14 +128,36 @@ func (vk *VerKey) Verify(sig, msg []byte) (bool, error) {
 
 // SumSignatures aggregates signatures.
 func SumSignatures(sigs [][]byte) ([]byte, error) {
-	return dedisbls.AggregateSignatures(suite, sigs...)
+	firstSig := sigs[0]
+	var aggregateSigs [][]byte
+	var endSigs [][]byte
+	for i, sig := range sigs {
+		if i > 0 && bytes.Equal(firstSig, sig) {
+			endSigs = append(endSigs, sig)
+			continue
+		}
+		aggregateSigs = append(aggregateSigs, sig)
+	}
+	aggregateSigs = append(aggregateSigs, endSigs...)
+	return dedisbls.AggregateSignatures(suite, aggregateSigs...)
 }
 
+// There's a weird bug where if the first key is repeated: https://github.com/dedis/kyber/issues/400
+// that's why we have to do this weird "append to back" thing
 func SumVerKeys(verKeys []*VerKey) (*VerKey, error) {
-	points := make([]kyber.Point, len(verKeys))
+	first := verKeys[0]
+	var appendToBack []kyber.Point
+
+	var points []kyber.Point
 	for i, verKey := range verKeys {
-		points[i] = verKey.public
+		if i > 0 && verKey.public.Equal(first.public) {
+			fmt.Println("equal")
+			appendToBack = append(appendToBack, verKey.public)
+			continue
+		}
+		points = append(points, verKey.public)
 	}
+	points = append(points, appendToBack...)
 	aggregatedPublic := dedisbls.AggregatePublicKeys(suite, points...)
 	pubBytes, err := aggregatedPublic.MarshalBinary()
 	if err != nil {
