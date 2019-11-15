@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/quorumcontrol/messages/build/go/services"
+	"github.com/quorumcontrol/messages/v2/build/go/services"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/ethereum/go-ethereum/crypto"

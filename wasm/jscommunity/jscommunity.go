@@ -10,7 +10,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	ptypes "github.com/gogo/protobuf/types"
-	pb "github.com/quorumcontrol/messages/build/go/community"
+	pb "github.com/quorumcontrol/messages/v2/build/go/community"
 
 	cbornode "github.com/ipfs/go-ipld-cbor"
 
@@ -18,7 +18,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/quorumcontrol/chaintree/typecaster"
-	"github.com/quorumcontrol/messages/build/go/signatures"
+	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jsstore"
 
 	"github.com/pkg/errors"

@@ -6,14 +6,14 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"github.com/quorumcontrol/messages/build/go/config"
+	"github.com/quorumcontrol/messages/v2/build/go/config"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 
 	"github.com/BurntSushi/toml"
 	"github.com/quorumcontrol/chaintree/chaintree"
-	"github.com/quorumcontrol/messages/build/go/transactions"
+	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 )
 

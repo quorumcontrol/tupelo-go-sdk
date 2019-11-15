@@ -7,9 +7,9 @@ import (
 	"crypto/ecdsa"
 	"syscall/js"
 
-	"github.com/quorumcontrol/messages/build/go/config"
+	"github.com/quorumcontrol/messages/v2/build/go/config"
 
-	"github.com/quorumcontrol/messages/build/go/signatures"
+	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 
 	"github.com/ipfs/go-cid"
 	"github.com/quorumcontrol/chaintree/chaintree"
@@ -21,7 +21,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/quorumcontrol/chaintree/nodestore"
-	"github.com/quorumcontrol/messages/build/go/transactions"
+	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/client"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/remote"

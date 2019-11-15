@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/quorumcontrol/messages/build/go/signatures"
+	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 
@@ -14,7 +14,7 @@ import (
 	cid "github.com/ipfs/go-cid"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
-	"github.com/quorumcontrol/messages/build/go/transactions"
+	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 )
 
 func init() {

@@ -5,7 +5,7 @@ import (
 	"log"
 	"reflect"
 
-	mbridge "github.com/quorumcontrol/messages/build/go/bridge"
+	mbridge "github.com/quorumcontrol/messages/v2/build/go/bridge"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/gogo/protobuf/proto"

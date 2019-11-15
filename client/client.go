@@ -12,8 +12,8 @@ import (
 
 	format "github.com/ipfs/go-ipld-format"
 
-	"github.com/quorumcontrol/messages/build/go/services"
-	"github.com/quorumcontrol/messages/build/go/signatures"
+	"github.com/quorumcontrol/messages/v2/build/go/services"
+	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/AsynkronIT/protoactor-go/eventstream"
@@ -21,7 +21,7 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
-	"github.com/quorumcontrol/messages/build/go/transactions"
+	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 	"go.uber.org/zap"
 
 	"github.com/quorumcontrol/chaintree/chaintree"

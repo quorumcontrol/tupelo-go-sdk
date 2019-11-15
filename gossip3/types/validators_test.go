@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/quorumcontrol/chaintree/chaintree"
-	"github.com/quorumcontrol/messages/build/go/transactions"
+	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 	"github.com/stretchr/testify/require"
 )
 
