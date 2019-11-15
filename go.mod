@@ -33,9 +33,9 @@ require (
 	github.com/multiformats/go-multiaddr v0.1.1
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.8.1
-	github.com/quorumcontrol/chaintree v0.8.6-0.20191027150236-fceff392da5f
+	github.com/quorumcontrol/chaintree v0.9.0
 	github.com/quorumcontrol/go-hamt-ipld v0.0.2-0.20190913132514-52eecd11b85f
-	github.com/quorumcontrol/messages/build/go v0.0.0-20191027145955-5f00dfa59832
+	github.com/quorumcontrol/messages/v2 v2.0.2
 	github.com/spy16/parens v0.0.0-20190827000000-75a4133
 	github.com/stretchr/testify v1.3.0
 	github.com/uber-go/atomic v1.4.0 // indirect
