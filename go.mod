@@ -36,7 +36,7 @@ require (
 	github.com/quorumcontrol/chaintree v1.0.2-0.20191115091534-2786ceaf7ce0
 	github.com/quorumcontrol/go-hamt-ipld v0.0.2-0.20190913132514-52eecd11b85f
 	github.com/quorumcontrol/messages/v2 v2.0.2
-	github.com/spy16/parens v0.0.0-20190827000000-75a4133
+	github.com/spy16/parens v0.0.8
 	github.com/stretchr/testify v1.3.0
 	github.com/uber-go/atomic v1.4.0 // indirect
 	github.com/uber/jaeger-client-go v2.15.0+incompatible
