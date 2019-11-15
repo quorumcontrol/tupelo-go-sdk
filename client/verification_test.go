@@ -52,6 +52,7 @@ func TestVerifyCurrentState(t *testing.T) {
 	require.Nil(t, err)
 
 	sig, err := sigfuncs.AggregateBLSSignatures([]*signatures.Signature{sig1, sig2, sig3})
+	require.Nil(t, err)
 
 	currState.Signature = sig
 
