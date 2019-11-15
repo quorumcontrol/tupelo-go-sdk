@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/quorumcontrol/messages/build/go/signatures"
+	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,8 +17,10 @@ func TestEcdsaAddress(t *testing.T) {
 
 	// With no conditions it's the same as a normal key
 	o := &signatures.Ownership{
-		Type:      signatures.Ownership_KeyTypeSecp256k1,
-		PublicKey: crypto.FromECDSAPub(&key.PublicKey),
+		PublicKey: &signatures.PublicKey{
+			Type:      signatures.PublicKey_KeyTypeSecp256k1,
+			PublicKey: crypto.FromECDSAPub(&key.PublicKey),
+		},
 	}
 	addr, err := Address(o)
 	require.Nil(t, err)
@@ -44,18 +46,20 @@ func TestBLSAddr(t *testing.T) {
 
 	// With no conditions it's the same as a normal key
 	o := &signatures.Ownership{
-		Type:      signatures.Ownership_KeyTypeBLSGroupSig,
-		PublicKey: key.MustVerKey().Bytes(),
+		PublicKey: &signatures.PublicKey{
+			Type:      signatures.PublicKey_KeyTypeBLSGroupSig,
+			PublicKey: key.MustVerKey().Bytes(),
+		},
 	}
 	addr, err := Address(o)
 	require.Nil(t, err)
-	assert.Equal(t, addr.String(), bytesToAddress(o.PublicKey).String())
+	assert.Equal(t, addr.String(), bytesToAddress(o.PublicKey.PublicKey).String())
 
 	// with conditions, it changes the addr
 	o.Conditions = "true"
 	conditionalAddr, err := Address(o)
 	require.Nil(t, err)
-	assert.NotEqual(t, conditionalAddr.String(), bytesToAddress(o.PublicKey).String())
+	assert.NotEqual(t, conditionalAddr.String(), bytesToAddress(o.PublicKey.PublicKey).String())
 	assert.Len(t, conditionalAddr, 20) // same length as an addr
 
 	// changing the conditions changes the addr
@@ -75,29 +79,31 @@ func TestEcdsaKeyRestore(t *testing.T) {
 	require.Nil(t, err)
 	sig := &signatures.Signature{
 		Ownership: &signatures.Ownership{
-			Type: signatures.Ownership_KeyTypeSecp256k1,
+			PublicKey: &signatures.PublicKey{
+				Type: signatures.PublicKey_KeyTypeSecp256k1,
+			},
 		},
 		Signature: sigBits,
 	}
 	err = RestoreEcdsaPublicKey(sig, msg)
 	require.Nil(t, err)
-	assert.Len(t, sig.Ownership.PublicKey, 65)
-	assert.Equal(t, crypto.FromECDSAPub(&key.PublicKey), sig.Ownership.PublicKey)
+	assert.Len(t, sig.Ownership.PublicKey.PublicKey, 65)
+	assert.Equal(t, crypto.FromECDSAPub(&key.PublicKey), sig.Ownership.PublicKey.PublicKey)
 }
 
 func TestEcdsaKeyToOwnership(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	require.Nil(t, err)
 	o := EcdsaToOwnership(&key.PublicKey)
-	assert.Equal(t, o.PublicKey, crypto.FromECDSAPub(&key.PublicKey))
-	assert.Equal(t, o.Type, signatures.Ownership_KeyTypeSecp256k1)
+	assert.Equal(t, o.PublicKey.PublicKey, crypto.FromECDSAPub(&key.PublicKey))
+	assert.Equal(t, o.PublicKey.Type, signatures.PublicKey_KeyTypeSecp256k1)
 }
 
 func TestBlsKeyToOwnership(t *testing.T) {
 	key := bls.MustNewSignKey()
 	o := BLSToOwnership(key.MustVerKey())
-	assert.Equal(t, o.PublicKey, key.MustVerKey().Bytes())
-	assert.Equal(t, o.Type, signatures.Ownership_KeyTypeBLSGroupSig)
+	assert.Equal(t, o.PublicKey.PublicKey, key.MustVerKey().Bytes())
+	assert.Equal(t, o.PublicKey.Type, signatures.PublicKey_KeyTypeBLSGroupSig)
 }
 
 func TestSignerCount(t *testing.T) {
@@ -116,7 +122,9 @@ func TestEcdsaSigning(t *testing.T) {
 	require.Nil(t, err)
 	sig := &signatures.Signature{
 		Ownership: &signatures.Ownership{
-			Type: signatures.Ownership_KeyTypeSecp256k1,
+			PublicKey: &signatures.PublicKey{
+				Type: signatures.PublicKey_KeyTypeSecp256k1,
+			},
 		},
 		Signature: sigBits,
 	}
@@ -135,7 +143,9 @@ func TestEcdsaSigningWithConditions(t *testing.T) {
 	require.Nil(t, err)
 	sig := &signatures.Signature{
 		Ownership: &signatures.Ownership{
-			Type:       signatures.Ownership_KeyTypeSecp256k1,
+			PublicKey: &signatures.PublicKey{
+				Type: signatures.PublicKey_KeyTypeSecp256k1,
+			},
 			Conditions: "false",
 		},
 		Signature: sigBits,
@@ -165,7 +175,9 @@ func TestHashPreimageConditions(t *testing.T) {
 	require.Nil(t, err)
 	sig := &signatures.Signature{
 		Ownership: &signatures.Ownership{
-			Type:       signatures.Ownership_KeyTypeSecp256k1,
+			PublicKey: &signatures.PublicKey{
+				Type: signatures.PublicKey_KeyTypeSecp256k1,
+			},
 			Conditions: fmt.Sprintf(`(== (hashed-preimage) "%s")`, hsh),
 		},
 		Signature: sigBits,
@@ -193,15 +205,17 @@ func TestRestoreBLSPublicKey(t *testing.T) {
 
 	sig := &signatures.Signature{
 		Ownership: &signatures.Ownership{
-			Type: signatures.Ownership_KeyTypeBLSGroupSig,
+			PublicKey: &signatures.PublicKey{
+				Type: signatures.PublicKey_KeyTypeBLSGroupSig,
+			},
 		},
 		Signers: []uint32{1, 2},
 	}
 	require.Nil(t, RestoreBLSPublicKey(sig, []*bls.VerKey{key1.MustVerKey(), key2.MustVerKey()}))
-	assert.Equal(t, sig.Ownership.Type, signatures.Ownership_KeyTypeBLSGroupSig)
+	assert.Equal(t, sig.Ownership.PublicKey.Type, signatures.PublicKey_KeyTypeBLSGroupSig)
 	aggregated, err := bls.SumVerKeys([]*bls.VerKey{key1.MustVerKey(), key2.MustVerKey(), key2.MustVerKey()})
 	require.Nil(t, err)
-	assert.Equal(t, sig.Ownership.PublicKey, aggregated.Bytes())
+	assert.Equal(t, sig.Ownership.PublicKey.PublicKey, aggregated.Bytes())
 }
 
 func TestAggregateBLSSignatures(t *testing.T) {
@@ -229,8 +243,8 @@ func TestAggregateBLSSignatures(t *testing.T) {
 	require.Nil(t, err)
 
 	assert.Equal(t, aggregate.Signers, []uint32{1, 1})
-	assert.Equal(t, aggregate.Ownership.Type, signatures.Ownership_KeyTypeBLSGroupSig)
-	assert.Equal(t, aggregate.Ownership.PublicKey, expectedAggPub.Bytes())
+	assert.Equal(t, aggregate.Ownership.PublicKey.Type, signatures.PublicKey_KeyTypeBLSGroupSig)
+	assert.Equal(t, aggregate.Ownership.PublicKey.PublicKey, expectedAggPub.Bytes())
 	assert.Equal(t, aggregate.Signature, expectedAggSig)
 }
 
@@ -246,7 +260,9 @@ func BenchmarkWithConditions(b *testing.B) {
 	require.Nil(b, err)
 	sig := &signatures.Signature{
 		Ownership: &signatures.Ownership{
-			Type:       signatures.Ownership_KeyTypeSecp256k1,
+			PublicKey: &signatures.PublicKey{
+				Type: signatures.PublicKey_KeyTypeSecp256k1,
+			},
 			Conditions: fmt.Sprintf(`(== (hashed-preimage) "%s")`, hsh),
 		},
 		Signature: sigBits,
@@ -271,7 +287,9 @@ func BenchmarkWithoutConditions(b *testing.B) {
 	require.Nil(b, err)
 	sig := &signatures.Signature{
 		Ownership: &signatures.Ownership{
-			Type:       signatures.Ownership_KeyTypeSecp256k1,
+			PublicKey: &signatures.PublicKey{
+				Type: signatures.PublicKey_KeyTypeSecp256k1,
+			},
 			Conditions: "",
 		},
 		Signature: sigBits,
