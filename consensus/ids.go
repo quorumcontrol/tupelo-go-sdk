@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/quorumcontrol/messages/build/go/services"
-	"github.com/quorumcontrol/messages/build/go/signatures"
+	"github.com/quorumcontrol/messages/v2/build/go/services"
+	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 )
 
 func RequestID(req *services.AddBlockRequest) []byte {

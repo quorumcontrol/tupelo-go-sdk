@@ -19,7 +19,7 @@ import (
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/chaintree/typecaster"
-	"github.com/quorumcontrol/messages/build/go/signatures"
+	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 	sigfuncs "github.com/quorumcontrol/tupelo-go-sdk/signatures"
 )
 
@@ -132,7 +132,9 @@ func SignBlock(blockWithHeaders *chaintree.BlockWithHeaders, key *ecdsa.PrivateK
 
 	sig := signatures.Signature{
 		Ownership: &signatures.Ownership{
-			Type: signatures.Ownership_KeyTypeSecp256k1,
+			PublicKey: &signatures.PublicKey{
+				Type: signatures.PublicKey_KeyTypeSecp256k1,
+			},
 		},
 		Signature: sigBytes,
 	}
@@ -181,8 +183,8 @@ func IsBlockSignedBy(blockWithHeaders *chaintree.BlockWithHeaders, addr string) 
 		return false, fmt.Errorf("error wrapping block: %v", err)
 	}
 
-	switch sig.Ownership.Type {
-	case signatures.Ownership_KeyTypeSecp256k1:
+	switch sig.Ownership.PublicKey.Type {
+	case signatures.PublicKey_KeyTypeSecp256k1:
 		err := sigfuncs.RestoreEcdsaPublicKey(sig, hsh)
 		if err != nil {
 			return false, fmt.Errorf("error restoring public key: %v", err)

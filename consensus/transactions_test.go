@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/quorumcontrol/messages/build/go/signatures"
+	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
 
@@ -14,7 +14,7 @@ import (
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/nodestore"
-	"github.com/quorumcontrol/messages/build/go/transactions"
+	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
