@@ -41,7 +41,7 @@ require (
 	github.com/uber-go/atomic v1.4.0 // indirect
 	github.com/uber/jaeger-client-go v2.15.0+incompatible
 	github.com/uber/jaeger-lib v1.5.0
-	go.dedis.ch/kyber/v3 v3.0.2
+	go.dedis.ch/kyber/v3 v3.0.9
 	go.elastic.co/apm/module/apmot v1.3.0
 	go.uber.org/atomic v1.4.0 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
