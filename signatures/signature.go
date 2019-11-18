@@ -88,7 +88,7 @@ func Address(o *signatures.Ownership) (common.Address, error) {
 }
 
 func bytesToAddress(bits []byte) common.Address {
-	return common.BytesToAddress(crypto.Keccak256(bits)[12:])
+	return common.BytesToAddress(crypto.Keccak256(bits))
 }
 
 func RestoreEcdsaPublicKey(s *signatures.Signature, hsh []byte) error {
