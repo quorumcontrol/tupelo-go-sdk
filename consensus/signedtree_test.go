@@ -13,11 +13,14 @@ import (
 )
 
 func TestSignedChainTree_IsGenesis(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	key, err := crypto.GenerateKey()
 	require.Nil(t, err)
 	nodeStore := nodestore.MustMemoryStore(context.TODO())
 
-	newTree, err := NewSignedChainTree(key.PublicKey, nodeStore)
+	newTree, err := NewSignedChainTree(ctx, key.PublicKey, nodeStore)
 	require.Nil(t, err)
 
 	require.True(t, newTree.IsGenesis())
@@ -33,7 +36,7 @@ func TestSignedChainTree_IsGenesis(t *testing.T) {
 		},
 	}
 
-	blockWithHeaders, err := SignBlock(&unsignedBlock, key)
+	blockWithHeaders, err := SignBlock(ctx, &unsignedBlock, key)
 	require.Nil(t, err)
 
 	isValid, err := newTree.ChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
@@ -45,11 +48,14 @@ func TestSignedChainTree_IsGenesis(t *testing.T) {
 }
 
 func TestSignedChainTree_Authentications(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	key, err := crypto.GenerateKey()
 	require.Nil(t, err)
 	nodeStore := nodestore.MustMemoryStore(context.TODO())
 
-	newTree, err := NewSignedChainTree(key.PublicKey, nodeStore)
+	newTree, err := NewSignedChainTree(ctx, key.PublicKey, nodeStore)
 	require.Nil(t, err)
 
 	auths, err := newTree.Authentications()
@@ -73,10 +79,10 @@ func TestSignedChainTree_Authentications(t *testing.T) {
 		},
 	}
 
-	blockWithHeaders, err := SignBlock(&unsignedBlock, newKey)
+	blockWithHeaders, err := SignBlock(ctx, &unsignedBlock, newKey)
 	require.Nil(t, err)
 
-	isValid, err := newTree.ChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
+	isValid, err := newTree.ChainTree.ProcessBlock(ctx, blockWithHeaders)
 	require.Nil(t, err)
 	require.True(t, isValid)
 
