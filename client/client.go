@@ -36,7 +36,7 @@ import (
 
 // How many times to attempt PlayTransactions before giving up.
 // 10 is the library's default, but this makes it explicit.
-const MaxPlayTransactionsAttempts = uint(10)
+var MaxPlayTransactionsAttempts = uint(10)
 
 const ErrorTimeout = "error timeout"
 
