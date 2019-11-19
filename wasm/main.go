@@ -8,6 +8,7 @@ import (
 	"syscall/js"
 
 	"github.com/quorumcontrol/messages/build/go/signatures"
+	"github.com/quorumcontrol/tupelo-go-sdk/client"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/helpers"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jscommunity"
 
@@ -27,6 +28,10 @@ func init() {
 }
 
 func main() {
+	// Set this to 1 to avoid the `GetTip` request inside PlayTransactions, which
+	// is not supported in wasm client
+	client.MaxPlayTransactionsAttempts = uint(1)
+
 	js.Global().Get("Go").Set("exit", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		exitChan <- true
 		return nil
