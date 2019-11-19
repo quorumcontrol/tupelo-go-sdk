@@ -16,7 +16,7 @@ import (
 )
 
 func NewTestChainTree(t *testing.T, ctx context.Context) *chaintree.ChainTree {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	key, err := crypto.GenerateKey()
@@ -33,7 +33,8 @@ func NewTestChainTree(t *testing.T, ctx context.Context) *chaintree.ChainTree {
 }
 
 func TestTreeLedger(t *testing.T) {
-	ctx := context.TODO()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	testTree := NewTestChainTree(t, ctx)
 	treeDID, err := testTree.Id(ctx)

@@ -94,7 +94,7 @@ func bytesToAddress(bits []byte) common.Address {
 }
 
 func RestoreEcdsaPublicKey(ctx context.Context, s *signatures.Signature, hsh []byte) error {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "signatures.RestoreEcdsaPublicKey")
+	sp, _ := opentracing.StartSpanFromContext(ctx, "signatures.RestoreEcdsaPublicKey")
 	defer sp.Finish()
 
 	if s.Ownership.PublicKey.Type != signatures.PublicKey_KeyTypeSecp256k1 {
@@ -109,7 +109,7 @@ func RestoreEcdsaPublicKey(ctx context.Context, s *signatures.Signature, hsh []b
 }
 
 func RestoreBLSPublicKey(ctx context.Context, s *signatures.Signature, knownVerKeys []*bls.VerKey) error {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "signatures.RestoreBLSPublicKey")
+	sp, _ := opentracing.StartSpanFromContext(ctx, "signatures.RestoreBLSPublicKey")
 	defer sp.Finish()
 
 	if len(knownVerKeys) != len(s.Signers) {
@@ -173,7 +173,7 @@ func Valid(ctx context.Context, s *signatures.Signature, hsh []byte, scope paren
 }
 
 func validConditions(ctx context.Context, s *signatures.Signature, scope parens.Scope) (bool, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "signatures.validConditions")
+	sp, _ := opentracing.StartSpanFromContext(ctx, "signatures.validConditions")
 	defer sp.Finish()
 
 	if s.Ownership.Conditions == "" {
@@ -232,7 +232,7 @@ func SignerCount(sig *signatures.Signature) int {
 }
 
 func BLSSign(ctx context.Context, key *bls.SignKey, hsh []byte, signerLen, signerIndex int) (*signatures.Signature, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "signatures.BLSSign")
+	sp, _ := opentracing.StartSpanFromContext(ctx, "signatures.BLSSign")
 	defer sp.Finish()
 
 	if signerIndex >= signerLen {
@@ -257,7 +257,7 @@ func BLSSign(ctx context.Context, key *bls.SignKey, hsh []byte, signerLen, signe
 }
 
 func EcdsaSign(ctx context.Context, key *ecdsa.PrivateKey, hsh []byte) (*signatures.Signature, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "signatures.EcdsaSign")
+	sp, _ := opentracing.StartSpanFromContext(ctx, "signatures.EcdsaSign")
 	defer sp.Finish()
 
 	sigBytes, err := crypto.Sign(hsh, key)
@@ -276,7 +276,7 @@ func EcdsaSign(ctx context.Context, key *ecdsa.PrivateKey, hsh []byte) (*signatu
 }
 
 func AggregateBLSSignatures(ctx context.Context, sigs []*signatures.Signature) (*signatures.Signature, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "signatures.AggregateBLSSignatures")
+	sp, _ := opentracing.StartSpanFromContext(ctx, "signatures.AggregateBLSSignatures")
 	defer sp.Finish()
 
 	signerCount := len(sigs[0].Signers)
