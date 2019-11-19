@@ -47,7 +47,7 @@ func (sct *SignedChainTree) Tip() cid.Cid {
 
 func (sct *SignedChainTree) IsGenesis() bool {
 	store := nodestore.MustMemoryStore(context.TODO())
-	newEmpty := NewEmptyTree(sct.MustId(), store)
+	newEmpty := NewEmptyTree(context.TODO(), sct.MustId(), store)
 	return newEmpty.Tip.Equals(sct.Tip())
 }
 
@@ -78,12 +78,12 @@ func NewSignedChainTreeFromChainTree(tree *chaintree.ChainTree) *SignedChainTree
 	}
 }
 
-func NewSignedChainTree(key ecdsa.PublicKey, nodeStore nodestore.DagStore) (*SignedChainTree, error) {
+func NewSignedChainTree(ctx context.Context, key ecdsa.PublicKey, nodeStore nodestore.DagStore) (*SignedChainTree, error) {
 	did := EcdsaPubkeyToDid(key)
 
 	tree, err := chaintree.NewChainTree(
 		context.TODO(),
-		NewEmptyTree(did, nodeStore),
+		NewEmptyTree(ctx, did, nodeStore),
 		nil,
 		DefaultTransactors,
 	)

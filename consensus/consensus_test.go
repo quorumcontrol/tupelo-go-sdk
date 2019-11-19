@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"context"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -11,6 +12,9 @@ import (
 )
 
 func TestIsBlockSignedBy(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	key, err := crypto.GenerateKey()
 	assert.Nil(t, err)
 
@@ -25,11 +29,11 @@ func TestIsBlockSignedBy(t *testing.T) {
 		},
 	}
 
-	signed, err := SignBlock(&blockWithHeaders, key)
+	signed, err := SignBlock(ctx, &blockWithHeaders, key)
 
 	assert.Nil(t, err)
 
-	isSigned, err := IsBlockSignedBy(signed, crypto.PubkeyToAddress(key.PublicKey).String())
+	isSigned, err := IsBlockSignedBy(ctx, signed, crypto.PubkeyToAddress(key.PublicKey).String())
 
 	assert.Nil(t, err)
 	assert.True(t, isSigned)
