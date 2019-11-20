@@ -19,5 +19,5 @@ export PATH="${GOPATH}/bin:${PATH}"
 echo -e "\n\nRunning integration tests against tupelo master"
 make integration-test TUPELO=master
 
-echo -e "\n\nRunning integration tests against tupelo latest release"
-make integration-test TUPELO=latest
+# echo -e "\n\nRunning integration tests against tupelo latest release"
+# make integration-test TUPELO=latest
