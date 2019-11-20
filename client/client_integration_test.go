@@ -108,6 +108,48 @@ func setupNotaryGroup(ctx context.Context) (*types.NotaryGroup, error) {
 	return group, nil
 }
 
+func TestBasicSetup(t *testing.T) {
+	ctx := context.Background()
+
+	remote.Start()
+	defer remote.Stop()
+
+	// Configuration setup
+	bits, err := ioutil.ReadFile("../integration/configs/integration.toml")
+	require.Nil(t, err)
+	config, err := types.TomlToConfig(string(bits))
+	require.Nil(t, err)
+	notaryGroup, err := config.NotaryGroup(nil)
+	require.Nil(t, err)
+
+	// p2p setup
+	key, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	p2pHost, err := p2p.NewLibP2PHost(ctx, key, 0)
+	require.Nil(t, err)
+	_, err = p2pHost.Bootstrap(config.BootstrapAddresses)
+	require.Nil(t, err)
+	err = p2pHost.WaitForBootstrap(1, 15*time.Second)
+	require.Nil(t, err)
+	remote.NewRouter(p2pHost)
+
+	// Play a transaction on a chaintree
+	treeKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	chainTree, err := consensus.NewSignedChainTree(treeKey.PublicKey, nodestore.MustMemoryStore(ctx))
+	require.Nil(t, err)
+
+	client := New(notaryGroup, chainTree.MustId(), remote.NewNetworkPubSub(p2pHost.GetPubSub()))
+	defer client.Stop()
+
+	txn, err := chaintree.NewSetDataTransaction("down/in/the/thing", "sometestvalue")
+	require.Nil(t, err)
+
+	resp, err := client.PlayTransactions(chainTree, treeKey, nil, []*transactions.Transaction{txn})
+	require.Nil(t, err)
+	assert.Equal(t, resp.Tip.Bytes(), chainTree.Tip().Bytes())
+}
+
 func TestClientSendTransaction(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
