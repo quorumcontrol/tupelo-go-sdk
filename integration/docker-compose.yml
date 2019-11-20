@@ -13,6 +13,8 @@ services:
       - "34001:34001"
 
   node0:
+    depends_on:
+      - bootstrap
     image: quorumcontrol/tupelo:${TUPELO:-master}
     volumes:
       - ./configs:/configs
@@ -20,6 +22,8 @@ services:
               "-L", "${TUPELO_LOG_LEVEL:-error}"]
 
   node1:
+    depends_on:
+      - bootstrap
     image: quorumcontrol/tupelo:${TUPELO:-master}
     volumes:
       - ./configs:/configs
@@ -27,6 +31,8 @@ services:
               "-L", "${TUPELO_LOG_LEVEL:-error}"]
 
   node2:
+    depends_on:
+      - bootstrap
     image: quorumcontrol/tupelo:${TUPELO:-master}
     volumes:
       - ./configs:/configs

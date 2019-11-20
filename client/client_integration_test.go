@@ -129,7 +129,7 @@ func TestBasicSetup(t *testing.T) {
 	require.Nil(t, err)
 	_, err = p2pHost.Bootstrap(config.BootstrapAddresses)
 	require.Nil(t, err)
-	err = p2pHost.WaitForBootstrap(1, 15*time.Second)
+	err = p2pHost.WaitForBootstrap(1, 30*time.Second)
 	require.Nil(t, err)
 	remote.NewRouter(p2pHost)
 
