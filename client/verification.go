@@ -4,16 +4,20 @@ import (
 	"context"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/quorumcontrol/messages/build/go/signatures"
+	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
 	"golang.org/x/xerrors"
 )
 
-func VerifyCurrentState(ctx context.Context, group *types.NotaryGroup, state *signatures.CurrentState) (bool, error) {
+func VerifyCurrentState(ctx context.Context, group *types.NotaryGroup, state *signatures.TreeState) (bool, error) {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "verifyCurrentState")
 	defer sp.Finish()
+
+	if state.Signature == nil {
+		return false, xerrors.Errorf("no signature supplied")
+	}
 
 	var verKeys [][]byte
 
@@ -33,7 +37,7 @@ func VerifyCurrentState(ctx context.Context, group *types.NotaryGroup, state *si
 	if signerCount < group.QuorumCount() {
 		return false, nil
 	}
-	isVerified, err := bls.VerifyMultiSig(state.Signature.Signature, consensus.GetSignable(state.Signature), verKeys)
+	isVerified, err := bls.VerifyMultiSig(state.Signature.Signature, consensus.GetSignable(state), verKeys)
 	if err != nil {
 		sp.SetTag("error", true)
 		return false, xerrors.Errorf("error verifying: %w", err)

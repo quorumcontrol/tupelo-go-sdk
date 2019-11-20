@@ -11,7 +11,7 @@ import (
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 
 	"github.com/quorumcontrol/chaintree/chaintree"
-	"github.com/quorumcontrol/messages/build/go/transactions"
+	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 )
 
 var defaultGenerators []ValidatorGenerator

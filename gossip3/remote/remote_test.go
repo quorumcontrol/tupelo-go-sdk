@@ -1,7 +1,7 @@
 package remote
 
 import (
-	"github.com/quorumcontrol/messages/build/go/services"
+	"github.com/quorumcontrol/messages/v2/build/go/services"
 	"context"
 	"testing"
 	"time"

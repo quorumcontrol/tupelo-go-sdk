@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/quorumcontrol/messages/build/go/services"
-	"github.com/quorumcontrol/messages/build/go/signatures"
+	"github.com/quorumcontrol/messages/v2/build/go/services"
+	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 )
 
 func RequestID(req *services.AddBlockRequest) []byte {
@@ -26,7 +26,7 @@ func ConflictSetID(objectID []byte, height uint64) string {
 	return string(crypto.Keccak256(append(objectID, uint64ToBytes(height)...)))
 }
 
-func GetSignable(sig *signatures.Signature) []byte {
+func GetSignable(sig *signatures.TreeState) []byte {
 	return appendMultiple(
 		sig.ObjectId,
 		sig.PreviousTip,

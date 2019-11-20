@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/quorumcontrol/messages/build/go/services"
-	"github.com/quorumcontrol/messages/build/go/signatures"
+	"github.com/quorumcontrol/messages/v2/build/go/services"
+	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -25,7 +25,7 @@ import (
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
-	"github.com/quorumcontrol/messages/build/go/transactions"
+	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/remote"
@@ -194,9 +194,9 @@ func TestClientSubscribe(t *testing.T) {
 	resp, err := fut.Result()
 	require.Nil(t, err)
 	require.NotNil(t, resp)
-	require.IsType(t, &signatures.CurrentState{}, resp)
-	currState := resp.(*signatures.CurrentState)
-	assert.Equal(t, currState.Signature.NewTip, trans.NewTip)
+	require.IsType(t, &signatures.TreeState{}, resp)
+	currState := resp.(*signatures.TreeState)
+	assert.Equal(t, currState.NewTip, trans.NewTip)
 }
 
 func TestPlayTransactions(t *testing.T) {
@@ -355,11 +355,11 @@ func TestSnoozedTransaction(t *testing.T) {
 
 	resp0, err := sub0.Result()
 	require.Nil(t, err)
-	require.IsType(t, &signatures.CurrentState{}, resp0)
+	require.IsType(t, &signatures.TreeState{}, resp0)
 
 	resp1, err := sub1.Result()
 	require.Nil(t, err)
-	require.IsType(t, &signatures.CurrentState{}, resp1)
+	require.IsType(t, &signatures.TreeState{}, resp1)
 }
 
 func TestInvalidPreviousTipOnSnoozedTransaction(t *testing.T) {
@@ -419,9 +419,9 @@ func TestInvalidPreviousTipOnSnoozedTransaction(t *testing.T) {
 
 	resp0, err := sub0.Result()
 	require.Nil(t, err)
-	require.IsType(t, &signatures.CurrentState{}, resp0)
+	require.IsType(t, &signatures.TreeState{}, resp0)
 
-	t.Logf("resp0 tip %v", resp0.(*signatures.CurrentState).Signature.NewTip)
+	t.Logf("resp0 tip %v", resp0.(*signatures.TreeState).NewTip)
 
 	_, err = sub1.Result()
 	// TODO: this is now a timeout error.

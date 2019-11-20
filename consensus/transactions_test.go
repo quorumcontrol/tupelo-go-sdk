@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/quorumcontrol/messages/build/go/signatures"
+	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
 
@@ -14,7 +14,7 @@ import (
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/nodestore"
-	"github.com/quorumcontrol/messages/build/go/transactions"
+	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -543,7 +543,7 @@ func TestReceiveToken(t *testing.T) {
 		leaves = append(leaves, ln.RawData())
 	}
 
-	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), signature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), &signatures.TreeState{Signature: signature}, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
@@ -681,7 +681,7 @@ func TestReceiveTokenInvalidTip(t *testing.T) {
 	otherChainTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
 	require.Nil(t, err)
 
-	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", otherChainTree.Dag.Tip.Bytes(), signature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", otherChainTree.Dag.Tip.Bytes(), &signatures.TreeState{Signature: signature}, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
@@ -798,7 +798,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 		leaves = append(leaves, ln.RawData())
 	}
 
-	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), signature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), &signatures.TreeState{Signature: signature}, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
@@ -854,7 +854,7 @@ func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
 		leaves = append(leaves, ln.RawData())
 	}
 
-	receiveTxn, err = chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), signature, leaves)
+	receiveTxn, err = chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), &signatures.TreeState{Signature: signature}, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders = &chaintree.BlockWithHeaders{
@@ -960,9 +960,12 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 
 	objectID, err := senderChainTree.Id(context.TODO())
 	require.Nil(t, err)
-	signature.ObjectId = []byte(objectID)
-	signature.NewTip = senderChainTree.Dag.Tip.Bytes()
-	signature.PreviousTip = signedBlock.PreviousTip.Bytes()
+	treeState := &signatures.TreeState{
+		Signature:   signature,
+		ObjectId:    []byte(objectID),
+		NewTip:      senderChainTree.Dag.Tip.Bytes(),
+		PreviousTip: signedBlock.PreviousTip.Bytes(),
+	}
 
 	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
 	leafNodes, err := senderChainTree.Dag.NodesForPath(context.TODO(), tokenPath)
@@ -975,7 +978,7 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 
 	recipientHeight := uint64(0)
 
-	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), signature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), treeState, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
@@ -989,7 +992,7 @@ func TestReceiveTokenInvalidSignature(t *testing.T) {
 	recipientChainTree, err := consensus.NewSignedChainTree(recipientKey.PublicKey, store)
 	require.Nil(t, err)
 
-	isValidSignature := types.GenerateIsValidSignature(func(sig *signatures.Signature) (bool, error) {
+	isValidSignature := types.GenerateIsValidSignature(func(sig *signatures.TreeState) (bool, error) {
 		return false, nil
 	})
 
@@ -1098,7 +1101,7 @@ func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
 
 	recipientHeight := uint64(0)
 
-	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), signature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), &signatures.TreeState{Signature: signature}, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
@@ -1210,9 +1213,12 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 
 	objectID, err := senderChainTree.Id(context.TODO())
 	require.Nil(t, err)
-	signature.ObjectId = []byte(objectID)
-	signature.NewTip = emptyTree.Tip.Bytes() // invalid
-	signature.PreviousTip = signedBlock.PreviousTip.Bytes()
+	treeState := &signatures.TreeState{
+		Signature:   signature,
+		ObjectId:    []byte(objectID),
+		NewTip:      emptyTree.Tip.Bytes(), // invalid
+		PreviousTip: signedBlock.PreviousTip.Bytes(),
+	}
 
 	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
 	leafNodes, err := senderChainTree.Dag.NodesForPath(context.TODO(), tokenPath)
@@ -1225,7 +1231,7 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 
 	recipientHeight := uint64(0)
 
-	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), signature, leaves)
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), treeState, leaves)
 	assert.Nil(t, err)
 
 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
@@ -1239,7 +1245,7 @@ func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
 	recipientChainTree, err := consensus.NewSignedChainTree(recipientKey.PublicKey, store)
 	require.Nil(t, err)
 
-	isValidSignature := types.GenerateIsValidSignature(func(sig *signatures.Signature) (bool, error) {
+	isValidSignature := types.GenerateIsValidSignature(func(sig *signatures.TreeState) (bool, error) {
 		return true, nil // this should get caught before it gets here; so ensure this doesn't cause false positives
 	})
 

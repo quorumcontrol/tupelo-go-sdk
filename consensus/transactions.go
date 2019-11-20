@@ -9,14 +9,14 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
-	"github.com/quorumcontrol/messages/build/go/signatures"
+	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/chaintree/typecaster"
-	"github.com/quorumcontrol/messages/build/go/transactions"
+	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 )
 
 const (
@@ -300,7 +300,7 @@ func serializeNodes(nodes []format.Node) [][]byte {
 	return bytes
 }
 
-func TokenPayloadForTransaction(chain *chaintree.ChainTree, tokenName *TokenName, sendTokenTxId string, sendTxSig *signatures.Signature) (*transactions.TokenPayload, error) {
+func TokenPayloadForTransaction(chain *chaintree.ChainTree, tokenName *TokenName, sendTokenTxId string, sendTxState *signatures.TreeState) (*transactions.TokenPayload, error) {
 	if !tokenName.IsCanonical() {
 		return nil, fmt.Errorf("token name must be canonical (i.e. start with chaintree DID)")
 	}
@@ -346,7 +346,7 @@ func TokenPayloadForTransaction(chain *chaintree.ChainTree, tokenName *TokenName
 	tokenPayload := &transactions.TokenPayload{
 		TransactionId: sendTokenTxId,
 		Tip:           chain.Dag.Tip.String(),
-		Signature:     sendTxSig,
+		TreeState:     sendTxState,
 		Leaves:        serializeNodes(tokenNodes),
 	}
 

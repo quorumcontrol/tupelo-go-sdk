@@ -130,6 +130,23 @@ func SumSignatures(sigs [][]byte) ([]byte, error) {
 	return dedisbls.AggregateSignatures(suite, sigs...)
 }
 
+// SumVerKeys returns a single VerKey that is the aggregate of al the VerKeys passed in
+func SumVerKeys(verKeys []*VerKey) (*VerKey, error) {
+	points := make([]kyber.Point, len(verKeys))
+	for i, verKey := range verKeys {
+		points[i] = verKey.public
+	}
+	aggregatedPublic := dedisbls.AggregatePublicKeys(suite, points...)
+	pubBytes, err := aggregatedPublic.MarshalBinary()
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling: %v", err)
+	}
+	return &VerKey{
+		public: aggregatedPublic,
+		value:  pubBytes,
+	}, nil
+}
+
 // VerifyMultiSig verifies a message using a multi signature.
 //TODO: let's pass in real verkeys and not binary
 func VerifyMultiSig(sig, msg []byte, verKeys [][]byte) (bool, error) {

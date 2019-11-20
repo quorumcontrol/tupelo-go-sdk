@@ -2,7 +2,7 @@ package remote
 
 import (
 	"github.com/gogo/protobuf/proto"
-	wbridge "github.com/quorumcontrol/messages/build/go/bridge"
+	wbridge "github.com/quorumcontrol/messages/v2/build/go/bridge"
 	"github.com/quorumcontrol/tupelo-go-sdk/tracing"
 )
 

@@ -143,6 +143,41 @@ func TestVerifyMultiSig(t *testing.T) {
 	assert.True(t, isValid)
 }
 
+func TestSumVerKeys(t *testing.T) {
+	msg := []byte("hi")
+
+	key1, err := NewSignKey()
+	assert.Nil(t, err)
+
+	key2, err := NewSignKey()
+	assert.Nil(t, err)
+
+	sig1, err := key1.Sign(msg)
+	assert.Nil(t, err)
+
+	sig2, err := key2.Sign(msg)
+	assert.Nil(t, err)
+
+	multiSig, err := SumSignatures([][]byte{sig1, sig1, sig2})
+	assert.Nil(t, err)
+	assert.Len(t, multiSig, 64)
+
+	aggregateKey, err := SumVerKeys([]*VerKey{key1.MustVerKey(), key1.MustVerKey(), key2.MustVerKey()})
+	require.Nil(t, err)
+	require.NotNil(t, aggregateKey)
+
+	valid, err := aggregateKey.Verify(multiSig, msg)
+	require.Nil(t, err)
+	require.True(t, valid)
+
+	// test roundtrip to bits ( makes sure this doesn't affect: https://github.com/dedis/kyber/issues/400 )
+	bits := aggregateKey.Bytes()
+	require.Nil(t, err)
+	restoredKey := BytesToVerKey(bits)
+	require.NotNil(t, restoredKey)
+
+}
+
 func BenchmarkVerKey_Verify(b *testing.B) {
 	msg := []byte("hi")
 
