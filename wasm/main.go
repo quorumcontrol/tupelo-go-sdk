@@ -94,7 +94,7 @@ func main() {
 					jsOpts.Get("tip"),
 					jsOpts.Get("tokenName"),
 					jsOpts.Get("sendId"),
-					jsOpts.Get("jsSendTxSig"),
+					jsOpts.Get("jsSendTxState"),
 				)
 			}))
 
@@ -116,7 +116,7 @@ func main() {
 					return t
 				}
 
-				state := &signatures.CurrentState{}
+				state := &signatures.TreeState{}
 				err = state.Unmarshal(helpers.JsBufferToBytes(args[1]))
 				if err != nil {
 					t := then.New()
