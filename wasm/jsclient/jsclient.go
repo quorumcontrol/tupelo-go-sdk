@@ -111,7 +111,10 @@ func (jsc *JSClient) PlayTransactions(blockService js.Value, jsKeyBits js.Value,
 		}
 
 		currState := &signatures.TreeState{
-			Signature: &resp.Signature,
+			Signature:   &resp.Signature,
+			ObjectId:    []byte(resp.ChainId),
+			PreviousTip: tip.Bytes(),
+			NewTip:      resp.Tip.Bytes(),
 		}
 
 		respBits, err := proto.Marshal(currState)
