@@ -100,7 +100,7 @@ func (c *Client) subscriptionReceive(actorContext actor.Context) {
 		}
 	case *signatures.TreeState:
 		if msg.Signature == nil {
-			c.log.Errorw("received signatures.CurrentState message without signature")
+			c.log.Errorw("received signatures.TreeState message without signature")
 			return
 		}
 

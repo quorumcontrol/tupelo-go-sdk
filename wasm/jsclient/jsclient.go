@@ -110,8 +110,11 @@ func (jsc *JSClient) PlayTransactions(blockService js.Value, jsKeyBits js.Value,
 			return
 		}
 
-		currState := &signatures.CurrentState{
-			Signature: &resp.Signature,
+		currState := &signatures.TreeState{
+			Signature:   &resp.Signature,
+			ObjectId:    []byte(resp.ChainId),
+			PreviousTip: tip.Bytes(),
+			NewTip:      resp.Tip.Bytes(),
 		}
 
 		respBits, err := proto.Marshal(currState)
@@ -150,7 +153,7 @@ func (jsc *JSClient) playTransactions(store nodestore.DagStore, tip cid.Cid, tre
 	return c.PlayTransactions(tree, treeKey, &remoteTip, transactions)
 }
 
-func VerifyCurrentState(humanConfig *config.NotaryGroup, state *signatures.CurrentState) *then.Then {
+func VerifyCurrentState(humanConfig *config.NotaryGroup, state *signatures.TreeState) *then.Then {
 	t := then.New()
 	go func() {
 		ngConfig, err := types.HumanConfigToConfig(humanConfig)
@@ -286,8 +289,8 @@ func JsConfigToHumanConfig(jsBits js.Value) (*config.NotaryGroup, error) {
 	return config, err
 }
 
-// func TokenPayloadForTransaction(chain *chaintree.ChainTree, tokenName *TokenName, sendTokenTxId string, sendTxSig *signatures.Signature) (*transactions.TokenPayload, error) {
-func TokenPayloadForTransaction(jsBlockService js.Value, jsTip js.Value, tokenName js.Value, sendTokenTxId js.Value, jsSendTxSigBits js.Value) *then.Then {
+// func TokenPayloadForTransaction(chain *chaintree.ChainTree, tokenName *TokenName, sendTokenTxId string, sendTxState *signatures.TreeState) (*transactions.TokenPayload, error) {
+func TokenPayloadForTransaction(jsBlockService js.Value, jsTip js.Value, tokenName js.Value, sendTokenTxId js.Value, jsSendTxStateBits js.Value) *then.Then {
 	t := then.New()
 	ctx := context.TODO()
 	go func() {
@@ -309,9 +312,9 @@ func TokenPayloadForTransaction(jsBlockService js.Value, jsTip js.Value, tokenNa
 			return
 		}
 
-		sigBits := helpers.JsBufferToBytes(jsSendTxSigBits)
-		sig := &signatures.Signature{}
-		err = proto.Unmarshal(sigBits, sig)
+		treeStateBits := helpers.JsBufferToBytes(jsSendTxStateBits)
+		currState := &signatures.TreeState{}
+		err = proto.Unmarshal(treeStateBits, currState)
 		if err != nil {
 			t.Reject(err.Error())
 			return
@@ -319,7 +322,7 @@ func TokenPayloadForTransaction(jsBlockService js.Value, jsTip js.Value, tokenNa
 
 		canonicalTokenName := consensus.TokenNameFromString(tokenName.String())
 
-		payload, err := consensus.TokenPayloadForTransaction(tree, &canonicalTokenName, sendTokenTxId.String(), sig)
+		payload, err := consensus.TokenPayloadForTransaction(tree, &canonicalTokenName, sendTokenTxId.String(), currState)
 		if err != nil {
 			t.Reject(err.Error())
 			return

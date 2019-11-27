@@ -12,8 +12,6 @@ import (
 	ptypes "github.com/gogo/protobuf/types"
 	pb "github.com/quorumcontrol/messages/v2/build/go/community"
 
-	cbornode "github.com/ipfs/go-ipld-cbor"
-
 	"github.com/ipfs/go-datastore"
 
 	"github.com/gogo/protobuf/proto"
@@ -27,11 +25,6 @@ import (
 	hamt "github.com/quorumcontrol/go-hamt-ipld"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/then"
 )
-
-func init() {
-	typecaster.AddType(signatures.CurrentState{})
-	cbornode.RegisterCborType(signatures.CurrentState{})
-}
 
 func HashToShardNumber(topicName string, shardCount int) int {
 	hsh := sha256.Sum256([]byte(topicName))
@@ -112,8 +105,8 @@ func GetCurrentState(ctx context.Context, jsCid js.Value, jsBlockService js.Valu
 	return t
 }
 
-func hamtReturnToCurrentState(storedMap interface{}) (*signatures.CurrentState, error) {
-	var cs signatures.CurrentState
+func hamtReturnToCurrentState(storedMap interface{}) (*signatures.TreeState, error) {
+	var cs signatures.TreeState
 	if err := typecaster.ToType(storedMap, &cs); err != nil {
 		return nil, errors.Wrap(err, "error typecasting")
 	}
