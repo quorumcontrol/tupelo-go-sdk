@@ -1,4 +1,5 @@
 NotaryGroupConfig = "./integration.toml"
+StoragePath = "/tupelo/storage"
 
 
 [PrivateKeySet]
