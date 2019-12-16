@@ -116,20 +116,13 @@ func TestSignerCount(t *testing.T) {
 func TestEcdsaSigning(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	require.Nil(t, err)
-	msg := crypto.Keccak256([]byte("hi hi"))
+	hsh := crypto.Keccak256([]byte("hi hi"))
 
-	sigBits, err := crypto.Sign(msg, key)
+	sig, err := EcdsaSign(key, hsh)
 	require.Nil(t, err)
-	sig := &signatures.Signature{
-		Ownership: &signatures.Ownership{
-			PublicKey: &signatures.PublicKey{
-				Type: signatures.PublicKey_KeyTypeSecp256k1,
-			},
-		},
-		Signature: sigBits,
-	}
-	require.Nil(t, RestoreEcdsaPublicKey(sig, msg))
-	verified, err := Valid(sig, msg, nil)
+
+	require.Nil(t, RestoreEcdsaPublicKey(sig, hsh))
+	verified, err := Valid(sig, hsh, nil)
 	require.Nil(t, err)
 	assert.True(t, verified)
 }
@@ -139,17 +132,11 @@ func TestEcdsaSigningWithConditions(t *testing.T) {
 	require.Nil(t, err)
 	msg := crypto.Keccak256([]byte("hi hi"))
 
-	sigBits, err := crypto.Sign(msg, key)
+	sig, err := EcdsaSign(key, msg)
 	require.Nil(t, err)
-	sig := &signatures.Signature{
-		Ownership: &signatures.Ownership{
-			PublicKey: &signatures.PublicKey{
-				Type: signatures.PublicKey_KeyTypeSecp256k1,
-			},
-			Conditions: "false",
-		},
-		Signature: sigBits,
-	}
+
+	sig.Ownership.Conditions = "false"
+
 	require.Nil(t, RestoreEcdsaPublicKey(sig, msg))
 	verified, err := Valid(sig, msg, nil)
 	require.Nil(t, err)
@@ -171,18 +158,10 @@ func TestHashPreimageConditions(t *testing.T) {
 	preImage := "secrets!"
 	hsh := crypto.Keccak256Hash([]byte(preImage)).String()
 
-	sigBits, err := crypto.Sign(msg, key)
-	require.Nil(t, err)
-	sig := &signatures.Signature{
-		Ownership: &signatures.Ownership{
-			PublicKey: &signatures.PublicKey{
-				Type: signatures.PublicKey_KeyTypeSecp256k1,
-			},
-			Conditions: fmt.Sprintf(`(== (hashed-preimage) "%s")`, hsh),
-		},
-		Signature: sigBits,
-		PreImage:  "not the right one",
-	}
+	sig, err := EcdsaSign(key, msg)
+	sig.Ownership.Conditions = fmt.Sprintf(`(== (hashed-preimage) "%s")`, hsh)
+	sig.PreImage = "not the right one"
+
 	require.Nil(t, RestoreEcdsaPublicKey(sig, msg))
 	verified, err := Valid(sig, msg, nil)
 	require.Nil(t, err)
