@@ -5,10 +5,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jscrypto"
 	"syscall/js"
 
-	"github.com/quorumcontrol/tupelo-go-sdk/client"
 	"github.com/quorumcontrol/messages/v2/build/go/signatures"
+	"github.com/quorumcontrol/tupelo-go-sdk/client"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/helpers"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jscommunity"
 
@@ -125,6 +126,9 @@ func main() {
 				}
 				return jsclient.VerifyCurrentState(config, state)
 			}))
+
+			jsObj.Set("signMessage", js.FuncOf(jscrypto.JSSignMessage))
+			jsObj.Set("verifyMessage", js.FuncOf(jscrypto.JSVerifyMessage))
 
 			jsObj.Set("playTransactions", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				// js passes in:
