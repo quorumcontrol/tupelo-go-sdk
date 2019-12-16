@@ -159,6 +159,8 @@ func TestHashPreimageConditions(t *testing.T) {
 	hsh := crypto.Keccak256Hash([]byte(preImage)).String()
 
 	sig, err := EcdsaSign(key, msg)
+	require.Nil(t, err)
+
 	sig.Ownership.Conditions = fmt.Sprintf(`(== (hashed-preimage) "%s")`, hsh)
 	sig.PreImage = "not the right one"
 
