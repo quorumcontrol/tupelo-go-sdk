@@ -110,14 +110,7 @@ func (jsc *JSClient) PlayTransactions(blockService js.Value, jsKeyBits js.Value,
 			return
 		}
 
-		currState := &signatures.TreeState{
-			Signature:   &resp.Signature,
-			ObjectId:    []byte(resp.ChainId),
-			PreviousTip: tip.Bytes(),
-			NewTip:      resp.Tip.Bytes(),
-		}
-
-		respBits, err := proto.Marshal(currState)
+		respBits, err := proto.Marshal(resp)
 		if err != nil {
 			t.Reject(err.Error())
 			return
@@ -128,7 +121,7 @@ func (jsc *JSClient) PlayTransactions(blockService js.Value, jsKeyBits js.Value,
 	return t
 }
 
-func (jsc *JSClient) playTransactions(store nodestore.DagStore, tip cid.Cid, treeKey *ecdsa.PrivateKey, transactions []*transactions.Transaction) (*consensus.AddBlockResponse, error) {
+func (jsc *JSClient) playTransactions(store nodestore.DagStore, tip cid.Cid, treeKey *ecdsa.PrivateKey, transactions []*transactions.Transaction) (*signatures.TreeState, error) {
 	ctx := context.TODO()
 
 	cTree, err := chaintree.NewChainTree(

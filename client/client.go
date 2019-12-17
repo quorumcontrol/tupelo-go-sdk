@@ -174,7 +174,9 @@ func (c *Client) Subscribe(trans *services.AddBlockRequest, timeout time.Duratio
 
 			// if we didn't get an equal tip, but it was at the same height, it means someone else got to us first.
 			if msg.Height == trans.Height {
-				actorContext.Send(fut.PID(), fmt.Errorf("error signature at same height did not match transaction new tip. Expected %s, got %s", trans.NewTip, msg.NewTip))
+				transTipCid, err1 := cid.Cast(trans.NewTip)
+				msgTipCid, err2 := cid.Cast(msg.NewTip)
+				actorContext.Send(fut.PID(), fmt.Errorf("error signature at same height (%d) did not match transaction new tip. Expected %s, got %s: %v, %v", trans.Height, transTipCid.String(), msgTipCid.String(), err1, err2))
 				return
 			}
 
@@ -239,7 +241,7 @@ func (c *Client) SendTransaction(trans *services.AddBlockRequest) error {
 	return c.pubsub.Broadcast(topic, trans)
 }
 
-func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*transactions.Transaction) (*consensus.AddBlockResponse, error) {
+func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*transactions.Transaction) (*signatures.TreeState, error) {
 	ctx := context.TODO()
 	sw := safewrap.SafeWrap{}
 
@@ -398,29 +400,18 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 
 	tree.Signatures[c.Group.ID] = resp.Signature
 
-	newCid, err := cid.Cast(resp.NewTip)
-	if err != nil {
-		return nil, fmt.Errorf("error new tip is not parsable CID %v", string(resp.NewTip))
-	}
-
-	addResponse := &consensus.AddBlockResponse{
-		ChainId:   tree.MustId(),
-		Tip:       &newCid,
-		Signature: *tree.Signatures[c.Group.ID],
-	}
-
 	c.log.Debugw("successfully played transactions")
-	return addResponse, nil
+	return resp, nil
 }
 
 // PlayTransactions plays transactions in chain tree.
 // It retries on timeouts so most of the logic in here is for retries and the meat of the
 // transaction-playing code is in attemptPlayTransactions.
-func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*transactions.Transaction) (*consensus.AddBlockResponse, error) {
+func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, remoteTip *cid.Cid, transactions []*transactions.Transaction) (*signatures.TreeState, error) {
 	ctx := context.TODO()
 
 	var (
-		resp *consensus.AddBlockResponse
+		resp *signatures.TreeState
 		err  error
 	)
 
@@ -435,11 +426,7 @@ func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecds
 			attemptNo++
 			c.log.Debugw("attempt to play transactions", "attemptNo", attemptNo+1)
 			resp, err = c.attemptPlayTransactions(tree, treeKey, latestRemoteTip, transactions)
-			signerId := ""
-			if resp != nil {
-				signerId = resp.SignerId
-			}
-			c.log.Debugw("attempt ended", "error", err, "response.signerId", signerId)
+			c.log.Debugw("attempt ended", "error", err)
 			return err
 		},
 		retry.Attempts(MaxPlayTransactionsAttempts),
