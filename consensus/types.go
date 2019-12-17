@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"github.com/quorumcontrol/messages/v2/build/go/signatures"
-	"crypto/ecdsa"
 
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
