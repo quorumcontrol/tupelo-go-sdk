@@ -236,6 +236,22 @@ func BLSSign(key *bls.SignKey, hsh []byte, signerLen, signerIndex int) (*signatu
 	}, nil
 }
 
+func EcdsaSign(key *ecdsa.PrivateKey, hsh []byte) (*signatures.Signature, error) {
+	sigBytes, err := crypto.Sign(hsh, key)
+	if err != nil {
+		return nil, fmt.Errorf("error signing: %v", err)
+	}
+
+	return &signatures.Signature{
+		Ownership: &signatures.Ownership{
+			PublicKey: &signatures.PublicKey{
+				Type: signatures.PublicKey_KeyTypeSecp256k1,
+			},
+		},
+		Signature: sigBytes,
+	}, nil
+}
+
 func AggregateBLSSignatures(sigs []*signatures.Signature) (*signatures.Signature, error) {
 	signerCount := len(sigs[0].Signers)
 	newSig := &signatures.Signature{
