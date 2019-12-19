@@ -8,7 +8,6 @@ import (
 )
 
 func init() {
-	cbornode.RegisterCborType(AddBlockResponse{})
 	cbornode.RegisterCborType(TipRequest{})
 	cbornode.RegisterCborType(TipResponse{})
 	cbornode.RegisterCborType(TipSignature{})
@@ -17,16 +16,8 @@ func init() {
 }
 
 const MessageType_AddBlock = "ADD_BLOCK"
-const MessageType_Feedback = "FEEDBACK"
 const MessageType_TipRequest = "TIP_REQUEST"
 const MessageType_GetDiffNodes = "GET_DIFF_NODES"
-
-type AddBlockResponse struct {
-	SignerId  string
-	ChainId   string
-	Tip       *cid.Cid
-	Signature signatures.Signature
-}
 
 type GetDiffNodesRequest struct {
 	PreviousTip *cid.Cid
