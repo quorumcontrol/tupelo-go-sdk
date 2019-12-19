@@ -147,7 +147,7 @@ func TestBasicSetup(t *testing.T) {
 
 	resp, err := client.PlayTransactions(chainTree, treeKey, nil, []*transactions.Transaction{txn})
 	require.Nil(t, err)
-	assert.Equal(t, resp.Tip.Bytes(), chainTree.Tip().Bytes())
+	assert.Equal(t, resp.NewTip, chainTree.Tip().Bytes())
 }
 
 func TestClientSendTransaction(t *testing.T) {
@@ -228,7 +228,7 @@ func TestPlayTransactions(t *testing.T) {
 
 	resp, err := client.PlayTransactions(chain, treeKey, &remoteTip, []*transactions.Transaction{txn})
 	require.Nil(t, err)
-	assert.Equal(t, resp.Tip.Bytes(), chain.Tip().Bytes())
+	assert.Equal(t, resp.NewTip, chain.Tip().Bytes())
 
 	t.Run("works on 2nd set", func(t *testing.T) {
 		remoteTip := chain.Tip()
@@ -236,7 +236,7 @@ func TestPlayTransactions(t *testing.T) {
 		require.Nil(t, err)
 		resp, err := client.PlayTransactions(chain, treeKey, &remoteTip, []*transactions.Transaction{txn2})
 		require.Nil(t, err)
-		assert.Equal(t, resp.Tip.Bytes(), chain.Tip().Bytes())
+		assert.Equal(t, resp.NewTip, chain.Tip().Bytes())
 
 		// and works a third time
 		remoteTip = chain.Tip()
@@ -244,7 +244,7 @@ func TestPlayTransactions(t *testing.T) {
 		require.Nil(t, err)
 		resp, err = client.PlayTransactions(chain, treeKey, &remoteTip, []*transactions.Transaction{txn3})
 		require.Nil(t, err)
-		assert.Equal(t, resp.Tip.Bytes(), chain.Tip().Bytes())
+		assert.Equal(t, resp.NewTip, chain.Tip().Bytes())
 	})
 
 	t.Run("works when setting a different branch of the tree", func(t *testing.T) {
@@ -253,7 +253,7 @@ func TestPlayTransactions(t *testing.T) {
 		require.Nil(t, err)
 		resp, err := client.PlayTransactions(chain, treeKey, &remoteTip, []*transactions.Transaction{txn2})
 		require.Nil(t, err)
-		assert.Equal(t, resp.Tip.Bytes(), chain.Tip().Bytes())
+		assert.Equal(t, resp.NewTip, chain.Tip().Bytes())
 	})
 }
 
