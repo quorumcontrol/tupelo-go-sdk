@@ -1,6 +1,8 @@
-[![CircleCI](https://circleci.com/gh/quorumcontrol/tupelo-go-sdk.svg?style=svg&circle-token=7e9e6a1638c33dcb8899cc9a2aed9936cba60aaa)](https://circleci.com/gh/quorumcontrol/tupelo-go-sdk)
-
 # Tupelo Go SDK
+
+[![CircleCI](https://circleci.com/gh/quorumcontrol/tupelo-go-sdk.svg?style=svg&circle-token=7e9e6a1638c33dcb8899cc9a2aed9936cba60aaa)](https://circleci.com/gh/quorumcontrol/tupelo-go-sdk)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg)](CODE_OF_CONDUCT.md)
+
 This is the SDK for developing Go applications using [Tupelo](https://quorumcontrol.com).
 
 ## Building
@@ -34,7 +36,7 @@ or against your own local working copy of Tupelo (which should be in a sibling d
 `tupelo`; override the `TUPELO_DIR` variable if it is somewhere else).
 
 To run the tests against Tupelo...
-    
+
     * master: `make integration-test`
     * latest release: `make integration-test TUPELO=latest`
     * local working copy: `make integration-test TUPELO=local`
