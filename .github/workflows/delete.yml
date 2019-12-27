@@ -12,4 +12,4 @@ jobs:
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
     - name: Docker Delete Tag
-      run: IMAGE_REF=$(echo ${{ github.ref }} | rev | cut -d / -f 1 | rev); docker delete quorumcontrol/tupelo-go-sdk:$IMAGE_REF
+      run: IMAGE_REF=$(echo ${{ github.ref }} | rev | cut -d / -f 1 | rev); docker rmi quorumcontrol/tupelo-go-sdk:$IMAGE_REF
