@@ -6,7 +6,7 @@ import (
 	"net"
 	"os"
 
-	"github.com/ipfs/go-bitswap"
+	bitswap "github.com/ipfs/go-bitswap"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	ds "github.com/ipfs/go-datastore"
@@ -15,6 +15,7 @@ import (
 	circuit "github.com/libp2p/go-libp2p-circuit"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
 
 	"github.com/libp2p/go-libp2p"
 	ma "github.com/multiformats/go-multiaddr"
@@ -87,8 +88,7 @@ func backwardsCompatibleConfig(key *ecdsa.PrivateKey, port int, useRelay bool) (
 	opts = append(opts, backwardsOpts...)
 
 	if hostIP, ok := os.LookupEnv("TUPELO_PUBLIC_IP"); ok {
-		// TODO: Restore logging in gossip4
-		// middleware.Log.Debugw("configuring libp2p external IP", "externalIp", hostIP)
+		middleware.Log.Debugw("configuring libp2p external IP", "externalIp", hostIP)
 		opts = append(opts, WithExternalIP(hostIP, port))
 	}
 

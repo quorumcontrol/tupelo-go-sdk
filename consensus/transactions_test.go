@@ -5,8 +5,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/quorumcontrol/messages/v2/build/go/signatures"
+	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
+
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/nodestore"
@@ -14,7 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
+	"github.com/quorumcontrol/chaintree/typecaster"
 )
 
 func TestEstablishTokenTransactionWithMaximum(t *testing.T) {
@@ -443,821 +447,815 @@ func TestSendToken(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
-// TODO: Restore this test for gossip4
-// func TestReceiveToken(t *testing.T) {
-// 	key, err := crypto.GenerateKey()
-// 	assert.Nil(t, err)
-//
-// 	store := nodestore.MustMemoryStore(context.TODO())
-// 	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
-// 	emptyTree := consensus.NewEmptyTree(treeDID, store)
-//
-// 	tokenName1 := "testtoken1"
-//
-// 	maximumAmount := uint64(50)
-// 	senderHeight := uint64(0)
-// 	establishTxn, err := chaintree.NewEstablishTokenTransaction(tokenName1, 0)
-// 	assert.Nil(t, err)
-//
-// 	mintTxn, err := chaintree.NewMintTokenTransaction(tokenName1, maximumAmount)
-// 	assert.Nil(t, err)
-//
-// 	blockWithHeaders := &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  nil,
-// 			Height:       senderHeight,
-// 			Transactions: []*transactions.Transaction{establishTxn, mintTxn},
-// 		},
-// 	}
-//
-// 	senderChainTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
-// 	assert.Nil(t, err)
-//
-// 	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
-// 	assert.Nil(t, err)
-// 	senderHeight++
-//
-// 	// establish & mint another token to ensure we aren't relying on there only being one
-//
-// 	tokenName2 := "testtoken2"
-// 	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
-//
-// 	establishTxn2, err := chaintree.NewEstablishTokenTransaction(tokenName2, 0)
-// 	assert.Nil(t, err)
-//
-// 	mintTxn2, err := chaintree.NewMintTokenTransaction(tokenName2, maximumAmount/2)
-// 	assert.Nil(t, err)
-//
-// 	blockWithHeaders = &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  &senderChainTree.Dag.Tip,
-// 			Height:       senderHeight,
-// 			Transactions: []*transactions.Transaction{establishTxn2, mintTxn2},
-// 		},
-// 	}
-//
-// 	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
-// 	assert.Nil(t, err)
-// 	senderHeight++
-//
-// 	recipientKey, err := crypto.GenerateKey()
-// 	require.Nil(t, err)
-// 	recipientTreeDID := consensus.AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
-//
-// 	sendTxn, err := chaintree.NewSendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
-// 	assert.Nil(t, err)
-//
-// 	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  &senderChainTree.Dag.Tip,
-// 			Height:       senderHeight,
-// 			Transactions: []*transactions.Transaction{sendTxn},
-// 		},
-// 	}
-//
-// 	_, err = senderChainTree.ProcessBlock(context.TODO(), sendBlockWithHeaders)
-// 	assert.Nil(t, err)
-//
-// 	recipientHeight := uint64(0)
-//
-// 	signedBlock, err := consensus.SignBlock(sendBlockWithHeaders, key)
-// 	require.Nil(t, err)
-//
-// 	headers := &consensus.StandardHeaders{}
-// 	err = typecaster.ToType(signedBlock.Headers, headers)
-// 	require.Nil(t, err)
-//
-// 	sigAddr := crypto.PubkeyToAddress(key.PublicKey).String()
-// 	signature, ok := headers.Signatures[sigAddr]
-// 	require.True(t, ok)
-//
-// 	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
-// 	leafNodes, err := senderChainTree.Dag.NodesForPath(context.TODO(), tokenPath)
-// 	require.Nil(t, err)
-//
-// 	leaves := make([][]byte, 0)
-// 	for _, ln := range leafNodes {
-// 		leaves = append(leaves, ln.RawData())
-// 	}
-//
-// 	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), &signatures.TreeState{Signature: signature}, leaves)
-// 	assert.Nil(t, err)
-//
-// 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  nil,
-// 			Height:       recipientHeight,
-// 			Transactions: []*transactions.Transaction{receiveTxn},
-// 		},
-// 	}
-//
-// 	recipientChainTree, err := consensus.NewSignedChainTree(recipientKey.PublicKey, store)
-// 	require.Nil(t, err)
-// 	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators, types.IsTokenRecipient)
-//
-// 	valid, err := recipientChainTree.ChainTree.ProcessBlock(context.TODO(), receiveBlockWithHeaders)
-// 	assert.Nil(t, err)
-// 	assert.True(t, valid)
-//
-// 	senderTree, err := senderChainTree.Tree(context.TODO())
-// 	require.Nil(t, err)
-//
-// 	tokenCanonicalName2, err := consensus.CanonicalTokenName(senderTree, treeDID, tokenName2, true)
-// 	require.Nil(t, err)
-//
-// 	senderLedger := consensus.NewTreeLedger(senderTree, tokenCanonicalName2)
-// 	senderBalance, err := senderLedger.Balance()
-// 	require.Nil(t, err)
-//
-// 	recipientTree, err := recipientChainTree.ChainTree.Tree(context.TODO())
-// 	require.Nil(t, err)
-// 	recipientLedger := consensus.NewTreeLedger(recipientTree, tokenCanonicalName2)
-// 	recipientBalance, err := recipientLedger.Balance()
-// 	require.Nil(t, err)
-//
-// 	assert.Equal(t, uint64(5), senderBalance)
-// 	assert.Equal(t, uint64(20), recipientBalance)
-// }
+func TestReceiveToken(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	assert.Nil(t, err)
 
-// TODO: Restore this test for gossip4
-// func TestReceiveTokenInvalidTip(t *testing.T) {
-// 	key, err := crypto.GenerateKey()
-// 	assert.Nil(t, err)
-//
-// 	store := nodestore.MustMemoryStore(context.TODO())
-// 	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
-// 	emptyTree := consensus.NewEmptyTree(treeDID, store)
-//
-// 	tokenName1 := "testtoken1"
-//
-// 	maximumAmount := uint64(50)
-// 	senderHeight := uint64(0)
-// 	establishTxn, err := chaintree.NewEstablishTokenTransaction(tokenName1, 0)
-// 	assert.Nil(t, err)
-//
-// 	mintTxn, err := chaintree.NewMintTokenTransaction(tokenName1, maximumAmount)
-// 	assert.Nil(t, err)
-//
-// 	blockWithHeaders := &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  nil,
-// 			Height:       senderHeight,
-// 			Transactions: []*transactions.Transaction{establishTxn, mintTxn},
-// 		},
-// 	}
-//
-// 	senderChainTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
-// 	assert.Nil(t, err)
-//
-// 	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
-// 	assert.Nil(t, err)
-// 	senderHeight++
-//
-// 	// establish & mint another token to ensure we aren't relying on there only being one
-//
-// 	tokenName2 := "testtoken2"
-// 	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
-//
-// 	establishTxn2, err := chaintree.NewEstablishTokenTransaction(tokenName2, 0)
-// 	assert.Nil(t, err)
-//
-// 	mintTxn2, err := chaintree.NewMintTokenTransaction(tokenName2, maximumAmount/2)
-// 	assert.Nil(t, err)
-//
-// 	blockWithHeaders = &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  &senderChainTree.Dag.Tip,
-// 			Height:       senderHeight,
-// 			Transactions: []*transactions.Transaction{establishTxn2, mintTxn2},
-// 		},
-// 	}
-//
-// 	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
-// 	assert.Nil(t, err)
-// 	senderHeight++
-//
-// 	recipientKey, err := crypto.GenerateKey()
-// 	require.Nil(t, err)
-// 	recipientTreeDID := consensus.AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
-//
-// 	sendTxn, err := chaintree.NewSendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
-// 	assert.Nil(t, err)
-//
-// 	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  &senderChainTree.Dag.Tip,
-// 			Height:       senderHeight,
-// 			Transactions: []*transactions.Transaction{sendTxn},
-// 		},
-// 	}
-//
-// 	_, err = senderChainTree.ProcessBlock(context.TODO(), sendBlockWithHeaders)
-// 	assert.Nil(t, err)
-//
-// 	recipientHeight := uint64(0)
-//
-// 	signedBlock, err := consensus.SignBlock(sendBlockWithHeaders, key)
-// 	require.Nil(t, err)
-//
-// 	headers := &consensus.StandardHeaders{}
-// 	err = typecaster.ToType(signedBlock.Headers, headers)
-// 	require.Nil(t, err)
-//
-// 	sigAddr := crypto.PubkeyToAddress(key.PublicKey).String()
-// 	signature, ok := headers.Signatures[sigAddr]
-// 	require.True(t, ok)
-//
-// 	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
-// 	leafNodes, err := senderChainTree.Dag.NodesForPath(context.TODO(), tokenPath)
-// 	require.Nil(t, err)
-//
-// 	leaves := make([][]byte, 0)
-// 	for _, ln := range leafNodes {
-// 		leaves = append(leaves, ln.RawData())
-// 	}
-//
-// 	otherChainTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
-// 	require.Nil(t, err)
-//
-// 	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", otherChainTree.Dag.Tip.Bytes(), &signatures.TreeState{Signature: signature}, leaves)
-// 	assert.Nil(t, err)
-//
-// 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  nil,
-// 			Height:       recipientHeight,
-// 			Transactions: []*transactions.Transaction{receiveTxn},
-// 		},
-// 	}
-//
-// 	recipientChainTree, err := consensus.NewSignedChainTree(recipientKey.PublicKey, store)
-// 	require.Nil(t, err)
-// 	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators, types.IsTokenRecipient)
-//
-// 	valid, err := recipientChainTree.ChainTree.ProcessBlock(context.TODO(), receiveBlockWithHeaders)
-// 	assert.NotNil(t, err)
-// 	assert.False(t, valid)
-// }
+	store := nodestore.MustMemoryStore(context.TODO())
+	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
+	emptyTree := consensus.NewEmptyTree(treeDID, store)
 
-// TODO: Restore this test for gossip4
-// func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
-// 	key, err := crypto.GenerateKey()
-// 	assert.Nil(t, err)
-//
-// 	store := nodestore.MustMemoryStore(context.TODO())
-// 	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
-// 	emptyTree := consensus.NewEmptyTree(treeDID, store)
-//
-// 	tokenName1 := "testtoken1"
-//
-// 	maximumAmount := uint64(50)
-// 	senderHeight := uint64(0)
-// 	establishTxn, err := chaintree.NewEstablishTokenTransaction(tokenName1, 0)
-// 	assert.Nil(t, err)
-//
-// 	mintTxn, err := chaintree.NewMintTokenTransaction(tokenName1, maximumAmount)
-// 	assert.Nil(t, err)
-//
-// 	blockWithHeaders := &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  nil,
-// 			Height:       senderHeight,
-// 			Transactions: []*transactions.Transaction{establishTxn, mintTxn},
-// 		},
-// 	}
-//
-// 	senderChainTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
-// 	assert.Nil(t, err)
-//
-// 	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
-// 	assert.Nil(t, err)
-// 	senderHeight++
-//
-// 	// establish & mint another token to ensure we aren't relying on there only being one
-//
-// 	tokenName2 := "testtoken2"
-// 	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
-//
-// 	establishTxn2, err := chaintree.NewEstablishTokenTransaction(tokenName2, 0)
-// 	assert.Nil(t, err)
-//
-// 	mintTxn2, err := chaintree.NewMintTokenTransaction(tokenName2, maximumAmount/2)
-// 	assert.Nil(t, err)
-//
-// 	blockWithHeaders = &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  &senderChainTree.Dag.Tip,
-// 			Height:       senderHeight,
-// 			Transactions: []*transactions.Transaction{establishTxn2, mintTxn2},
-// 		},
-// 	}
-//
-// 	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
-// 	assert.Nil(t, err)
-// 	senderHeight++
-//
-// 	recipientKey, err := crypto.GenerateKey()
-// 	require.Nil(t, err)
-// 	recipientTreeDID := consensus.AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
-//
-// 	sendTxn, err := chaintree.NewSendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
-// 	assert.Nil(t, err)
-//
-// 	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  &senderChainTree.Dag.Tip,
-// 			Height:       senderHeight,
-// 			Transactions: []*transactions.Transaction{sendTxn},
-// 		},
-// 	}
-//
-// 	_, err = senderChainTree.ProcessBlock(context.TODO(), sendBlockWithHeaders)
-// 	assert.Nil(t, err)
-// 	senderHeight++
-//
-// 	recipientHeight := uint64(0)
-//
-// 	signedBlock, err := consensus.SignBlock(sendBlockWithHeaders, key)
-// 	require.Nil(t, err)
-//
-// 	headers := &consensus.StandardHeaders{}
-// 	err = typecaster.ToType(signedBlock.Headers, headers)
-// 	require.Nil(t, err)
-//
-// 	sigAddr := crypto.PubkeyToAddress(key.PublicKey).String()
-// 	signature, ok := headers.Signatures[sigAddr]
-// 	require.True(t, ok)
-//
-// 	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
-// 	leafNodes, err := senderChainTree.Dag.NodesForPath(context.TODO(), tokenPath)
-// 	require.Nil(t, err)
-//
-// 	leaves := make([][]byte, 0)
-// 	for _, ln := range leafNodes {
-// 		leaves = append(leaves, ln.RawData())
-// 	}
-//
-// 	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), &signatures.TreeState{Signature: signature}, leaves)
-// 	assert.Nil(t, err)
-//
-// 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  nil,
-// 			Height:       recipientHeight,
-// 			Transactions: []*transactions.Transaction{receiveTxn},
-// 		},
-// 	}
-//
-// 	recipientChainTree, err := consensus.NewSignedChainTree(recipientKey.PublicKey, store)
-// 	require.Nil(t, err)
-// 	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators, types.IsTokenRecipient)
-//
-// 	valid, err := recipientChainTree.ChainTree.ProcessBlock(context.TODO(), receiveBlockWithHeaders)
-// 	assert.Nil(t, err)
-// 	assert.True(t, valid)
-// 	recipientHeight++
-//
-// 	// now attempt to receive a new, otherwise valid send w/ the same transaction id (which should fail)
-//
-// 	sendTxn2, err := chaintree.NewSendTokenTransaction("1234", tokenName2, 2, recipientTreeDID)
-// 	assert.Nil(t, err)
-//
-// 	sendBlockWithHeaders = &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  &senderChainTree.Dag.Tip,
-// 			Height:       senderHeight,
-// 			Transactions: []*transactions.Transaction{sendTxn2},
-// 		},
-// 	}
-//
-// 	_, err = senderChainTree.ProcessBlock(context.TODO(), sendBlockWithHeaders)
-// 	assert.Nil(t, err)
-//
-// 	signedBlock, err = consensus.SignBlock(sendBlockWithHeaders, key)
-// 	require.Nil(t, err)
-//
-// 	headers = &consensus.StandardHeaders{}
-// 	err = typecaster.ToType(signedBlock.Headers, headers)
-// 	require.Nil(t, err)
-//
-// 	sigAddr = crypto.PubkeyToAddress(key.PublicKey).String()
-// 	signature, ok = headers.Signatures[sigAddr]
-// 	require.True(t, ok)
-//
-// 	tokenPath = []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "1"}
-// 	leafNodes, err = senderChainTree.Dag.NodesForPath(context.TODO(), tokenPath)
-// 	require.Nil(t, err)
-//
-// 	leaves = make([][]byte, 0)
-// 	for _, ln := range leafNodes {
-// 		leaves = append(leaves, ln.RawData())
-// 	}
-//
-// 	receiveTxn, err = chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), &signatures.TreeState{Signature: signature}, leaves)
-// 	assert.Nil(t, err)
-//
-// 	receiveBlockWithHeaders = &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  &recipientChainTree.ChainTree.Dag.Tip,
-// 			Height:       recipientHeight,
-// 			Transactions: []*transactions.Transaction{receiveTxn},
-// 		},
-// 	}
-//
-// 	valid, err = recipientChainTree.ChainTree.ProcessBlock(context.TODO(), receiveBlockWithHeaders)
-// 	assert.NotNil(t, err)
-// 	assert.False(t, valid)
-// }
+	tokenName1 := "testtoken1"
 
-// TODO: Restore this test for gossip4
-// func TestReceiveTokenInvalidSignature(t *testing.T) {
-// 	key, err := crypto.GenerateKey()
-// 	assert.Nil(t, err)
-//
-// 	store := nodestore.MustMemoryStore(context.TODO())
-// 	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
-// 	emptyTree := consensus.NewEmptyTree(treeDID, store)
-//
-// 	tokenName1 := "testtoken1"
-//
-// 	maximumAmount := uint64(50)
-// 	senderHeight := uint64(0)
-// 	establishTxn, err := chaintree.NewEstablishTokenTransaction(tokenName1, 0)
-// 	assert.Nil(t, err)
-//
-// 	mintTxn, err := chaintree.NewMintTokenTransaction(tokenName1, maximumAmount)
-// 	assert.Nil(t, err)
-//
-// 	blockWithHeaders := &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  nil,
-// 			Height:       senderHeight,
-// 			Transactions: []*transactions.Transaction{establishTxn, mintTxn},
-// 		},
-// 	}
-//
-// 	senderChainTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
-// 	assert.Nil(t, err)
-//
-// 	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
-// 	assert.Nil(t, err)
-// 	senderHeight++
-//
-// 	// establish & mint another token to ensure we aren't relying on there only being one
-//
-// 	tokenName2 := "testtoken2"
-// 	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
-//
-// 	establishTxn2, err := chaintree.NewEstablishTokenTransaction(tokenName2, 0)
-// 	assert.Nil(t, err)
-//
-// 	mintTxn2, err := chaintree.NewMintTokenTransaction(tokenName2, maximumAmount/2)
-// 	assert.Nil(t, err)
-//
-// 	blockWithHeaders = &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  &senderChainTree.Dag.Tip,
-// 			Height:       senderHeight,
-// 			Transactions: []*transactions.Transaction{establishTxn2, mintTxn2},
-// 		},
-// 	}
-//
-// 	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
-// 	assert.Nil(t, err)
-// 	senderHeight++
-//
-// 	recipientKey, err := crypto.GenerateKey()
-// 	require.Nil(t, err)
-// 	recipientTreeDID := consensus.AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
-//
-// 	sendTxn, err := chaintree.NewSendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
-// 	assert.Nil(t, err)
-//
-// 	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  &senderChainTree.Dag.Tip,
-// 			Height:       senderHeight,
-// 			Transactions: []*transactions.Transaction{sendTxn},
-// 		},
-// 	}
-//
-// 	_, err = senderChainTree.ProcessBlock(context.TODO(), sendBlockWithHeaders)
-// 	assert.Nil(t, err)
-//
-// 	otherKey, err := crypto.GenerateKey()
-// 	require.Nil(t, err)
-//
-// 	signedBlock, err := consensus.SignBlock(sendBlockWithHeaders, otherKey)
-// 	require.Nil(t, err)
-//
-// 	headers := &consensus.StandardHeaders{}
-// 	err = typecaster.ToType(signedBlock.Headers, headers)
-// 	require.Nil(t, err)
-//
-// 	sigAddr := crypto.PubkeyToAddress(otherKey.PublicKey).String()
-// 	signature, ok := headers.Signatures[sigAddr]
-// 	require.True(t, ok)
-//
-// 	objectID, err := senderChainTree.Id(context.TODO())
-// 	require.Nil(t, err)
-// 	treeState := &signatures.TreeState{
-// 		Signature:   signature,
-// 		ObjectId:    []byte(objectID),
-// 		NewTip:      senderChainTree.Dag.Tip.Bytes(),
-// 		PreviousTip: signedBlock.PreviousTip.Bytes(),
-// 	}
-//
-// 	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
-// 	leafNodes, err := senderChainTree.Dag.NodesForPath(context.TODO(), tokenPath)
-// 	require.Nil(t, err)
-//
-// 	leaves := make([][]byte, 0)
-// 	for _, ln := range leafNodes {
-// 		leaves = append(leaves, ln.RawData())
-// 	}
-//
-// 	recipientHeight := uint64(0)
-//
-// 	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), treeState, leaves)
-// 	assert.Nil(t, err)
-//
-// 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  nil,
-// 			Height:       recipientHeight,
-// 			Transactions: []*transactions.Transaction{receiveTxn},
-// 		},
-// 	}
-//
-// 	recipientChainTree, err := consensus.NewSignedChainTree(recipientKey.PublicKey, store)
-// 	require.Nil(t, err)
-//
-// 	isValidSignature := types.GenerateIsValidSignature(func(sig *signatures.TreeState) (bool, error) {
-// 		return false, nil
-// 	})
-//
-// 	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators,
-// 		types.IsTokenRecipient, isValidSignature)
-//
-// 	valid, err := recipientChainTree.ChainTree.ProcessBlock(context.TODO(), receiveBlockWithHeaders)
-// 	assert.Nil(t, err)
-// 	assert.False(t, valid)
-// }
+	maximumAmount := uint64(50)
+	senderHeight := uint64(0)
+	establishTxn, err := chaintree.NewEstablishTokenTransaction(tokenName1, 0)
+	assert.Nil(t, err)
 
-// TODO: Restore this test for gossip4
-// func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
-// 	key, err := crypto.GenerateKey()
-// 	assert.Nil(t, err)
-//
-// 	store := nodestore.MustMemoryStore(context.TODO())
-// 	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
-// 	emptyTree := consensus.NewEmptyTree(treeDID, store)
-//
-// 	tokenName1 := "testtoken1"
-//
-// 	maximumAmount := uint64(50)
-// 	senderHeight := uint64(0)
-//
-// 	establishTxn, err := chaintree.NewEstablishTokenTransaction(tokenName1, 0)
-// 	assert.Nil(t, err)
-//
-// 	mintTxn, err := chaintree.NewMintTokenTransaction(tokenName1, maximumAmount)
-// 	assert.Nil(t, err)
-//
-// 	blockWithHeaders := &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  nil,
-// 			Height:       senderHeight,
-// 			Transactions: []*transactions.Transaction{establishTxn, mintTxn},
-// 		},
-// 	}
-//
-// 	senderChainTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
-// 	assert.Nil(t, err)
-//
-// 	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
-// 	assert.Nil(t, err)
-// 	senderHeight++
-//
-// 	// establish & mint another token to ensure we aren't relying on there only being one
-//
-// 	tokenName2 := "testtoken2"
-// 	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
-//
-// 	establishTxn2, err := chaintree.NewEstablishTokenTransaction(tokenName2, 0)
-// 	assert.Nil(t, err)
-//
-// 	mintTxn2, err := chaintree.NewMintTokenTransaction(tokenName2, maximumAmount/2)
-// 	assert.Nil(t, err)
-//
-// 	blockWithHeaders = &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  &senderChainTree.Dag.Tip,
-// 			Height:       senderHeight,
-// 			Transactions: []*transactions.Transaction{establishTxn2, mintTxn2},
-// 		},
-// 	}
-//
-// 	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
-// 	assert.Nil(t, err)
-// 	senderHeight++
-//
-// 	otherKey, err := crypto.GenerateKey()
-// 	require.Nil(t, err)
-// 	otherTreeDID := consensus.AddrToDid(crypto.PubkeyToAddress(otherKey.PublicKey).String())
-//
-// 	sendTxn, err := chaintree.NewSendTokenTransaction("1234", tokenName2, 20, otherTreeDID)
-// 	assert.Nil(t, err)
-//
-// 	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  &senderChainTree.Dag.Tip,
-// 			Height:       senderHeight,
-// 			Transactions: []*transactions.Transaction{sendTxn},
-// 		},
-// 	}
-//
-// 	_, err = senderChainTree.ProcessBlock(context.TODO(), sendBlockWithHeaders)
-// 	assert.Nil(t, err)
-//
-// 	signedBlock, err := consensus.SignBlock(sendBlockWithHeaders, key)
-// 	require.Nil(t, err)
-//
-// 	headers := &consensus.StandardHeaders{}
-// 	err = typecaster.ToType(signedBlock.Headers, headers)
-// 	require.Nil(t, err)
-//
-// 	sigAddr := crypto.PubkeyToAddress(key.PublicKey).String()
-// 	signature, ok := headers.Signatures[sigAddr]
-// 	require.True(t, ok)
-//
-// 	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
-// 	leafNodes, err := senderChainTree.Dag.NodesForPath(context.TODO(), tokenPath)
-// 	require.Nil(t, err)
-//
-// 	leaves := make([][]byte, 0)
-// 	for _, ln := range leafNodes {
-// 		leaves = append(leaves, ln.RawData())
-// 	}
-//
-// 	recipientHeight := uint64(0)
-//
-// 	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), &signatures.TreeState{Signature: signature}, leaves)
-// 	assert.Nil(t, err)
-//
-// 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  nil,
-// 			Height:       recipientHeight,
-// 			Transactions: []*transactions.Transaction{receiveTxn},
-// 		},
-// 	}
-//
-// 	recipientKey, err := crypto.GenerateKey()
-// 	require.Nil(t, err)
-// 	recipientChainTree, err := consensus.NewSignedChainTree(recipientKey.PublicKey, store)
-// 	require.Nil(t, err)
-// 	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators, types.IsTokenRecipient)
-//
-// 	valid, err := recipientChainTree.ChainTree.ProcessBlock(context.TODO(), receiveBlockWithHeaders)
-// 	assert.Nil(t, err)
-// 	assert.False(t, valid)
-// }
+	mintTxn, err := chaintree.NewMintTokenTransaction(tokenName1, maximumAmount)
+	assert.Nil(t, err)
 
-// TODO: Restore this test for gossip4
-// func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
-// 	key, err := crypto.GenerateKey()
-// 	assert.Nil(t, err)
-//
-// 	store := nodestore.MustMemoryStore(context.TODO())
-// 	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
-// 	emptyTree := consensus.NewEmptyTree(treeDID, store)
-//
-// 	tokenName1 := "testtoken1"
-//
-// 	maximumAmount := uint64(50)
-// 	senderHeight := uint64(0)
-// 	establishTxn, err := chaintree.NewEstablishTokenTransaction(tokenName1, 0)
-// 	assert.Nil(t, err)
-//
-// 	mintTxn, err := chaintree.NewMintTokenTransaction(tokenName1, maximumAmount)
-// 	assert.Nil(t, err)
-//
-// 	blockWithHeaders := &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  nil,
-// 			Height:       senderHeight,
-// 			Transactions: []*transactions.Transaction{establishTxn, mintTxn},
-// 		},
-// 	}
-//
-// 	senderChainTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
-// 	assert.Nil(t, err)
-//
-// 	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
-// 	assert.Nil(t, err)
-// 	senderHeight++
-//
-// 	// establish & mint another token to ensure we aren't relying on there only being one
-//
-// 	tokenName2 := "testtoken2"
-// 	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
-//
-// 	establishTxn2, err := chaintree.NewEstablishTokenTransaction(tokenName2, 0)
-// 	assert.Nil(t, err)
-//
-// 	mintTxn2, err := chaintree.NewMintTokenTransaction(tokenName2, maximumAmount/2)
-// 	assert.Nil(t, err)
-//
-// 	blockWithHeaders = &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  &senderChainTree.Dag.Tip,
-// 			Height:       senderHeight,
-// 			Transactions: []*transactions.Transaction{establishTxn2, mintTxn2},
-// 		},
-// 	}
-//
-// 	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
-// 	assert.Nil(t, err)
-// 	senderHeight++
-//
-// 	recipientKey, err := crypto.GenerateKey()
-// 	require.Nil(t, err)
-// 	recipientTreeDID := consensus.AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
-//
-// 	sendTxn, err := chaintree.NewSendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
-// 	assert.Nil(t, err)
-//
-// 	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  &senderChainTree.Dag.Tip,
-// 			Height:       senderHeight,
-// 			Transactions: []*transactions.Transaction{sendTxn},
-// 		},
-// 	}
-//
-// 	_, err = senderChainTree.ProcessBlock(context.TODO(), sendBlockWithHeaders)
-// 	assert.Nil(t, err)
-//
-// 	otherKey, err := crypto.GenerateKey()
-// 	require.Nil(t, err)
-//
-// 	signedBlock, err := consensus.SignBlock(sendBlockWithHeaders, otherKey)
-// 	require.Nil(t, err)
-//
-// 	headers := &consensus.StandardHeaders{}
-// 	err = typecaster.ToType(signedBlock.Headers, headers)
-// 	require.Nil(t, err)
-//
-// 	sigAddr := crypto.PubkeyToAddress(otherKey.PublicKey).String()
-// 	signature, ok := headers.Signatures[sigAddr]
-// 	require.True(t, ok)
-//
-// 	objectID, err := senderChainTree.Id(context.TODO())
-// 	require.Nil(t, err)
-// 	treeState := &signatures.TreeState{
-// 		Signature:   signature,
-// 		ObjectId:    []byte(objectID),
-// 		NewTip:      emptyTree.Tip.Bytes(), // invalid
-// 		PreviousTip: signedBlock.PreviousTip.Bytes(),
-// 	}
-//
-// 	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
-// 	leafNodes, err := senderChainTree.Dag.NodesForPath(context.TODO(), tokenPath)
-// 	require.Nil(t, err)
-//
-// 	leaves := make([][]byte, 0)
-// 	for _, ln := range leafNodes {
-// 		leaves = append(leaves, ln.RawData())
-// 	}
-//
-// 	recipientHeight := uint64(0)
-//
-// 	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), treeState, leaves)
-// 	assert.Nil(t, err)
-//
-// 	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
-// 		Block: chaintree.Block{
-// 			PreviousTip:  nil,
-// 			Height:       recipientHeight,
-// 			Transactions: []*transactions.Transaction{receiveTxn},
-// 		},
-// 	}
-//
-// 	recipientChainTree, err := consensus.NewSignedChainTree(recipientKey.PublicKey, store)
-// 	require.Nil(t, err)
-//
-// 	isValidSignature := types.GenerateIsValidSignature(func(sig *signatures.TreeState) (bool, error) {
-// 		return true, nil // this should get caught before it gets here; so ensure this doesn't cause false positives
-// 	})
-//
-// 	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators,
-// 		types.IsTokenRecipient, isValidSignature)
-//
-// 	valid, err := recipientChainTree.ChainTree.ProcessBlock(context.TODO(), receiveBlockWithHeaders)
-// 	assert.Nil(t, err)
-// 	assert.False(t, valid)
-// }
+	blockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{establishTxn, mintTxn},
+		},
+	}
+
+	senderChainTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
+	assert.Nil(t, err)
+
+	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	// establish & mint another token to ensure we aren't relying on there only being one
+
+	tokenName2 := "testtoken2"
+	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
+
+	establishTxn2, err := chaintree.NewEstablishTokenTransaction(tokenName2, 0)
+	assert.Nil(t, err)
+
+	mintTxn2, err := chaintree.NewMintTokenTransaction(tokenName2, maximumAmount/2)
+	assert.Nil(t, err)
+
+	blockWithHeaders = &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{establishTxn2, mintTxn2},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	recipientKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	recipientTreeDID := consensus.AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
+
+	sendTxn, err := chaintree.NewSendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
+	assert.Nil(t, err)
+
+	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{sendTxn},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(context.TODO(), sendBlockWithHeaders)
+	assert.Nil(t, err)
+
+	recipientHeight := uint64(0)
+
+	signedBlock, err := consensus.SignBlock(sendBlockWithHeaders, key)
+	require.Nil(t, err)
+
+	headers := &consensus.StandardHeaders{}
+	err = typecaster.ToType(signedBlock.Headers, headers)
+	require.Nil(t, err)
+
+	sigAddr := crypto.PubkeyToAddress(key.PublicKey).String()
+	signature, ok := headers.Signatures[sigAddr]
+	require.True(t, ok)
+
+	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
+	leafNodes, err := senderChainTree.Dag.NodesForPath(context.TODO(), tokenPath)
+	require.Nil(t, err)
+
+	leaves := make([][]byte, 0)
+	for _, ln := range leafNodes {
+		leaves = append(leaves, ln.RawData())
+	}
+
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), &signatures.TreeState{Signature: signature}, leaves)
+	assert.Nil(t, err)
+
+	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       recipientHeight,
+			Transactions: []*transactions.Transaction{receiveTxn},
+		},
+	}
+
+	recipientChainTree, err := consensus.NewSignedChainTree(recipientKey.PublicKey, store)
+	require.Nil(t, err)
+	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators, types.IsTokenRecipient)
+
+	valid, err := recipientChainTree.ChainTree.ProcessBlock(context.TODO(), receiveBlockWithHeaders)
+	assert.Nil(t, err)
+	assert.True(t, valid)
+
+	senderTree, err := senderChainTree.Tree(context.TODO())
+	require.Nil(t, err)
+
+	tokenCanonicalName2, err := consensus.CanonicalTokenName(senderTree, treeDID, tokenName2, true)
+	require.Nil(t, err)
+
+	senderLedger := consensus.NewTreeLedger(senderTree, tokenCanonicalName2)
+	senderBalance, err := senderLedger.Balance()
+	require.Nil(t, err)
+
+	recipientTree, err := recipientChainTree.ChainTree.Tree(context.TODO())
+	require.Nil(t, err)
+	recipientLedger := consensus.NewTreeLedger(recipientTree, tokenCanonicalName2)
+	recipientBalance, err := recipientLedger.Balance()
+	require.Nil(t, err)
+
+	assert.Equal(t, uint64(5), senderBalance)
+	assert.Equal(t, uint64(20), recipientBalance)
+}
+
+func TestReceiveTokenInvalidTip(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	assert.Nil(t, err)
+
+	store := nodestore.MustMemoryStore(context.TODO())
+	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
+	emptyTree := consensus.NewEmptyTree(treeDID, store)
+
+	tokenName1 := "testtoken1"
+
+	maximumAmount := uint64(50)
+	senderHeight := uint64(0)
+	establishTxn, err := chaintree.NewEstablishTokenTransaction(tokenName1, 0)
+	assert.Nil(t, err)
+
+	mintTxn, err := chaintree.NewMintTokenTransaction(tokenName1, maximumAmount)
+	assert.Nil(t, err)
+
+	blockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{establishTxn, mintTxn},
+		},
+	}
+
+	senderChainTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
+	assert.Nil(t, err)
+
+	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	// establish & mint another token to ensure we aren't relying on there only being one
+
+	tokenName2 := "testtoken2"
+	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
+
+	establishTxn2, err := chaintree.NewEstablishTokenTransaction(tokenName2, 0)
+	assert.Nil(t, err)
+
+	mintTxn2, err := chaintree.NewMintTokenTransaction(tokenName2, maximumAmount/2)
+	assert.Nil(t, err)
+
+	blockWithHeaders = &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{establishTxn2, mintTxn2},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	recipientKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	recipientTreeDID := consensus.AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
+
+	sendTxn, err := chaintree.NewSendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
+	assert.Nil(t, err)
+
+	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{sendTxn},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(context.TODO(), sendBlockWithHeaders)
+	assert.Nil(t, err)
+
+	recipientHeight := uint64(0)
+
+	signedBlock, err := consensus.SignBlock(sendBlockWithHeaders, key)
+	require.Nil(t, err)
+
+	headers := &consensus.StandardHeaders{}
+	err = typecaster.ToType(signedBlock.Headers, headers)
+	require.Nil(t, err)
+
+	sigAddr := crypto.PubkeyToAddress(key.PublicKey).String()
+	signature, ok := headers.Signatures[sigAddr]
+	require.True(t, ok)
+
+	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
+	leafNodes, err := senderChainTree.Dag.NodesForPath(context.TODO(), tokenPath)
+	require.Nil(t, err)
+
+	leaves := make([][]byte, 0)
+	for _, ln := range leafNodes {
+		leaves = append(leaves, ln.RawData())
+	}
+
+	otherChainTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
+	require.Nil(t, err)
+
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", otherChainTree.Dag.Tip.Bytes(), &signatures.TreeState{Signature: signature}, leaves)
+	assert.Nil(t, err)
+
+	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       recipientHeight,
+			Transactions: []*transactions.Transaction{receiveTxn},
+		},
+	}
+
+	recipientChainTree, err := consensus.NewSignedChainTree(recipientKey.PublicKey, store)
+	require.Nil(t, err)
+	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators, types.IsTokenRecipient)
+
+	valid, err := recipientChainTree.ChainTree.ProcessBlock(context.TODO(), receiveBlockWithHeaders)
+	assert.NotNil(t, err)
+	assert.False(t, valid)
+}
+
+func TestReceiveTokenInvalidDoubleReceive(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	assert.Nil(t, err)
+
+	store := nodestore.MustMemoryStore(context.TODO())
+	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
+	emptyTree := consensus.NewEmptyTree(treeDID, store)
+
+	tokenName1 := "testtoken1"
+
+	maximumAmount := uint64(50)
+	senderHeight := uint64(0)
+	establishTxn, err := chaintree.NewEstablishTokenTransaction(tokenName1, 0)
+	assert.Nil(t, err)
+
+	mintTxn, err := chaintree.NewMintTokenTransaction(tokenName1, maximumAmount)
+	assert.Nil(t, err)
+
+	blockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{establishTxn, mintTxn},
+		},
+	}
+
+	senderChainTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
+	assert.Nil(t, err)
+
+	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	// establish & mint another token to ensure we aren't relying on there only being one
+
+	tokenName2 := "testtoken2"
+	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
+
+	establishTxn2, err := chaintree.NewEstablishTokenTransaction(tokenName2, 0)
+	assert.Nil(t, err)
+
+	mintTxn2, err := chaintree.NewMintTokenTransaction(tokenName2, maximumAmount/2)
+	assert.Nil(t, err)
+
+	blockWithHeaders = &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{establishTxn2, mintTxn2},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	recipientKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	recipientTreeDID := consensus.AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
+
+	sendTxn, err := chaintree.NewSendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
+	assert.Nil(t, err)
+
+	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{sendTxn},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(context.TODO(), sendBlockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	recipientHeight := uint64(0)
+
+	signedBlock, err := consensus.SignBlock(sendBlockWithHeaders, key)
+	require.Nil(t, err)
+
+	headers := &consensus.StandardHeaders{}
+	err = typecaster.ToType(signedBlock.Headers, headers)
+	require.Nil(t, err)
+
+	sigAddr := crypto.PubkeyToAddress(key.PublicKey).String()
+	signature, ok := headers.Signatures[sigAddr]
+	require.True(t, ok)
+
+	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
+	leafNodes, err := senderChainTree.Dag.NodesForPath(context.TODO(), tokenPath)
+	require.Nil(t, err)
+
+	leaves := make([][]byte, 0)
+	for _, ln := range leafNodes {
+		leaves = append(leaves, ln.RawData())
+	}
+
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), &signatures.TreeState{Signature: signature}, leaves)
+	assert.Nil(t, err)
+
+	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       recipientHeight,
+			Transactions: []*transactions.Transaction{receiveTxn},
+		},
+	}
+
+	recipientChainTree, err := consensus.NewSignedChainTree(recipientKey.PublicKey, store)
+	require.Nil(t, err)
+	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators, types.IsTokenRecipient)
+
+	valid, err := recipientChainTree.ChainTree.ProcessBlock(context.TODO(), receiveBlockWithHeaders)
+	assert.Nil(t, err)
+	assert.True(t, valid)
+	recipientHeight++
+
+	// now attempt to receive a new, otherwise valid send w/ the same transaction id (which should fail)
+
+	sendTxn2, err := chaintree.NewSendTokenTransaction("1234", tokenName2, 2, recipientTreeDID)
+	assert.Nil(t, err)
+
+	sendBlockWithHeaders = &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{sendTxn2},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(context.TODO(), sendBlockWithHeaders)
+	assert.Nil(t, err)
+
+	signedBlock, err = consensus.SignBlock(sendBlockWithHeaders, key)
+	require.Nil(t, err)
+
+	headers = &consensus.StandardHeaders{}
+	err = typecaster.ToType(signedBlock.Headers, headers)
+	require.Nil(t, err)
+
+	sigAddr = crypto.PubkeyToAddress(key.PublicKey).String()
+	signature, ok = headers.Signatures[sigAddr]
+	require.True(t, ok)
+
+	tokenPath = []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "1"}
+	leafNodes, err = senderChainTree.Dag.NodesForPath(context.TODO(), tokenPath)
+	require.Nil(t, err)
+
+	leaves = make([][]byte, 0)
+	for _, ln := range leafNodes {
+		leaves = append(leaves, ln.RawData())
+	}
+
+	receiveTxn, err = chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), &signatures.TreeState{Signature: signature}, leaves)
+	assert.Nil(t, err)
+
+	receiveBlockWithHeaders = &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  &recipientChainTree.ChainTree.Dag.Tip,
+			Height:       recipientHeight,
+			Transactions: []*transactions.Transaction{receiveTxn},
+		},
+	}
+
+	valid, err = recipientChainTree.ChainTree.ProcessBlock(context.TODO(), receiveBlockWithHeaders)
+	assert.NotNil(t, err)
+	assert.False(t, valid)
+}
+
+func TestReceiveTokenInvalidSignature(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	assert.Nil(t, err)
+
+	store := nodestore.MustMemoryStore(context.TODO())
+	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
+	emptyTree := consensus.NewEmptyTree(treeDID, store)
+
+	tokenName1 := "testtoken1"
+
+	maximumAmount := uint64(50)
+	senderHeight := uint64(0)
+	establishTxn, err := chaintree.NewEstablishTokenTransaction(tokenName1, 0)
+	assert.Nil(t, err)
+
+	mintTxn, err := chaintree.NewMintTokenTransaction(tokenName1, maximumAmount)
+	assert.Nil(t, err)
+
+	blockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{establishTxn, mintTxn},
+		},
+	}
+
+	senderChainTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
+	assert.Nil(t, err)
+
+	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	// establish & mint another token to ensure we aren't relying on there only being one
+
+	tokenName2 := "testtoken2"
+	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
+
+	establishTxn2, err := chaintree.NewEstablishTokenTransaction(tokenName2, 0)
+	assert.Nil(t, err)
+
+	mintTxn2, err := chaintree.NewMintTokenTransaction(tokenName2, maximumAmount/2)
+	assert.Nil(t, err)
+
+	blockWithHeaders = &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{establishTxn2, mintTxn2},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	recipientKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	recipientTreeDID := consensus.AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
+
+	sendTxn, err := chaintree.NewSendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
+	assert.Nil(t, err)
+
+	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{sendTxn},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(context.TODO(), sendBlockWithHeaders)
+	assert.Nil(t, err)
+
+	otherKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+
+	signedBlock, err := consensus.SignBlock(sendBlockWithHeaders, otherKey)
+	require.Nil(t, err)
+
+	headers := &consensus.StandardHeaders{}
+	err = typecaster.ToType(signedBlock.Headers, headers)
+	require.Nil(t, err)
+
+	sigAddr := crypto.PubkeyToAddress(otherKey.PublicKey).String()
+	signature, ok := headers.Signatures[sigAddr]
+	require.True(t, ok)
+
+	objectID, err := senderChainTree.Id(context.TODO())
+	require.Nil(t, err)
+	treeState := &signatures.TreeState{
+		Signature:   signature,
+		ObjectId:    []byte(objectID),
+		NewTip:      senderChainTree.Dag.Tip.Bytes(),
+		PreviousTip: signedBlock.PreviousTip.Bytes(),
+	}
+
+	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
+	leafNodes, err := senderChainTree.Dag.NodesForPath(context.TODO(), tokenPath)
+	require.Nil(t, err)
+
+	leaves := make([][]byte, 0)
+	for _, ln := range leafNodes {
+		leaves = append(leaves, ln.RawData())
+	}
+
+	recipientHeight := uint64(0)
+
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), treeState, leaves)
+	assert.Nil(t, err)
+
+	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       recipientHeight,
+			Transactions: []*transactions.Transaction{receiveTxn},
+		},
+	}
+
+	recipientChainTree, err := consensus.NewSignedChainTree(recipientKey.PublicKey, store)
+	require.Nil(t, err)
+
+	isValidSignature := types.GenerateIsValidSignature(func(sig *signatures.TreeState) (bool, error) {
+		return false, nil
+	})
+
+	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators,
+		types.IsTokenRecipient, isValidSignature)
+
+	valid, err := recipientChainTree.ChainTree.ProcessBlock(context.TODO(), receiveBlockWithHeaders)
+	assert.Nil(t, err)
+	assert.False(t, valid)
+}
+
+func TestReceiveTokenInvalidDestinationChainId(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	assert.Nil(t, err)
+
+	store := nodestore.MustMemoryStore(context.TODO())
+	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
+	emptyTree := consensus.NewEmptyTree(treeDID, store)
+
+	tokenName1 := "testtoken1"
+
+	maximumAmount := uint64(50)
+	senderHeight := uint64(0)
+
+	establishTxn, err := chaintree.NewEstablishTokenTransaction(tokenName1, 0)
+	assert.Nil(t, err)
+
+	mintTxn, err := chaintree.NewMintTokenTransaction(tokenName1, maximumAmount)
+	assert.Nil(t, err)
+
+	blockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{establishTxn, mintTxn},
+		},
+	}
+
+	senderChainTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
+	assert.Nil(t, err)
+
+	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	// establish & mint another token to ensure we aren't relying on there only being one
+
+	tokenName2 := "testtoken2"
+	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
+
+	establishTxn2, err := chaintree.NewEstablishTokenTransaction(tokenName2, 0)
+	assert.Nil(t, err)
+
+	mintTxn2, err := chaintree.NewMintTokenTransaction(tokenName2, maximumAmount/2)
+	assert.Nil(t, err)
+
+	blockWithHeaders = &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{establishTxn2, mintTxn2},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	otherKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	otherTreeDID := consensus.AddrToDid(crypto.PubkeyToAddress(otherKey.PublicKey).String())
+
+	sendTxn, err := chaintree.NewSendTokenTransaction("1234", tokenName2, 20, otherTreeDID)
+	assert.Nil(t, err)
+
+	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{sendTxn},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(context.TODO(), sendBlockWithHeaders)
+	assert.Nil(t, err)
+
+	signedBlock, err := consensus.SignBlock(sendBlockWithHeaders, key)
+	require.Nil(t, err)
+
+	headers := &consensus.StandardHeaders{}
+	err = typecaster.ToType(signedBlock.Headers, headers)
+	require.Nil(t, err)
+
+	sigAddr := crypto.PubkeyToAddress(key.PublicKey).String()
+	signature, ok := headers.Signatures[sigAddr]
+	require.True(t, ok)
+
+	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
+	leafNodes, err := senderChainTree.Dag.NodesForPath(context.TODO(), tokenPath)
+	require.Nil(t, err)
+
+	leaves := make([][]byte, 0)
+	for _, ln := range leafNodes {
+		leaves = append(leaves, ln.RawData())
+	}
+
+	recipientHeight := uint64(0)
+
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), &signatures.TreeState{Signature: signature}, leaves)
+	assert.Nil(t, err)
+
+	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       recipientHeight,
+			Transactions: []*transactions.Transaction{receiveTxn},
+		},
+	}
+
+	recipientKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	recipientChainTree, err := consensus.NewSignedChainTree(recipientKey.PublicKey, store)
+	require.Nil(t, err)
+	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators, types.IsTokenRecipient)
+
+	valid, err := recipientChainTree.ChainTree.ProcessBlock(context.TODO(), receiveBlockWithHeaders)
+	assert.Nil(t, err)
+	assert.False(t, valid)
+}
+
+func TestReceiveTokenMismatchedSignatureTip(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	assert.Nil(t, err)
+
+	store := nodestore.MustMemoryStore(context.TODO())
+	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
+	emptyTree := consensus.NewEmptyTree(treeDID, store)
+
+	tokenName1 := "testtoken1"
+
+	maximumAmount := uint64(50)
+	senderHeight := uint64(0)
+	establishTxn, err := chaintree.NewEstablishTokenTransaction(tokenName1, 0)
+	assert.Nil(t, err)
+
+	mintTxn, err := chaintree.NewMintTokenTransaction(tokenName1, maximumAmount)
+	assert.Nil(t, err)
+
+	blockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{establishTxn, mintTxn},
+		},
+	}
+
+	senderChainTree, err := chaintree.NewChainTree(context.TODO(), emptyTree, nil, consensus.DefaultTransactors)
+	assert.Nil(t, err)
+
+	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	// establish & mint another token to ensure we aren't relying on there only being one
+
+	tokenName2 := "testtoken2"
+	tokenFullName2 := strings.Join([]string{treeDID, tokenName2}, ":")
+
+	establishTxn2, err := chaintree.NewEstablishTokenTransaction(tokenName2, 0)
+	assert.Nil(t, err)
+
+	mintTxn2, err := chaintree.NewMintTokenTransaction(tokenName2, maximumAmount/2)
+	assert.Nil(t, err)
+
+	blockWithHeaders = &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{establishTxn2, mintTxn2},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(context.TODO(), blockWithHeaders)
+	assert.Nil(t, err)
+	senderHeight++
+
+	recipientKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	recipientTreeDID := consensus.AddrToDid(crypto.PubkeyToAddress(recipientKey.PublicKey).String())
+
+	sendTxn, err := chaintree.NewSendTokenTransaction("1234", tokenName2, 20, recipientTreeDID)
+	assert.Nil(t, err)
+
+	sendBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  &senderChainTree.Dag.Tip,
+			Height:       senderHeight,
+			Transactions: []*transactions.Transaction{sendTxn},
+		},
+	}
+
+	_, err = senderChainTree.ProcessBlock(context.TODO(), sendBlockWithHeaders)
+	assert.Nil(t, err)
+
+	otherKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+
+	signedBlock, err := consensus.SignBlock(sendBlockWithHeaders, otherKey)
+	require.Nil(t, err)
+
+	headers := &consensus.StandardHeaders{}
+	err = typecaster.ToType(signedBlock.Headers, headers)
+	require.Nil(t, err)
+
+	sigAddr := crypto.PubkeyToAddress(otherKey.PublicKey).String()
+	signature, ok := headers.Signatures[sigAddr]
+	require.True(t, ok)
+
+	objectID, err := senderChainTree.Id(context.TODO())
+	require.Nil(t, err)
+	treeState := &signatures.TreeState{
+		Signature:   signature,
+		ObjectId:    []byte(objectID),
+		NewTip:      emptyTree.Tip.Bytes(), // invalid
+		PreviousTip: signedBlock.PreviousTip.Bytes(),
+	}
+
+	tokenPath := []string{"tree", "_tupelo", "tokens", tokenFullName2, consensus.TokenSendLabel, "0"}
+	leafNodes, err := senderChainTree.Dag.NodesForPath(context.TODO(), tokenPath)
+	require.Nil(t, err)
+
+	leaves := make([][]byte, 0)
+	for _, ln := range leafNodes {
+		leaves = append(leaves, ln.RawData())
+	}
+
+	recipientHeight := uint64(0)
+
+	receiveTxn, err := chaintree.NewReceiveTokenTransaction("1234", senderChainTree.Dag.Tip.Bytes(), treeState, leaves)
+	assert.Nil(t, err)
+
+	receiveBlockWithHeaders := &chaintree.BlockWithHeaders{
+		Block: chaintree.Block{
+			PreviousTip:  nil,
+			Height:       recipientHeight,
+			Transactions: []*transactions.Transaction{receiveTxn},
+		},
+	}
+
+	recipientChainTree, err := consensus.NewSignedChainTree(recipientKey.PublicKey, store)
+	require.Nil(t, err)
+
+	isValidSignature := types.GenerateIsValidSignature(func(sig *signatures.TreeState) (bool, error) {
+		return true, nil // this should get caught before it gets here; so ensure this doesn't cause false positives
+	})
+
+	recipientChainTree.ChainTree.BlockValidators = append(recipientChainTree.ChainTree.BlockValidators,
+		types.IsTokenRecipient, isValidSignature)
+
+	valid, err := recipientChainTree.ChainTree.ProcessBlock(context.TODO(), receiveBlockWithHeaders)
+	assert.Nil(t, err)
+	assert.False(t, valid)
+}
 
 func TestDecodePath(t *testing.T) {
 	dp1, err := consensus.DecodePath("/some/data")

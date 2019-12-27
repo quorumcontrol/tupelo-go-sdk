@@ -14,8 +14,8 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p"
 	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/metrics"
+	host "github.com/libp2p/go-libp2p-core/host"
+	metrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
@@ -28,8 +28,9 @@ import (
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/opentracing/opentracing-go"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/quorumcontrol/chaintree/cachedblockstore"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
 	"golang.org/x/xerrors"
 )
 
@@ -107,11 +108,11 @@ func NewHostAndBitSwapPeer(ctx context.Context, userOpts ...Option) (*LibP2PHost
 		return nil, nil, fmt.Errorf("error generating libp2p host: %v", err)
 	}
 
-	bitswapPeer, err := NewBitswapPeer(ctx, h, c.BitswapOptions...)
+	peer, err := NewBitswapPeer(ctx, h, c.BitswapOptions...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error generating bitswap peer: %v", err)
 	}
-	return h, bitswapPeer, nil
+	return h, peer, nil
 }
 
 func NewHostFromOptions(ctx context.Context, userOpts ...Option) (*LibP2PHost, error) {
@@ -125,8 +126,7 @@ func NewHostFromOptions(ctx context.Context, userOpts ...Option) (*LibP2PHost, e
 }
 
 func NewRelayLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port int) (*LibP2PHost, error) {
-	// TODO: Restore logging in gossip4
-	// middleware.Log.Debugw("constructing new relay libp2p host")
+	middleware.Log.Debugw("constructing new relay libp2p host")
 	cfg, err := backwardsCompatibleConfig(privateKey, port, true)
 	if err != nil {
 		return nil, fmt.Errorf("error generating config: %v", err)
@@ -135,8 +135,7 @@ func NewRelayLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port 
 }
 
 func NewLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port int) (*LibP2PHost, error) {
-	// TODO: Restore logging in gossip4
-	// middleware.Log.Debugw("constructing new libp2p host")
+	middleware.Log.Debugw("constructing new libp2p host")
 	cfg, err := backwardsCompatibleConfig(privateKey, port, false)
 	if err != nil {
 		return nil, fmt.Errorf("error generating config: %v", err)
