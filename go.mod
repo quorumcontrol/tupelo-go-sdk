@@ -5,13 +5,13 @@ go 1.12
 require (
 	github.com/AsynkronIT/protoactor-go v0.0.0-20190318154652-aa1aa20c2fa0
 	github.com/BurntSushi/toml v0.3.1
-	github.com/avast/retry-go v2.3.0+incompatible
+	github.com/avast/retry-go v2.3.0+incompatible // indirect
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/ethereum/go-ethereum v1.9.3
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.3.2 // indirect
-	github.com/hashicorp/golang-lru v0.5.3
+	github.com/goware/modvendor v0.1.0 // indirect
 	github.com/ipfs/go-bitswap v0.1.9-0.20191015150653-291b2674f1f1
 	github.com/ipfs/go-blockservice v0.1.1
 	github.com/ipfs/go-cid v0.0.3
@@ -30,12 +30,13 @@ require (
 	github.com/libp2p/go-libp2p-pnet v0.1.0
 	github.com/libp2p/go-libp2p-pubsub v0.1.1
 	github.com/libp2p/go-libp2p-swarm v0.2.2
+	github.com/mattn/go-zglob v0.0.1 // indirect
 	github.com/multiformats/go-multiaddr v0.1.1
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.8.1
-	github.com/quorumcontrol/chaintree v0.9.2
-	github.com/quorumcontrol/go-hamt-ipld v0.0.2-0.20190913132514-52eecd11b85f
-	github.com/quorumcontrol/messages/v2 v2.1.0
+	github.com/quorumcontrol/chaintree v1.0.2-0.20191227162341-8e578701c1cb
+	github.com/quorumcontrol/go-hamt-ipld v0.0.2-0.20190913132514-52eecd11b85f // indirect
+	github.com/quorumcontrol/messages/v2 v2.1.2
 	github.com/spy16/parens v0.0.8
 	github.com/stretchr/testify v1.3.0
 	github.com/uber-go/atomic v1.4.0 // indirect
