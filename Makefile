@@ -16,7 +16,6 @@ $(FIRSTGOPATH)/bin/modvendor:
 	go get -u github.com/goware/modvendor
 
 vendor: go.mod go.sum $(FIRSTGOPATH)/bin/modvendor
-	mkdir -p $(FIRSTGOPATH)/pkg/mod/github.com/libp2p/go-libp2p-pubsub@v0.0.3
 	go mod vendor
 	modvendor -copy="**/*.c **/*.h"
 
