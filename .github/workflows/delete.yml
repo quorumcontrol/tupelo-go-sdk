@@ -5,6 +5,7 @@ jobs:
     name: Docker Delete Tag
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@v2
     - name: Docker Login
       run: docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
       env:
