@@ -16,19 +16,8 @@ type Checkpoint struct {
 	wrapped          *cbornode.Node
 }
 
-func newCheckpoint(height uint64, abrs []cid.Cid) *Checkpoint {
-	return &Checkpoint{
-		Height:           height,
-		AddBlockRequests: abrs,
-	}
-}
-
 func (c *Checkpoint) CID() cid.Cid {
 	return c.Wrapped().Cid()
-}
-
-func (c *Checkpoint) ID() string {
-	return c.CID().String()
 }
 
 func (c *Checkpoint) Wrapped() *cbornode.Node {
