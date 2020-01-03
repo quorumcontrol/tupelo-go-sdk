@@ -20,6 +20,8 @@ github.com/armon/go-metrics v0.0.0-20180917152333-f0300d1749da/go.mod h1:Q73ZrmV
 github.com/armon/go-radix v0.0.0-20180808171621-7fddfc383310/go.mod h1:ufUuZ+zHj4x4TnLV4JWEpy2hxWSpsRywHrMgIH9cCH8=
 github.com/armon/go-radix v1.0.0 h1:F4z6KzEeeQIMeLFa97iZU6vupzoecKdU5TX24SNppXI=
 github.com/armon/go-radix v1.0.0/go.mod h1:ufUuZ+zHj4x4TnLV4JWEpy2hxWSpsRywHrMgIH9cCH8=
+github.com/avast/retry-go v2.4.3+incompatible h1:c/FTk2POrEQyZfaHBMkMrXdu3/6IESJUHwu8r3k1JEU=
+github.com/avast/retry-go v2.4.3+incompatible/go.mod h1:XtSnn+n/sHqQIpZ10K1qAevBhOOCWBLXXy3hyiqqBrY=
 github.com/bgentry/speakeasy v0.1.0/go.mod h1:+zsyZBPWlz7T6j88CTgSN5bM796AkVf0kBD4zp0CCIs=
 github.com/btcsuite/btcd v0.0.0-20190213025234-306aecffea32/go.mod h1:DrZx5ec/dmnfpw9KyYoQyYo7d0KEvTkk/5M/vbZjAr8=
 github.com/btcsuite/btcd v0.0.0-20190523000118-16327141da8c/go.mod h1:3J08xEfcugPacsc34/LKRU2yO7YmuT8yt28J8k2+rrI=
@@ -531,6 +533,7 @@ github.com/prometheus/procfs v0.0.0-20181005140218-185b4288413d h1:GoAlyOgbOEIFd
 github.com/prometheus/procfs v0.0.0-20181005140218-185b4288413d/go.mod h1:c3At6R/oaqEKCNdg8wHV1ftS6bRYblBhIjjI8uT2IGk=
 github.com/quorumcontrol/chaintree v0.9.4 h1:FfAd7l/Il53ZG2snvtb/6vx57Lme5ELl/XUxmgIPGI8=
 github.com/quorumcontrol/chaintree v0.9.4/go.mod h1:XZMtCWpLgWM6UVSRk431n+HIjJcndppvLvxP1v19gwU=
+github.com/quorumcontrol/messages v2.0.1+incompatible h1:8bqzWXzanPcs/YW/mYGzZbI1bT5t0nngsUBBQKV6YmA=
 github.com/quorumcontrol/messages/v2 v2.1.2 h1:5LQQYWJc97fAH+bXpRXXsQbM6sSS+mYDjHNfLI8Snwk=
 github.com/quorumcontrol/messages/v2 v2.1.2/go.mod h1:on7qxEZYufdF6ZIyXFFWonyEmSdCuY+McIk2kLDiGwg=
 github.com/russross/blackfriday v1.5.2/go.mod h1:JO/DiYxRf+HjHt06OyowR9PTA263kcR/rfWxYHBV53g=

@@ -5,11 +5,13 @@ go 1.12
 require (
 	github.com/AsynkronIT/protoactor-go v0.0.0-20190318154652-aa1aa20c2fa0
 	github.com/BurntSushi/toml v0.3.1
+	github.com/avast/retry-go v2.4.3+incompatible
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/ethereum/go-ethereum v1.9.3
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.3.2 // indirect
+	github.com/hashicorp/golang-lru v0.5.3
 	github.com/ipfs/go-bitswap v0.1.9-0.20191015150653-291b2674f1f1
 	github.com/ipfs/go-blockservice v0.1.1
 	github.com/ipfs/go-cid v0.0.3
