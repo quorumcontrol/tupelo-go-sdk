@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
+	logging "github.com/ipfs/go-log"
 	g3types "github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip4/testhelpers"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 	"github.com/quorumcontrol/tupelo-go-sdk/testnotarygroup"
 	"github.com/quorumcontrol/tupelo/gossip4"
@@ -23,7 +26,9 @@ func newTupeloSystem(ctx context.Context, testSet *testnotarygroup.TestSet) (*g3
 	}
 
 	for i := range ng.AllSigners() {
-		p2pNode, peer, err := p2p.NewHostAndBitSwapPeer(ctx, p2p.WithKey(testSet.EcdsaKeys[i])) // TODO: options?
+		logging.SetLogLevel(fmt.Sprintf("node-%d", i), "debug")
+
+		p2pNode, peer, err := p2p.NewHostAndBitSwapPeer(ctx, p2p.WithKey(testSet.EcdsaKeys[i]), p2p.WithDiscoveryNamespaces("g4")) // TODO: options?
 		if err != nil {
 			return nil, nil, fmt.Errorf("error making node: %v", err)
 		}
@@ -43,23 +48,11 @@ func newTupeloSystem(ctx context.Context, testSet *testnotarygroup.TestSet) (*g3
 	return ng, nodes, nil
 }
 
-func startNodes(t *testing.T, ctx context.Context, nodes []*gossip4.Node) {
-	booter, err := p2p.NewHostFromOptions(ctx)
-	require.Nil(t, err)
-
-	// logging.SetLogLevel(fmt.Sprintf("node-%d", n.signerIndex), "info")
-	bootAddrs := make([]string, len(booter.Addresses()))
-	for i, addr := range booter.Addresses() {
-		bootAddrs[i] = addr.String()
-	}
-
-	for i, node := range nodes {
-		if i > 0 {
-			err := node.Bootstrap(ctx, bootAddrs)
-			require.Nil(t, err)
-			defer node.Close()
-		}
-		err := node.Start(ctx)
+func startNodes(t *testing.T, ctx context.Context, nodes []*gossip4.Node, bootAddrs []string) {
+	for _, node := range nodes {
+		err := node.Bootstrap(ctx, bootAddrs)
+		require.Nil(t, err)
+		err = node.Start(ctx)
 		require.Nil(t, err)
 	}
 }
@@ -74,13 +67,35 @@ func TestClient2(t *testing.T) {
 	require.Nil(t, err)
 	require.Len(t, nodes, numMembers)
 
-	startNodes(t, ctx, nodes)
+	booter, err := p2p.NewHostFromOptions(ctx)
+	require.Nil(t, err)
 
-	cliHost, peer, err := p2p.NewHostAndBitSwapPeer(ctx)
+	// logging.SetLogLevel(fmt.Sprintf("node-%d", n.signerIndex), "info")
+	bootAddrs := make([]string, len(booter.Addresses()))
+	for i, addr := range booter.Addresses() {
+		bootAddrs[i] = addr.String()
+	}
+
+	startNodes(t, ctx, nodes, bootAddrs)
+
+	cliHost, peer, err := p2p.NewHostAndBitSwapPeer(ctx, p2p.WithDiscoveryNamespaces("g4"))
+	require.Nil(t, err)
+	_, err = cliHost.Bootstrap(bootAddrs)
+	require.Nil(t, err)
+
+	err = cliHost.WaitForBootstrap(numMembers, 5*time.Second)
 	require.Nil(t, err)
 
 	cli := New(group, cliHost.GetPubSub(), peer)
 
 	err = cli.Start(ctx)
 	require.Nil(t, err)
+
+	time.Sleep(1 * time.Second)
+
+	abr1 := testhelpers.NewValidTransaction(t)
+
+	err = cli.Send(ctx, &abr1, 5*time.Second)
+	require.Nil(t, err)
+
 }

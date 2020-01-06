@@ -5,8 +5,14 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"time"
+
+	"github.com/quorumcontrol/chaintree/nodestore"
+	"github.com/quorumcontrol/messages/v2/build/go/services"
 
 	"github.com/AsynkronIT/protoactor-go/eventstream"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-hamt-ipld"
 	logging "github.com/ipfs/go-log"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/quorumcontrol/messages/v2/build/go/signatures"
@@ -15,6 +21,8 @@ import (
 	g3types "github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 )
+
+const transactionTopic = "g4-transactions"
 
 // How many times to attempt PlayTransactions before giving up.
 // 10 is the library's default, but this makes it explicit.
@@ -28,6 +36,7 @@ type Client struct {
 	Group      *g3types.NotaryGroup
 	logger     logging.EventLogger
 	subscriber *roundSubscriber
+	pubsub     *pubsub.PubSub
 }
 
 type Subscription struct {
@@ -42,10 +51,13 @@ func New(group *g3types.NotaryGroup, pubsub *pubsub.PubSub, bitswapper *p2p.Bits
 		Group:      group,
 		logger:     logger,
 		subscriber: subscriber,
+		pubsub:     pubsub,
 	}
 }
 
 func (c *Client) Start(ctx context.Context) error {
+	c.pubsub.Subscribe(transactionTopic) // TODO: do we need this?
+
 	err := c.roundSubscriberStart(ctx)
 	if err != nil {
 		return fmt.Errorf("error subscribing: %w", err)
@@ -60,4 +72,41 @@ func (c *Client) roundSubscriberStart(ctx context.Context) error {
 
 func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, transactions []*transactions.Transaction) (*signatures.TreeState, error) {
 	return nil, fmt.Errorf("error, undefined")
+}
+
+func (c *Client) Send(ctx context.Context, abr *services.AddBlockRequest, timeout time.Duration) error {
+	bits, err := abr.Marshal()
+	if err != nil {
+		return fmt.Errorf("error marshaling: %w", err)
+	}
+
+	resp := make(chan error)
+
+	id := abrToHamtCID(ctx, abr)
+
+	sub := c.subscriber.subscribe(id, resp)
+	defer c.subscriber.unsubscribe(sub)
+
+	err = c.pubsub.Publish(transactionTopic, bits)
+	if err != nil {
+		return fmt.Errorf("error publishing: %w", err)
+	}
+	ticker := time.NewTimer(timeout)
+	defer ticker.Stop()
+
+	select {
+	case err := <-resp:
+		return err
+	case <-ticker.C:
+		return ErrorTimeout
+	}
+}
+
+func abrToHamtCID(ctx context.Context, abr *services.AddBlockRequest) cid.Cid {
+	store := nodestore.MustMemoryStore(ctx)
+	hamtStore := hamt.CborIpldStore{
+		Blocks: &dsWrapper{store: store},
+	}
+	id, _ := hamtStore.Put(ctx, abr)
+	return id
 }

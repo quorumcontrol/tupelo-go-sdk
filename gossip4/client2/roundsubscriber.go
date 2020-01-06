@@ -192,11 +192,12 @@ func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *types
 }
 
 func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.RoundConfirmation) error {
-	completedRound := &types.CompletedRound{}
+	rs.logger.Debugf("publishingTxs: %v", confirmation)
 	roundNode, err := rs.bitswapper.Get(ctx, confirmation.CompletedRound)
 	if err != nil {
 		return err
 	}
+	completedRound := &types.CompletedRound{}
 	err = cbornode.DecodeInto(roundNode.RawData(), completedRound)
 	if err != nil {
 		return err
