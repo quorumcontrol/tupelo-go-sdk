@@ -26,6 +26,7 @@ import (
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip4/middleware"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip4/remote"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip4/types"
+	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 	"go.uber.org/zap"
 )
 
@@ -45,6 +46,7 @@ type Client struct {
 	subscriber *actor.PID
 	cache      *lru.Cache
 	stream     *eventstream.EventStream
+	bitswapper *p2p.BitswapPeer
 }
 
 type Subscription struct {
@@ -52,18 +54,19 @@ type Subscription struct {
 }
 
 // New instantiates a Client specific to a ChainTree/NotaryGroup
-func New(group *types.NotaryGroup, treeDid string, pubsub remote.PubSub) *Client {
+func New(group *types.NotaryGroup, treeDid string, pubsub remote.PubSub, bitswapper *p2p.BitswapPeer) *Client {
 	cache, err := lru.New(10000)
 	if err != nil {
 		panic(fmt.Errorf("error generating LRU: %v", err))
 	}
 	return &Client{
-		Group:   group,
-		TreeDID: treeDid,
-		log:     middleware.Log.Named("client-" + treeDid),
-		pubsub:  pubsub,
-		cache:   cache,
-		stream:  &eventstream.EventStream{},
+		Group:      group,
+		TreeDID:    treeDid,
+		log:        middleware.Log.Named("client-" + treeDid),
+		pubsub:     pubsub,
+		cache:      cache,
+		stream:     &eventstream.EventStream{},
+		bitswapper: bitswapper,
 	}
 }
 
@@ -71,7 +74,7 @@ func (c *Client) Listen() {
 	if c.alreadyListening() {
 		return
 	}
-	c.subscriber = actor.EmptyRootContext.SpawnPrefix(actor.PropsFromFunc(c.subscriptionReceive), c.TreeDID+"-subscriber")
+	c.subscriber = actor.EmptyRootContext.SpawnPrefix(actor.PropsFromFunc(c.subscriptionReceive), c.Group.ID+"-subscriber")
 }
 
 func (c *Client) alreadyListening() bool {
@@ -89,27 +92,65 @@ func (c *Client) Stop() {
 func (c *Client) subscriptionReceive(actorContext actor.Context) {
 	switch msg := actorContext.Message().(type) {
 	case *actor.Started:
-		_, err := actorContext.SpawnNamed(c.pubsub.NewSubscriberProps(c.TreeDID), "pubsub")
+		_, err := actorContext.SpawnNamed(c.pubsub.NewSubscriberProps(c.Group.ID), "pubsub")
 		if err != nil {
 			panic(fmt.Errorf("error spawning pubsub: %v", err))
 		}
-	case *signatures.TreeState:
-		if msg.Signature == nil {
-			c.log.Errorw("received signatures.TreeState message without signature")
-			return
-		}
-
-		heightString := strconv.FormatUint(msg.Height, 10)
-		//TODO: this needs to check the validity of the signature
-		existed, _ := c.cache.ContainsOrAdd(heightString, msg)
-		if !existed {
-			c.log.Debugw("publishing current state", "objectID", string(msg.ObjectId),
-				"height", heightString)
-			c.stream.Publish(msg)
-		}
+	case *types.RoundConfirmation:
+		c.handleRoundConfirmation(msg)
 	default:
 		c.log.Debugw("unknown message received", "type", reflect.TypeOf(msg).String())
 	}
+}
+
+func (c *Client) handleRoundConfirmation(confirmation *types.RoundConfirmation) {
+	if confirmation.Signature == nil {
+		c.log.Errorw("received unsigned round confirmation message: %+v", confirmation)
+		return
+	}
+
+	ctx := context.TODO()
+	completedRound, err := c.fetchCompletedRound(ctx, confirmation)
+	if err != nil {
+		c.log.Error(err)
+		return
+	}
+
+	checkpoint, err := c.fetchCheckpoint(ctx, completedRound)
+	if err != nil {
+		c.log.Error(err)
+	}
+}
+
+func (c *Client) fetchCompletedRound(ctx context.Context, confirmation *types.RoundConfirmation) (*types.CompletedRound, error) {
+	completedRound := &types.CompletedRound{}
+	roundNode, err := c.bitswapper.Get(ctx, confirmation.CompletedRound)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching completed round: %v", err)
+	}
+
+	err = cbornode.DecodeInto(roundNode.RawData(), completedRound)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding completed round: %v", err)
+
+	}
+
+	return completedRound, nil
+}
+
+func (c *Client) fetchCheckpoint(ctx context.Context, round *types.CompletedRound) (*types.Checkpoint, error) {
+	checkpoint := &types.Checkpoint{}
+	cpNode, err := c.bitswapper.Get(ctx, round.Checkpoint)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching checkpoint: %v", err)
+	}
+
+	err = cbornode.DecodeInto(cpNode.RawData(), cpNode)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding checkpoint: %v", err)
+	}
+
+	return checkpoint, nil
 }
 
 // TipRequest requests the tip of a chain tree.
