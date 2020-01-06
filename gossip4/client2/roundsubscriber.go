@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/AsynkronIT/protoactor-go/eventstream"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	cbornode "github.com/ipfs/go-ipld-cbor"
@@ -18,7 +19,7 @@ import (
 	sigfuncs "github.com/quorumcontrol/tupelo-go-sdk/signatures"
 )
 
-type subscriptionCounter map[cid.Cid]uint64
+type subscription *eventstream.Subscription
 
 type roundConflictSet map[cid.Cid]*types.RoundConfirmation
 
@@ -52,28 +53,30 @@ type conflictSetHolder map[uint64]roundConflictSet
 type roundSubscriber struct {
 	sync.RWMutex
 
-	pubsub        *pubsub.PubSub
-	bitswapper    *p2p.BitswapPeer
-	hamtStore     *hamt.CborIpldStore
-	subscriptions subscriptionCounter
-	group         *g3types.NotaryGroup
-	logger        logging.EventLogger
+	pubsub              *pubsub.PubSub
+	bitswapper          *p2p.BitswapPeer
+	hamtStore           *hamt.CborIpldStore
+	subscriptionCounter uint64
+	group               *g3types.NotaryGroup
+	logger              logging.EventLogger
 
 	inflight conflictSetHolder
 	current  *types.RoundConfirmation
+
+	stream *eventstream.EventStream
 }
 
 func newRoundSubscriber(logger logging.EventLogger, group *g3types.NotaryGroup, pubsub *pubsub.PubSub, bitswapper *p2p.BitswapPeer) *roundSubscriber {
 	hamtStore := dagStoreToCborIpld(bitswapper)
 
 	return &roundSubscriber{
-		pubsub:        pubsub,
-		bitswapper:    bitswapper,
-		hamtStore:     hamtStore,
-		subscriptions: make(subscriptionCounter),
-		group:         group,
-		inflight:      make(conflictSetHolder),
-		logger:        logger,
+		pubsub:     pubsub,
+		bitswapper: bitswapper,
+		hamtStore:  hamtStore,
+		group:      group,
+		inflight:   make(conflictSetHolder),
+		logger:     logger,
+		stream:     &eventstream.EventStream{},
 	}
 }
 
@@ -104,10 +107,22 @@ func (rs *roundSubscriber) start(ctx context.Context) error {
 	return nil
 }
 
-func (rs *roundSubscriber) subscribe(txCid cid.Cid) {
+func (rs *roundSubscriber) subscribe(subscriptionCID cid.Cid, ch chan error) subscription {
 	rs.Lock()
 	defer rs.Unlock()
-	rs.subscriptions[txCid]++
+	rs.subscriptionCounter++
+	return rs.stream.Subscribe(func(evt interface{}) {
+		if evt.(cid.Cid).Equals(subscriptionCID) {
+			ch <- nil
+		}
+	})
+}
+
+func (rs *roundSubscriber) unsubscribe(sub subscription) {
+	rs.Lock()
+	defer rs.Unlock()
+	rs.subscriptionCounter--
+	rs.stream.Unsubscribe(sub)
 }
 
 func (rs *roundSubscriber) pubsubMessageToRoundConfirmation(ctx context.Context, msg *pubsub.Message) (*types.RoundConfirmation, error) {
@@ -168,5 +183,35 @@ func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *types
 		}
 	}
 
+	// only go and fetch the actual round and txs if we have subscribers
+	if rs.subscriptionCounter > 0 {
+		return rs.publishTxs(ctx, confirmation)
+	}
+
+	return nil
+}
+
+func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.RoundConfirmation) error {
+	completedRound := &types.CompletedRound{}
+	roundNode, err := rs.bitswapper.Get(ctx, confirmation.CompletedRound)
+	if err != nil {
+		return err
+	}
+	err = cbornode.DecodeInto(roundNode.RawData(), completedRound)
+	if err != nil {
+		return err
+	}
+	checkpoint := &types.Checkpoint{}
+	checkpointNode, err := rs.bitswapper.Get(ctx, completedRound.Checkpoint)
+	if err != nil {
+		return err
+	}
+	err = cbornode.DecodeInto(checkpointNode.RawData(), checkpoint)
+	if err != nil {
+		return err
+	}
+	for _, tx := range checkpoint.AddBlockRequests {
+		rs.stream.Publish(tx)
+	}
 	return nil
 }
