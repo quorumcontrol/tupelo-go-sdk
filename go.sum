@@ -572,6 +572,10 @@ github.com/quorumcontrol/tupelo v0.5.12-0.20191230212236-8ab8884d2446 h1:2l6tqzB
 github.com/quorumcontrol/tupelo v0.5.12-0.20191230212236-8ab8884d2446/go.mod h1:dA7Myn72ZG7VFOeTttKqT4N2n5mfQroseTZ+nSeOXvE=
 github.com/quorumcontrol/tupelo v0.5.12-0.20200106150006-b0ebd63917e2 h1:08vQE0Ud6ZZ4AC2lw1ErNfA/yKlerLJgNWbhX/hxirI=
 github.com/quorumcontrol/tupelo v0.5.12-0.20200106150006-b0ebd63917e2/go.mod h1:gLuY1iZbTIKKDYwVPjfJl0knoaqyHbAOQ4k0okQWBb0=
+github.com/quorumcontrol/tupelo v0.5.12-0.20200106163916-573f91bffb10 h1:V4gr6vJJc0sWrczj08P58h9iJp/ET8quhCVC6XzP4uY=
+github.com/quorumcontrol/tupelo v0.5.12-0.20200106163916-573f91bffb10/go.mod h1:w38FdPQhXO6Nom4xb0lfDumX2NyS91sN00JkZ8qCNfI=
+github.com/quorumcontrol/tupelo v0.5.12-0.20200106164423-ae217697b350 h1:rVM7Z+mVbWpPCaG6pDhSeYCBrLE8jyOtV8Fo20t/0Z4=
+github.com/quorumcontrol/tupelo v0.5.12-0.20200106164423-ae217697b350/go.mod h1:w38FdPQhXO6Nom4xb0lfDumX2NyS91sN00JkZ8qCNfI=
 github.com/quorumcontrol/tupelo-go-sdk v0.6.0-beta1/go.mod h1:wA31G/DE4bI+8rsWKGRlxOgtKjrk0nJjd1qgRTpiN0Q=
 github.com/rogpeppe/go-internal v1.1.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rogpeppe/go-internal v1.3.0 h1:RR9dF3JtopPvtkroDZuVD7qquD0bnHlKSqaQhgwt8yk=

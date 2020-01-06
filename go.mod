@@ -36,7 +36,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/quorumcontrol/chaintree v0.9.4
 	github.com/quorumcontrol/messages/v2 v2.1.2
-	github.com/quorumcontrol/tupelo v0.5.12-0.20200106150006-b0ebd63917e2
+	github.com/quorumcontrol/tupelo v0.5.12-0.20200106164423-ae217697b350
 	github.com/spy16/parens v0.0.8
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.3.0
@@ -44,6 +44,8 @@ require (
 	github.com/uber/jaeger-lib v1.5.0
 	go.dedis.ch/kyber/v3 v3.0.9
 	go.elastic.co/apm/module/apmot v1.6.0
+	go.uber.org/atomic v1.5.1 // indirect
+	go.uber.org/multierr v1.4.0 // indirect
 	go.uber.org/zap v1.10.0
 	golang.org/x/crypto v0.0.0-20191111213947-16651526fdb4
 	golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7
