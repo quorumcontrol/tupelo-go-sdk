@@ -153,7 +153,10 @@ func (rs *roundSubscriber) handleMessage(ctx context.Context, msg *pubsub.Messag
 		return fmt.Errorf("confirmation of height %d is less than current %d", confirmation.Height, rs.current.Height)
 	}
 
-	sigfuncs.RestoreBLSPublicKey(confirmation.Signature, rs.verKeys())
+	err = sigfuncs.RestoreBLSPublicKey(confirmation.Signature, rs.verKeys())
+	if err != nil {
+		return fmt.Errorf("error retoring BLS key: %w", err)
+	}
 
 	verified, err := sigfuncs.Valid(confirmation.Signature, confirmation.CompletedRound.Bytes(), nil)
 	if !verified || err != nil {
