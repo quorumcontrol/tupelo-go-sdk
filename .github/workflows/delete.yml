@@ -13,3 +13,8 @@ jobs:
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
     - name: Docker Delete Tag
       uses: ./.github/actions/docker-delete-tag
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      with:
+        args: quorumcontrol/tupelo-go-sdk
