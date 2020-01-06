@@ -34,6 +34,7 @@ func (r *CompletedRound) Wrapped() *cbornode.Node {
 }
 
 type RoundConfirmation struct {
+	Height         uint64
 	CompletedRound cid.Cid
 	Signature      *signatures.Signature
 	wrapped        *cbornode.Node

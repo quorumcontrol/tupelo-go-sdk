@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/ipfs/go-cid"
 	g3types "github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 	"github.com/quorumcontrol/tupelo-go-sdk/testnotarygroup"
@@ -84,7 +83,4 @@ func TestClient2(t *testing.T) {
 
 	err = cli.Start(ctx)
 	require.Nil(t, err)
-
-	cli.subscribe(cid.Undef)
-	require.Equal(t, uint64(1), cli.subscriptions[cid.Undef])
 }
