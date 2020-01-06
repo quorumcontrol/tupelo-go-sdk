@@ -12,4 +12,4 @@ jobs:
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
     - name: Docker Delete Tag
-      uses: ../actions/docker-delete-tag
+      uses: ./.github/actions/docker-delete-tag
