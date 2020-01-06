@@ -45,7 +45,7 @@ type Subscription struct {
 
 // New instantiates a Client specific to a ChainTree/NotaryGroup
 func New(group *g3types.NotaryGroup, pubsub *pubsub.PubSub, bitswapper *p2p.BitswapPeer) *Client {
-	logger := logging.Logger("client")
+	logger := logging.Logger("g4-client")
 	subscriber := newRoundSubscriber(logger, group, pubsub, bitswapper)
 	return &Client{
 		Group:      group,
@@ -83,6 +83,7 @@ func (c *Client) Send(ctx context.Context, abr *services.AddBlockRequest, timeou
 	resp := make(chan error)
 
 	id := abrToHamtCID(ctx, abr)
+	c.logger.Debugf("sending: %s", id.String())
 
 	sub := c.subscriber.subscribe(id, resp)
 	defer c.subscriber.unsubscribe(sub)

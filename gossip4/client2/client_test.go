@@ -58,6 +58,7 @@ func startNodes(t *testing.T, ctx context.Context, nodes []*gossip4.Node, bootAd
 }
 
 func TestClient2(t *testing.T) {
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -87,6 +88,7 @@ func TestClient2(t *testing.T) {
 	require.Nil(t, err)
 
 	cli := New(group, cliHost.GetPubSub(), peer)
+	logging.SetLogLevel("g4-client", "debug")
 
 	err = cli.Start(ctx)
 	require.Nil(t, err)

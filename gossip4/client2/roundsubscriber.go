@@ -24,7 +24,7 @@ type subscription *eventstream.Subscription
 type roundConflictSet map[cid.Cid]*types.RoundConfirmation
 
 func isQuorum(group *g3types.NotaryGroup, sig *signatures.Signature) bool {
-	return uint64(len(sig.Signers)) > group.QuorumCount()
+	return uint64(sigfuncs.SignerCount(sig)) > group.QuorumCount()
 }
 
 func (rcs roundConflictSet) add(group *g3types.NotaryGroup, confirmation *types.RoundConfirmation) (makesQuorum bool, updated *types.RoundConfirmation, err error) {
@@ -33,7 +33,7 @@ func (rcs roundConflictSet) add(group *g3types.NotaryGroup, confirmation *types.
 		// this is the first time we're seeing the completed round,
 		// just add it to the conflict set and move on
 		rcs[confirmation.CompletedRound] = confirmation
-		return isQuorum(group, confirmation.Signature), existing, nil
+		return isQuorum(group, confirmation.Signature), confirmation, nil
 	}
 
 	// otherwise we've already seen a confirmation for this, let's combine the signatures
@@ -142,6 +142,8 @@ func (rs *roundSubscriber) verKeys() []*bls.VerKey {
 }
 
 func (rs *roundSubscriber) handleMessage(ctx context.Context, msg *pubsub.Message) error {
+	rs.logger.Debugf("handling message")
+
 	confirmation, err := rs.pubsubMessageToRoundConfirmation(ctx, msg)
 	if err != nil {
 		return fmt.Errorf("error unmarshaling: %w", err)
@@ -165,8 +167,10 @@ func (rs *roundSubscriber) handleMessage(ctx context.Context, msg *pubsub.Messag
 	if !ok {
 		conflictSet = make(roundConflictSet)
 	}
+	rs.logger.Debugf("checking quorum: %v", confirmation)
 
 	madeQuorum, updated, err := conflictSet.add(rs.group, confirmation)
+	rs.inflight[confirmation.Height] = conflictSet
 	if madeQuorum {
 		return rs.handleQuorum(ctx, updated)
 	}
@@ -175,6 +179,8 @@ func (rs *roundSubscriber) handleMessage(ctx context.Context, msg *pubsub.Messag
 }
 
 func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *types.RoundConfirmation) error {
+	rs.logger.Debugf("hande Quorum: %v", confirmation)
+
 	// handleQuorum expects that it's already in a lock on the roundSubscriber
 	rs.current = confirmation
 	for key := range rs.inflight {
@@ -192,16 +198,22 @@ func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *types
 }
 
 func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.RoundConfirmation) error {
-	rs.logger.Debugf("publishingTxs: %v", confirmation)
+	rs.logger.Debugf("publishingTxs")
 	roundNode, err := rs.bitswapper.Get(ctx, confirmation.CompletedRound)
 	if err != nil {
 		return err
 	}
+
+	rs.logger.Debugf("getting completed round")
+
 	completedRound := &types.CompletedRound{}
 	err = cbornode.DecodeInto(roundNode.RawData(), completedRound)
 	if err != nil {
 		return err
 	}
+
+	rs.logger.Debugf("getting checkpoint")
+
 	checkpoint := &types.Checkpoint{}
 	checkpointNode, err := rs.bitswapper.Get(ctx, completedRound.Checkpoint)
 	if err != nil {
@@ -211,7 +223,11 @@ func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.R
 	if err != nil {
 		return err
 	}
+
+	rs.logger.Debugf("checkpoint: %v", checkpoint)
+
 	for _, tx := range checkpoint.AddBlockRequests {
+		rs.logger.Debugf("publishing: %s", tx.String())
 		rs.stream.Publish(tx)
 	}
 	return nil
