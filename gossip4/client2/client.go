@@ -12,7 +12,6 @@ import (
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/messages/v2/build/go/services"
 
-	"github.com/AsynkronIT/protoactor-go/eventstream"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	logging "github.com/ipfs/go-log"
@@ -41,10 +40,6 @@ type Client struct {
 	logger     logging.EventLogger
 	subscriber *roundSubscriber
 	pubsub     *pubsub.PubSub
-}
-
-type Subscription struct {
-	subscription *eventstream.Subscription
 }
 
 // New instantiates a Client specific to a ChainTree/NotaryGroup
@@ -133,7 +128,7 @@ func (c *Client) SendWithoutWait(ctx context.Context, abr *services.AddBlockRequ
 func (c *Client) SubscribeToAbr(ctx context.Context, abr *services.AddBlockRequest, ch chan *Proof) subscription {
 	id := abrToHamtCID(ctx, abr)
 	c.logger.Debugf("subscribing: %s", id.String())
-	
+
 	return c.subscriber.subscribe(id, ch)
 }
 

@@ -111,5 +111,3 @@ func randInt(max int) int {
 	}
 	return int(bigInt.Int64())
 }
-
-const minSyncNodesPerTransaction = 3

@@ -170,6 +170,9 @@ func (rs *roundSubscriber) handleMessage(ctx context.Context, msg *pubsub.Messag
 	rs.logger.Debugf("checking quorum: %v", confirmation)
 
 	madeQuorum, updated, err := conflictSet.add(rs.group, confirmation)
+	if err != nil {
+		return fmt.Errorf("error adding to conflictset: %w", err)
+	}
 	rs.inflight[confirmation.Height] = conflictSet
 	if madeQuorum {
 		return rs.handleQuorum(ctx, updated)

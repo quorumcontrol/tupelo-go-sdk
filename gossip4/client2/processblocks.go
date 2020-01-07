@@ -38,18 +38,18 @@ func (c *Client) NewAddBlockRequest(ctx context.Context, tree *consensus.SignedC
 	}
 
 	blockWithHeaders, err := consensus.SignBlock(unsignedBlock, treeKey)
+	if err != nil {
+		return nil, fmt.Errorf("error signing block: %w", err)
+	}
 
-	var validators []chaintree.BlockValidatorFunc
 	if len(tree.ChainTree.BlockValidators) == 0 {
 		// we run the block validators to save devs from themselves
 		// and catch anything we know will be rejected by the NotaryGroup
-		validators, err = c.Group.BlockValidators(ctx)
+		validators, err := c.Group.BlockValidators(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("error getting notary group block validators: %v", err)
 		}
 		tree.ChainTree.BlockValidators = validators
-	} else {
-		validators = tree.ChainTree.BlockValidators
 	}
 
 	trackedTree, tracker, err := refTrackingChainTree(ctx, tree.ChainTree)
