@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/quorumcontrol/chaintree/chaintree"
+	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/messages/v2/build/go/services"
 
@@ -15,7 +17,6 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	logging "github.com/ipfs/go-log"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip4/hamtwrapper"
@@ -27,9 +28,11 @@ const transactionTopic = "g4-transactions"
 
 // How many times to attempt PlayTransactions before giving up.
 // 10 is the library's default, but this makes it explicit.
-var MaxPlayTransactionsAttempts = uint(10)
+// var MaxPlayTransactionsAttempts = uint(10)
 
 var ErrorTimeout = errors.New("error timeout")
+
+var DefaultTimeout = 10 * time.Second
 
 // Client represents a Tupelo client for interacting with and
 // listening to ChainTree events
@@ -66,17 +69,35 @@ func (c *Client) Start(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, transactions []*transactions.Transaction) (*signatures.TreeState, error) {
-	return nil, fmt.Errorf("error, undefined")
-}
-
-func (c *Client) Send(ctx context.Context, abr *services.AddBlockRequest, timeout time.Duration) error {
-	bits, err := abr.Marshal()
+func (c *Client) PlayTransactions(ctx context.Context, tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, transactions []*transactions.Transaction) (*Proof, error) {
+	abr, err := c.NewAddBlockRequest(ctx, tree, treeKey, transactions)
 	if err != nil {
-		return fmt.Errorf("error marshaling: %w", err)
+		return nil, fmt.Errorf("error creating NewAddBlockRequest: %w", err)
+	}
+	proof, err := c.Send(ctx, abr, DefaultTimeout)
+	if err != nil {
+		return nil, fmt.Errorf("error sending tx: %w", err)
 	}
 
-	resp := make(chan error)
+	newChainTree, err := chaintree.NewChainTree(ctx, dag.NewDag(ctx, proof.Tip, tree.ChainTree.Dag.Store), tree.ChainTree.BlockValidators, tree.ChainTree.Transactors)
+	if err != nil {
+		return nil, fmt.Errorf("error creating new tree: %w", err)
+	}
+	tree.ChainTree = newChainTree
+	return proof, nil
+}
+
+func (c *Client) Send(ctx context.Context, abr *services.AddBlockRequest, timeout time.Duration) (*Proof, error) {
+	bits, err := abr.Marshal()
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling: %w", err)
+	}
+	tip, err := cid.Cast(abr.NewTip)
+	if err != nil {
+		return nil, fmt.Errorf("error casting new tip: %w", err)
+	}
+
+	resp := make(chan *Proof)
 
 	id := abrToHamtCID(ctx, abr)
 	c.logger.Debugf("sending: %s", id.String())
@@ -86,16 +107,18 @@ func (c *Client) Send(ctx context.Context, abr *services.AddBlockRequest, timeou
 
 	err = c.pubsub.Publish(transactionTopic, bits)
 	if err != nil {
-		return fmt.Errorf("error publishing: %w", err)
+		return nil, fmt.Errorf("error publishing: %w", err)
 	}
 	ticker := time.NewTimer(timeout)
 	defer ticker.Stop()
 
 	select {
-	case err := <-resp:
-		return err
+	case proof := <-resp:
+		proof.Tip = tip
+		proof.ObjectId = string(abr.ObjectId)
+		return proof, nil
 	case <-ticker.C:
-		return ErrorTimeout
+		return nil, ErrorTimeout
 	}
 }
 

@@ -106,12 +106,12 @@ func (rs *roundSubscriber) start(ctx context.Context) error {
 	return nil
 }
 
-func (rs *roundSubscriber) subscribe(subscriptionCID cid.Cid, ch chan error) subscription {
+func (rs *roundSubscriber) subscribe(subscriptionCID cid.Cid, ch chan *Proof) subscription {
 	rs.Lock()
 	defer rs.Unlock()
 	return rs.stream.Subscribe(func(evt interface{}) {
-		if evt.(cid.Cid).Equals(subscriptionCID) {
-			ch <- nil
+		if proof := evt.(*Proof); proof.AbrCid.Equals(subscriptionCID) {
+			ch <- proof
 		}
 	})
 }
@@ -223,7 +223,13 @@ func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.R
 
 	for _, tx := range checkpoint.AddBlockRequests {
 		rs.logger.Debugf("publishing: %s", tx.String())
-		rs.stream.Publish(tx)
+		rs.stream.Publish(&Proof{
+			RoundConfirmation: *confirmation,
+			AbrCid:            tx,
+
+			checkpoint:     *checkpoint,
+			completedRound: *completedRound,
+		})
 	}
 	return nil
 }

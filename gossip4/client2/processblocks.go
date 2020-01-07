@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 
+	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/quorumcontrol/chaintree/chaintree"
@@ -21,12 +22,17 @@ func (c *Client) NewAddBlockRequest(ctx context.Context, tree *consensus.SignedC
 		return nil, fmt.Errorf("error getting tree height: %v", err)
 	}
 
-	storedTip := tree.Tip()
+	treeTip := tree.Tip()
+
+	var blockTip *cid.Cid
+	if !tree.IsGenesis() {
+		blockTip = &treeTip
+	}
 
 	unsignedBlock := &chaintree.BlockWithHeaders{
 		Block: chaintree.Block{
 			Height:       height,
-			PreviousTip:  &storedTip,
+			PreviousTip:  blockTip,
 			Transactions: transactions,
 		},
 	}
@@ -77,7 +83,7 @@ func (c *Client) NewAddBlockRequest(ctx context.Context, tree *consensus.SignedC
 	payload := sw.WrapObject(blockWithHeaders).RawData()
 
 	return &services.AddBlockRequest{
-		PreviousTip: storedTip.Bytes(),
+		PreviousTip: treeTip.Bytes(),
 		Height:      blockWithHeaders.Height,
 		Payload:     payload,
 		NewTip:      expectedTip.Bytes(),
