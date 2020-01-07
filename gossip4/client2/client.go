@@ -88,27 +88,21 @@ func (c *Client) PlayTransactions(ctx context.Context, tree *consensus.SignedCha
 }
 
 func (c *Client) Send(ctx context.Context, abr *services.AddBlockRequest, timeout time.Duration) (*Proof, error) {
-	bits, err := abr.Marshal()
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling: %w", err)
-	}
 	tip, err := cid.Cast(abr.NewTip)
 	if err != nil {
 		return nil, fmt.Errorf("error casting new tip: %w", err)
 	}
 
 	resp := make(chan *Proof)
+	defer close(resp)
 
-	id := abrToHamtCID(ctx, abr)
-	c.logger.Debugf("sending: %s", id.String())
+	sub := c.SubscribeToAbr(ctx, abr, resp)
+	defer c.UnsubscribeFromAbr(sub)
 
-	sub := c.subscriber.subscribe(id, resp)
-	defer c.subscriber.unsubscribe(sub)
-
-	err = c.pubsub.Publish(transactionTopic, bits)
-	if err != nil {
-		return nil, fmt.Errorf("error publishing: %w", err)
+	if err := c.SendWithoutWait(ctx, abr); err != nil {
+		return nil, fmt.Errorf("error sending Tx: %w", err)
 	}
+
 	ticker := time.NewTimer(timeout)
 	defer ticker.Stop()
 
@@ -120,6 +114,31 @@ func (c *Client) Send(ctx context.Context, abr *services.AddBlockRequest, timeou
 	case <-ticker.C:
 		return nil, ErrorTimeout
 	}
+}
+
+func (c *Client) SendWithoutWait(ctx context.Context, abr *services.AddBlockRequest) error {
+	bits, err := abr.Marshal()
+	if err != nil {
+		return fmt.Errorf("error marshaling: %w", err)
+	}
+
+	err = c.pubsub.Publish(transactionTopic, bits)
+	if err != nil {
+		return fmt.Errorf("error publishing: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Client) SubscribeToAbr(ctx context.Context, abr *services.AddBlockRequest, ch chan *Proof) subscription {
+	id := abrToHamtCID(ctx, abr)
+	c.logger.Debugf("subscribing: %s", id.String())
+	
+	return c.subscriber.subscribe(id, ch)
+}
+
+func (c *Client) UnsubscribeFromAbr(s subscription) {
+	c.subscriber.unsubscribe(s)
 }
 
 func abrToHamtCID(ctx context.Context, abr *services.AddBlockRequest) cid.Cid {
