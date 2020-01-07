@@ -1,4 +1,4 @@
-package client2
+package hamtwrapper
 
 import (
 	"context"
@@ -18,11 +18,17 @@ var hamtAddTimeout = 10 * time.Second
 
 // dsWrapper implements the blocks interface needed for the go-hamt-ipld
 // type blocks interface {
-// 	GetBlock(context.Context, cid.Cid) (block.Block, error)
-// 	AddBlock(block.Block) error
+//	GetBlock(context.Context, cid.Cid) (block.Block, error)
+//	AddBlock(block.Block) error
 // }
 type dsWrapper struct {
 	store nodestore.DagStore
+}
+
+func NewStore(underlying nodestore.DagStore) *dsWrapper {
+	return &dsWrapper{
+		store: underlying,
+	}
 }
 
 func (dw *dsWrapper) GetBlock(ctx context.Context, id cid.Cid) (block.Block, error) {
@@ -39,7 +45,7 @@ func (dw *dsWrapper) AddBlock(blk block.Block) error {
 	return dw.store.Add(ctx, nd)
 }
 
-func dagStoreToCborIpld(store nodestore.DagStore) *hamt.CborIpldStore {
+func DagStoreToCborIpld(store nodestore.DagStore) *hamt.CborIpldStore {
 	return &hamt.CborIpldStore{
 		Blocks: &dsWrapper{store: store},
 	}

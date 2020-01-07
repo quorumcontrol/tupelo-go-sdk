@@ -14,6 +14,7 @@ import (
 	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 	g3types "github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip4/hamtwrapper"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip4/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 	sigfuncs "github.com/quorumcontrol/tupelo-go-sdk/signatures"
@@ -67,7 +68,7 @@ type roundSubscriber struct {
 }
 
 func newRoundSubscriber(logger logging.EventLogger, group *g3types.NotaryGroup, pubsub *pubsub.PubSub, bitswapper *p2p.BitswapPeer) *roundSubscriber {
-	hamtStore := dagStoreToCborIpld(bitswapper)
+	hamtStore := hamtwrapper.DagStoreToCborIpld(bitswapper)
 
 	return &roundSubscriber{
 		pubsub:     pubsub,

@@ -19,6 +19,7 @@ import (
 	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	g3types "github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip4/hamtwrapper"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 )
 
@@ -104,9 +105,9 @@ func (c *Client) Send(ctx context.Context, abr *services.AddBlockRequest, timeou
 }
 
 func abrToHamtCID(ctx context.Context, abr *services.AddBlockRequest) cid.Cid {
-	store := nodestore.MustMemoryStore(ctx)
+	underlyingStore := nodestore.MustMemoryStore(ctx)
 	hamtStore := hamt.CborIpldStore{
-		Blocks: &dsWrapper{store: store},
+		Blocks: hamtwrapper.NewStore(underlyingStore),
 	}
 	id, _ := hamtStore.Put(ctx, abr)
 	return id

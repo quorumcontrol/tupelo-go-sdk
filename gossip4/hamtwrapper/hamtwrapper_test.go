@@ -1,4 +1,4 @@
-package client2
+package hamtwrapper
 
 import (
 	"context"
@@ -14,7 +14,7 @@ func TestFlushSimilarity(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	store := nodestore.MustMemoryStore(ctx)
-	cborStore := dagStoreToCborIpld(store)
+	cborStore := DagStoreToCborIpld(store)
 
 	hamtNode := hamt.NewNode(cborStore)
 
