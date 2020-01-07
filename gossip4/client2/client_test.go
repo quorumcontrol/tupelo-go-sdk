@@ -93,11 +93,8 @@ func TestClient2(t *testing.T) {
 	err = cli.Start(ctx)
 	require.Nil(t, err)
 
-	time.Sleep(1 * time.Second)
-
 	abr1 := testhelpers.NewValidTransaction(t)
 
 	err = cli.Send(ctx, &abr1, 5*time.Second)
 	require.Nil(t, err)
-
 }

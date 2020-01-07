@@ -57,18 +57,13 @@ func New(group *types.NotaryGroup, pubsub *pubsub.PubSub, bitswapper *p2p.Bitswa
 }
 
 func (c *Client) Start(ctx context.Context) error {
-	c.pubsub.Subscribe(transactionTopic) // TODO: do we need this?
 
-	err := c.roundSubscriberStart(ctx)
+	err := c.subscriber.start(ctx)
 	if err != nil {
 		return fmt.Errorf("error subscribing: %w", err)
 	}
 
 	return nil
-}
-
-func (c *Client) roundSubscriberStart(ctx context.Context) error {
-	return c.subscriber.start(ctx)
 }
 
 func (c *Client) PlayTransactions(tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, transactions []*transactions.Transaction) (*signatures.TreeState, error) {

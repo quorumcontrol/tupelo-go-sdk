@@ -53,12 +53,11 @@ type conflictSetHolder map[uint64]roundConflictSet
 type roundSubscriber struct {
 	sync.RWMutex
 
-	pubsub              *pubsub.PubSub
-	bitswapper          *p2p.BitswapPeer
-	hamtStore           *hamt.CborIpldStore
-	subscriptionCounter uint64
-	group               *types.NotaryGroup
-	logger              logging.EventLogger
+	pubsub     *pubsub.PubSub
+	bitswapper *p2p.BitswapPeer
+	hamtStore  *hamt.CborIpldStore
+	group      *types.NotaryGroup
+	logger     logging.EventLogger
 
 	inflight conflictSetHolder
 	current  *types.RoundConfirmation
@@ -110,7 +109,6 @@ func (rs *roundSubscriber) start(ctx context.Context) error {
 func (rs *roundSubscriber) subscribe(subscriptionCID cid.Cid, ch chan error) subscription {
 	rs.Lock()
 	defer rs.Unlock()
-	rs.subscriptionCounter++
 	return rs.stream.Subscribe(func(evt interface{}) {
 		if evt.(cid.Cid).Equals(subscriptionCID) {
 			ch <- nil
@@ -121,7 +119,6 @@ func (rs *roundSubscriber) subscribe(subscriptionCID cid.Cid, ch chan error) sub
 func (rs *roundSubscriber) unsubscribe(sub subscription) {
 	rs.Lock()
 	defer rs.Unlock()
-	rs.subscriptionCounter--
 	rs.stream.Unsubscribe(sub)
 }
 
@@ -192,12 +189,7 @@ func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *types
 		}
 	}
 
-	// only go and fetch the actual round and txs if we have subscribers
-	if rs.subscriptionCounter > 0 {
-		return rs.publishTxs(ctx, confirmation)
-	}
-
-	return nil
+	return rs.publishTxs(ctx, confirmation)
 }
 
 func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.RoundConfirmation) error {
