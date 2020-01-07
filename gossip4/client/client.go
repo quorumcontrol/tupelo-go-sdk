@@ -104,22 +104,22 @@ func (c *Client) subscriptionReceive(actorContext actor.Context) {
 }
 
 func (c *Client) handleRoundConfirmation(confirmation *types.RoundConfirmation) {
-	if confirmation.Signature == nil {
-		c.log.Errorw("received unsigned round confirmation message: %+v", confirmation)
-		return
-	}
+	// if confirmation.Signature == nil {
+	//	c.log.Errorw("received unsigned round confirmation message: %+v", confirmation)
+	//	return
+	// }
 
-	ctx := context.TODO()
-	completedRound, err := c.fetchCompletedRound(ctx, confirmation)
-	if err != nil {
-		c.log.Error(err)
-		return
-	}
+	// ctx := context.TODO()
+	// completedRound, err := c.fetchCompletedRound(ctx, confirmation)
+	// if err != nil {
+	//	c.log.Error(err)
+	//	return
+	// }
 
-	checkpoint, err := c.fetchCheckpoint(ctx, completedRound)
-	if err != nil {
-		c.log.Error(err)
-	}
+	// checkpoint, err := c.fetchCheckpoint(ctx, completedRound)
+	// if err != nil {
+	//	c.log.Error(err)
+	// }
 }
 
 func (c *Client) fetchCompletedRound(ctx context.Context, confirmation *types.RoundConfirmation) (*types.CompletedRound, error) {
@@ -154,35 +154,36 @@ func (c *Client) fetchCheckpoint(ctx context.Context, round *types.CompletedRoun
 }
 
 // TipRequest requests the tip of a chain tree.
-// func (c *Client) TipRequest() (*signatures.TreeState, error) {
-//	var attemptNo int
-//	var res interface{}
-//	err := retry.Do(
-//		func() error {
-//			var err error
-//			timeout := time.Duration(math.Pow(float64(attemptNo+3), 1.2)) * time.Second
-//			fut := actor.NewFuture(timeout)
-//			target := c.Group.GetRandomSyncer()
-//			actor.EmptyRootContext.RequestWithCustomSender(target, &services.GetTipRequest{
-//				ChainId: c.TreeDID,
-//			}, fut.PID())
-//			res, err = fut.Result()
-//			attemptNo++
-//			return err
-//		},
-//		retry.Attempts(4),
-//		retry.LastErrorOnly(true),
-//	)
-//	if err != nil {
-//		return nil, fmt.Errorf("error getting tip: %v", err)
-//	}
-//	if res.(*signatures.TreeState).Signature != nil {
-//		// cache the result to the LRU so future requests to height will
-//		// return the answer by sending the answer to the subscriber
-//		actor.EmptyRootContext.Send(c.subscriber, res)
-//	}
-//	return res.(*signatures.TreeState), nil
-// }
+func (c *Client) TipRequest() (*signatures.TreeState, error) {
+	// var attemptNo int
+	// var res interface{}
+	// err := retry.Do(
+	//	func() error {
+	//		var err error
+	//		timeout := time.Duration(math.Pow(float64(attemptNo+3), 1.2)) * time.Second
+	//		fut := actor.NewFuture(timeout)
+	//		target := c.Group.GetRandomSyncer()
+	//		actor.EmptyRootContext.RequestWithCustomSender(target, &services.GetTipRequest{
+	//			ChainId: c.TreeDID,
+	//		}, fut.PID())
+	//		res, err = fut.Result()
+	//		attemptNo++
+	//		return err
+	//	},
+	//	retry.Attempts(4),
+	//	retry.LastErrorOnly(true),
+	// )
+	// if err != nil {
+	//	return nil, fmt.Errorf("error getting tip: %v", err)
+	// }
+	// if res.(*signatures.TreeState).Signature != nil {
+	//	// cache the result to the LRU so future requests to height will
+	//	// return the answer by sending the answer to the subscriber
+	//	actor.EmptyRootContext.Send(c.subscriber, res)
+	// }
+	// return res.(*signatures.TreeState), nil
+	return nil, nil
+}
 
 // Subscribe returns a future that will return when the height the transaction
 // is targeting is complete or an error with the transaction occurs.
@@ -438,13 +439,6 @@ func (c *Client) attemptPlayTransactions(tree *consensus.SignedChainTree, treeKe
 
 	c.log.Debugw("successfully played transactions")
 	return resp, nil
-}
-
-func (c *Client) listenForConfirmations() {
-}
-
-func (c *Client) Latest() (*services.AddBlockRequest, error) {
-
 }
 
 // PlayTransactions plays transactions in chain tree.
