@@ -155,7 +155,7 @@ func (rs *roundSubscriber) handleMessage(ctx context.Context, msg *pubsub.Messag
 
 	err = sigfuncs.RestoreBLSPublicKey(confirmation.Signature, rs.verKeys())
 	if err != nil {
-		return fmt.Errorf("error retoring BLS key: %w", err)
+		return fmt.Errorf("error restoring BLS key: %w", err)
 	}
 
 	verified, err := sigfuncs.Valid(confirmation.Signature, confirmation.CompletedRound.Bytes(), nil)
