@@ -13,7 +13,6 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
-	g3types "github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip4/hamtwrapper"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip4/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
@@ -24,11 +23,11 @@ type subscription *eventstream.Subscription
 
 type roundConflictSet map[cid.Cid]*types.RoundConfirmation
 
-func isQuorum(group *g3types.NotaryGroup, sig *signatures.Signature) bool {
+func isQuorum(group *types.NotaryGroup, sig *signatures.Signature) bool {
 	return uint64(sigfuncs.SignerCount(sig)) > group.QuorumCount()
 }
 
-func (rcs roundConflictSet) add(group *g3types.NotaryGroup, confirmation *types.RoundConfirmation) (makesQuorum bool, updated *types.RoundConfirmation, err error) {
+func (rcs roundConflictSet) add(group *types.NotaryGroup, confirmation *types.RoundConfirmation) (makesQuorum bool, updated *types.RoundConfirmation, err error) {
 	existing, ok := rcs[confirmation.CompletedRound]
 	if !ok {
 		// this is the first time we're seeing the completed round,
@@ -58,7 +57,7 @@ type roundSubscriber struct {
 	bitswapper          *p2p.BitswapPeer
 	hamtStore           *hamt.CborIpldStore
 	subscriptionCounter uint64
-	group               *g3types.NotaryGroup
+	group               *types.NotaryGroup
 	logger              logging.EventLogger
 
 	inflight conflictSetHolder
@@ -67,7 +66,7 @@ type roundSubscriber struct {
 	stream *eventstream.EventStream
 }
 
-func newRoundSubscriber(logger logging.EventLogger, group *g3types.NotaryGroup, pubsub *pubsub.PubSub, bitswapper *p2p.BitswapPeer) *roundSubscriber {
+func newRoundSubscriber(logger logging.EventLogger, group *types.NotaryGroup, pubsub *pubsub.PubSub, bitswapper *p2p.BitswapPeer) *roundSubscriber {
 	hamtStore := hamtwrapper.DagStoreToCborIpld(bitswapper)
 
 	return &roundSubscriber{

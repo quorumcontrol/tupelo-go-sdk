@@ -18,8 +18,8 @@ import (
 	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
-	g3types "github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip4/hamtwrapper"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip4/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 )
 
@@ -34,7 +34,7 @@ var ErrorTimeout = errors.New("error timeout")
 // Client represents a Tupelo client for interacting with and
 // listening to ChainTree events
 type Client struct {
-	Group      *g3types.NotaryGroup
+	Group      *types.NotaryGroup
 	logger     logging.EventLogger
 	subscriber *roundSubscriber
 	pubsub     *pubsub.PubSub
@@ -45,7 +45,7 @@ type Subscription struct {
 }
 
 // New instantiates a Client specific to a ChainTree/NotaryGroup
-func New(group *g3types.NotaryGroup, pubsub *pubsub.PubSub, bitswapper *p2p.BitswapPeer) *Client {
+func New(group *types.NotaryGroup, pubsub *pubsub.PubSub, bitswapper *p2p.BitswapPeer) *Client {
 	logger := logging.Logger("g4-client")
 	subscriber := newRoundSubscriber(logger, group, pubsub, bitswapper)
 	return &Client{

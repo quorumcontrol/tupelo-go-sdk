@@ -7,21 +7,21 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log"
-	g3types "github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip4/testhelpers"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip4/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 	"github.com/quorumcontrol/tupelo-go-sdk/testnotarygroup"
 	"github.com/quorumcontrol/tupelo/gossip4"
 	"github.com/stretchr/testify/require"
 )
 
-func newTupeloSystem(ctx context.Context, testSet *testnotarygroup.TestSet) (*g3types.NotaryGroup, []*gossip4.Node, error) {
+func newTupeloSystem(ctx context.Context, testSet *testnotarygroup.TestSet) (*types.NotaryGroup, []*gossip4.Node, error) {
 	nodes := make([]*gossip4.Node, len(testSet.SignKeys))
 
-	ng := g3types.NewNotaryGroup("testnotary")
+	ng := types.NewNotaryGroup("testnotary")
 	for i, signKey := range testSet.SignKeys {
 		sk := signKey
-		signer := g3types.NewRemoteSigner(testSet.PubKeys[i], sk.MustVerKey())
+		signer := types.NewRemoteSigner(testSet.PubKeys[i], sk.MustVerKey())
 		ng.AddSigner(signer)
 	}
 
