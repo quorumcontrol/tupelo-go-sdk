@@ -431,6 +431,6 @@ func TestClientGetTip(t *testing.T) {
 		assert.Equal(t, sendProof.Tip.Bytes(), tree.Tip().Bytes())
 
 		_, err = cli.GetTip(ctx, "did:tupelo:doesnotexist")
-		require.Equal(t, ErrorNotFound, err)
+		require.Equal(t, ErrNotFound, err)
 	})
 }

@@ -21,8 +21,8 @@ import (
 	"time"
 )
 
-var ErrorTimeout = errors.New("error timeout")
-var ErrorNotFound = hamt.ErrNotFound
+var ErrTimeout = errors.New("error timeout")
+var ErrNotFound = hamt.ErrNotFound
 
 var DefaultTimeout = 10 * time.Second
 
@@ -92,7 +92,7 @@ func (c *Client) GetTip(ctx context.Context, did string) (*Proof, error) {
 	err = hamtNode.Find(ctx, did, txCID)
 	if err != nil {
 		if err == hamt.ErrNotFound {
-			return nil, ErrorNotFound
+			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("error fetching tip: %w", err)
 	}
@@ -144,7 +144,7 @@ func (c *Client) Send(ctx context.Context, abr *services.AddBlockRequest, timeou
 		proof.ObjectId = string(abr.ObjectId)
 		return proof, nil
 	case <-ticker.C:
-		return nil, ErrorTimeout
+		return nil, ErrTimeout
 	}
 }
 
