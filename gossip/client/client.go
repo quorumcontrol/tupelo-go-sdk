@@ -5,22 +5,19 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"time"
-
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-hamt-ipld"
+	logging "github.com/ipfs/go-log"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/messages/v2/build/go/services"
-
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
-	logging "github.com/ipfs/go-log"
 	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
-	"github.com/quorumcontrol/tupelo-go-sdk/gossip/hamtwrapper"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client/pubsubinterfaces"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip/hamtwrapper"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
-	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
+	"time"
 )
 
 var ErrorTimeout = errors.New("error timeout")
@@ -36,10 +33,11 @@ type Client struct {
 	pubsub     pubsubinterfaces.Pubsubber
 }
 
-// New instantiates a Client specific to a ChainTree/NotaryGroup
-func New(group *types.NotaryGroup, pubsub pubsubinterfaces.Pubsubber, bitswapper *p2p.BitswapPeer) *Client {
+// New instantiates a Client specific to a ChainTree/NotaryGroup. The store should probably be a bitswap peer.
+// The store definitely needs access to the round confirmation, checkpoints, etc
+func New(group *types.NotaryGroup, pubsub pubsubinterfaces.Pubsubber, store nodestore.DagStore) *Client {
 	logger := logging.Logger("g4-client")
-	subscriber := newRoundSubscriber(logger, group, pubsub, bitswapper)
+	subscriber := newRoundSubscriber(logger, group, pubsub, store)
 	return &Client{
 		Group:      group,
 		logger:     logger,

@@ -10,12 +10,12 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
+	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
-	"github.com/quorumcontrol/tupelo-go-sdk/gossip/hamtwrapper"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client/pubsubinterfaces"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip/hamtwrapper"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
-	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 	sigfuncs "github.com/quorumcontrol/tupelo-go-sdk/signatures"
 )
 
@@ -55,11 +55,11 @@ type conflictSetHolder map[uint64]roundConflictSet
 type roundSubscriber struct {
 	sync.RWMutex
 
-	pubsub     pubsubinterfaces.Pubsubber
-	bitswapper *p2p.BitswapPeer
-	hamtStore  *hamt.CborIpldStore
-	group      *types.NotaryGroup
-	logger     logging.EventLogger
+	pubsub    pubsubinterfaces.Pubsubber
+	dagStore  nodestore.DagStore
+	hamtStore *hamt.CborIpldStore
+	group     *types.NotaryGroup
+	logger    logging.EventLogger
 
 	inflight conflictSetHolder
 	current  *types.RoundConfirmation
@@ -67,17 +67,17 @@ type roundSubscriber struct {
 	stream *eventstream.EventStream
 }
 
-func newRoundSubscriber(logger logging.EventLogger, group *types.NotaryGroup, pubsub pubsubinterfaces.Pubsubber, bitswapper *p2p.BitswapPeer) *roundSubscriber {
-	hamtStore := hamtwrapper.DagStoreToCborIpld(bitswapper)
+func newRoundSubscriber(logger logging.EventLogger, group *types.NotaryGroup, pubsub pubsubinterfaces.Pubsubber, store nodestore.DagStore) *roundSubscriber {
+	hamtStore := hamtwrapper.DagStoreToCborIpld(store)
 
 	return &roundSubscriber{
-		pubsub:     pubsub,
-		bitswapper: bitswapper,
-		hamtStore:  hamtStore,
-		group:      group,
-		inflight:   make(conflictSetHolder),
-		logger:     logger,
-		stream:     &eventstream.EventStream{},
+		pubsub:    pubsub,
+		dagStore:  store,
+		hamtStore: hamtStore,
+		group:     group,
+		inflight:  make(conflictSetHolder),
+		logger:    logger,
+		stream:    &eventstream.EventStream{},
 	}
 }
 
@@ -199,7 +199,7 @@ func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *types
 
 func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.RoundConfirmation) error {
 	rs.logger.Debugf("publishingTxs")
-	roundNode, err := rs.bitswapper.Get(ctx, confirmation.CompletedRound)
+	roundNode, err := rs.dagStore.Get(ctx, confirmation.CompletedRound)
 	if err != nil {
 		return err
 	}
@@ -215,7 +215,7 @@ func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.R
 	rs.logger.Debugf("getting checkpoint")
 
 	checkpoint := &types.Checkpoint{}
-	checkpointNode, err := rs.bitswapper.Get(ctx, completedRound.Checkpoint)
+	checkpointNode, err := rs.dagStore.Get(ctx, completedRound.Checkpoint)
 	if err != nil {
 		return err
 	}
