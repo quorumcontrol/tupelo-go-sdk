@@ -184,9 +184,10 @@ func (rs *roundSubscriber) handleMessage(ctx context.Context, msg pubsubinterfac
 }
 
 func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *types.RoundConfirmation) error {
+	// handleQuorum expects that it's already in a lock on the roundSubscriber
+
 	rs.logger.Debugf("hande Quorum: %v", confirmation)
 
-	// handleQuorum expects that it's already in a lock on the roundSubscriber
 	rs.current = confirmation
 	for key := range rs.inflight {
 		if key <= confirmation.Height {
@@ -194,36 +195,37 @@ func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *types
 		}
 	}
 
+	confirmation.SetStore(rs.dagStore)
+
+	// fetch the completed round and confirmation here as no ops so that they are cached
+	completedRound, err := confirmation.FetchCompletedRound(ctx)
+	if err != nil {
+		return err
+	}
+
+	_, err = completedRound.FetchCheckpoint(ctx)
+	if err != nil {
+		return err
+	}
+
+	rs.current = confirmation
+
 	return rs.publishTxs(ctx, confirmation)
 }
 
 func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.RoundConfirmation) error {
 	rs.logger.Debugf("publishingTxs")
-	roundNode, err := rs.dagStore.Get(ctx, confirmation.CompletedRound)
-	if err != nil {
-		return err
-	}
 
-	rs.logger.Debugf("getting completed round")
-
-	completedRound := &types.CompletedRound{}
-	err = cbornode.DecodeInto(roundNode.RawData(), completedRound)
+	completedRound, err := confirmation.FetchCompletedRound(ctx)
 	if err != nil {
 		return err
 	}
 
 	rs.logger.Debugf("getting checkpoint")
-
-	checkpoint := &types.Checkpoint{}
-	checkpointNode, err := rs.dagStore.Get(ctx, completedRound.Checkpoint)
+	checkpoint, err := completedRound.FetchCheckpoint(ctx)
 	if err != nil {
 		return err
 	}
-	err = cbornode.DecodeInto(checkpointNode.RawData(), checkpoint)
-	if err != nil {
-		return err
-	}
-
 	rs.logger.Debugf("checkpoint: %v", checkpoint)
 
 	for _, tx := range checkpoint.AddBlockRequests {

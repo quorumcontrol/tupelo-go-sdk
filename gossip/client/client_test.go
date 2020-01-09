@@ -76,7 +76,7 @@ func startNodes(t *testing.T, ctx context.Context, nodes []*gossip.Node, bootAdd
 	}
 }
 
-func TestClient(t *testing.T) {
+func TestClientSendTransactions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -349,4 +349,88 @@ func transactRemote(ctx context.Context, t testing.TB, client *Client, treeID st
 	require.Nil(t, err)
 
 	return resp, sub
+}
+
+func TestClientGetTip(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	numMembers := 3
+	ts := testnotarygroup.NewTestSet(t, numMembers)
+	group, nodes, err := newTupeloSystem(ctx, ts)
+	require.Nil(t, err)
+	require.Len(t, nodes, numMembers)
+
+	booter, err := p2p.NewHostFromOptions(ctx)
+	require.Nil(t, err)
+
+	bootAddrs := make([]string, len(booter.Addresses()))
+	for i, addr := range booter.Addresses() {
+		bootAddrs[i] = addr.String()
+	}
+
+	startNodes(t, ctx, nodes, bootAddrs)
+
+	newClient := func(ctx context.Context) *Client {
+		cliHost, peer, err := p2p.NewHostAndBitSwapPeer(ctx)
+		require.Nil(t, err)
+		_, err = cliHost.Bootstrap(bootAddrs)
+		require.Nil(t, err)
+
+		err = cliHost.WaitForBootstrap(numMembers, 5*time.Second)
+		require.Nil(t, err)
+
+		cli := New(group, pubsubwrapper.WrapLibp2p(cliHost.GetPubSub()), peer)
+		// logging.SetLogLevel("g4-client", "debug")
+
+		err = cli.Start(ctx)
+		require.Nil(t, err)
+		return cli
+	}
+
+	t.Run("test get existing tip", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		cli := newClient(ctx)
+
+		treeKey, err := crypto.GenerateKey()
+		require.Nil(t, err)
+		tree, err := consensus.NewSignedChainTree(treeKey.PublicKey, nodestore.MustMemoryStore(ctx))
+		require.Nil(t, err)
+
+		txn, err := chaintree.NewSetDataTransaction("down/in/the/thing", "sometestvalue")
+		require.Nil(t, err)
+
+		sendProof, err := cli.PlayTransactions(ctx, tree, treeKey, []*transactions.Transaction{txn})
+		require.Nil(t, err)
+		assert.Equal(t, sendProof.Tip.Bytes(), tree.Tip().Bytes())
+
+		proof, err := cli.GetTip(ctx, tree.MustId())
+		require.Nil(t, err)
+
+		require.Equal(t, sendProof.Tip.Bytes(), proof.Tip.Bytes())
+	})
+
+	t.Run("get non existant tip", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		cli := newClient(ctx)
+
+		treeKey, err := crypto.GenerateKey()
+		require.Nil(t, err)
+		tree, err := consensus.NewSignedChainTree(treeKey.PublicKey, nodestore.MustMemoryStore(ctx))
+		require.Nil(t, err)
+
+		txn, err := chaintree.NewSetDataTransaction("down/in/the/thing", "sometestvalue")
+		require.Nil(t, err)
+
+		sendProof, err := cli.PlayTransactions(ctx, tree, treeKey, []*transactions.Transaction{txn})
+		require.Nil(t, err)
+		assert.Equal(t, sendProof.Tip.Bytes(), tree.Tip().Bytes())
+
+		_, err = cli.GetTip(ctx, "did:tupelo:doesnotexist")
+		require.Equal(t, ErrorNotFound, err)
+	})
 }

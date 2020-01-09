@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
@@ -21,6 +22,7 @@ import (
 )
 
 var ErrorTimeout = errors.New("error timeout")
+var ErrorNotFound = hamt.ErrNotFound
 
 var DefaultTimeout = 10 * time.Second
 
@@ -31,6 +33,7 @@ type Client struct {
 	logger     logging.EventLogger
 	subscriber *roundSubscriber
 	pubsub     pubsubinterfaces.Pubsubber
+	store      nodestore.DagStore
 }
 
 // New instantiates a Client specific to a ChainTree/NotaryGroup. The store should probably be a bitswap peer.
@@ -43,6 +46,7 @@ func New(group *types.NotaryGroup, pubsub pubsubinterfaces.Pubsubber, store node
 		logger:     logger,
 		subscriber: subscriber,
 		pubsub:     pubsub,
+		store:      store,
 	}
 }
 
@@ -71,6 +75,48 @@ func (c *Client) PlayTransactions(ctx context.Context, tree *consensus.SignedCha
 	}
 	tree.ChainTree = newChainTree
 	return proof, nil
+}
+
+func (c *Client) GetTip(ctx context.Context, did string) (*Proof, error) {
+	confirmation := c.subscriber.Current()
+	currentRound, err := confirmation.FetchCompletedRound(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching round: %w", err)
+	}
+	hamtNode, err := currentRound.FetchHamt(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching hamt: %w", err)
+	}
+
+	txCID := &cid.Cid{}
+	err = hamtNode.Find(ctx, did, txCID)
+	if err != nil {
+		if err == hamt.ErrNotFound {
+			return nil, ErrorNotFound
+		}
+		return nil, fmt.Errorf("error fetching tip: %w", err)
+	}
+
+	abrNode, err := c.store.Get(ctx, *txCID)
+	if err != nil {
+		return nil, fmt.Errorf("error getting ABR: %w", err)
+	}
+	abr := &services.AddBlockRequest{}
+	err = cbornode.DecodeInto(abrNode.RawData(), abr)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding ABR: %w", err)
+	}
+
+	id, err := cid.Cast(abr.NewTip)
+	if err != nil {
+		return nil, fmt.Errorf("error casting tip: %w", err)
+	}
+
+	return &Proof{
+		ObjectId:          did,
+		RoundConfirmation: *confirmation,
+		Tip:               id,
+	}, nil
 }
 
 func (c *Client) Send(ctx context.Context, abr *services.AddBlockRequest, timeout time.Duration) (*Proof, error) {
