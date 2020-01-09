@@ -1,21 +1,19 @@
 // +build wasm
 
-package pubsub
+package jspubsub
 
 import (
 	"fmt"
 	"syscall/js"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client/pubsubinterfaces"
 
-	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/remote"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/helpers"
-
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
 
 // PubSubBridge is a bridge where golang (in wasm) can use the underlying javascript pubsub
 // for (for example) the tupelo client
 type PubSubBridge struct {
-	remote.UnderlyingPubSub
+	pubsubinterfaces.Pubsubber
 	jspubsub js.Value
 }
 
@@ -43,7 +41,7 @@ func (psb *PubSubBridge) Publish(topic string, data []byte) error {
 	return <-resp
 }
 
-func (psb *PubSubBridge) Subscribe(topic string, opts ...pubsub.SubOpt) (remote.UnderlyingSubscription, error) {
+func (psb *PubSubBridge) Subscribe(topic string) (pubsubinterfaces.Subscription, error) {
 	sub := newBridgedSubscription(topic)
 	sub.pubsub = psb
 	resp := make(chan error)

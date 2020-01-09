@@ -7,11 +7,14 @@ import (
 	"crypto/ecdsa"
 	"syscall/js"
 
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client/pubsubinterfaces"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
+
 	"github.com/quorumcontrol/messages/v2/build/go/config"
 
 	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 
-	"github.com/ipfs/go-cid"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
 
@@ -22,25 +25,21 @@ import (
 	"github.com/pkg/errors"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/messages/v2/build/go/transactions"
-	"github.com/quorumcontrol/tupelo-go-sdk/client"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
-	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/remote"
-
-	"github.com/quorumcontrol/tupelo-go-sdk/wasm/pubsub"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/helpers"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/then"
 )
 
 // JSClient is a javascript bridging client
 type JSClient struct {
-	pubsub      remote.PubSub
+	client      *client.Client
+	pubsub      pubsubinterfaces.Pubsubber
 	notaryGroup *types.NotaryGroup
 }
 
-func New(pubsub *pubsub.PubSubBridge, humanConfig *config.NotaryGroup) *JSClient {
+func New(pubsub pubsubinterfaces.Pubsubber, humanConfig *config.NotaryGroup, store nodestore.DagStore) *JSClient {
 	ngConfig, err := types.HumanConfigToConfig(humanConfig)
 	if err != nil {
 		panic(errors.Wrap(err, "error decoding human config"))
@@ -48,12 +47,17 @@ func New(pubsub *pubsub.PubSubBridge, humanConfig *config.NotaryGroup) *JSClient
 
 	ng := types.NewNotaryGroupFromConfig(ngConfig)
 
-	wrapped := remote.NewWrappedPubsub(pubsub)
+	cli := client.New(ng, pubsub, store)
 
 	return &JSClient{
-		pubsub:      wrapped,
+		client:      cli,
+		pubsub:      pubsub,
 		notaryGroup: ng,
 	}
+}
+
+func (jsc *JSClient) Start(ctx context.Context) error {
+	return jsc.client.Start(ctx)
 }
 
 func jsTransactionsToTransactions(jsTransactions js.Value) ([]*transactions.Transaction, error) {
@@ -81,95 +85,95 @@ func jsKeyBitsToPrivateKey(jsKeyBits js.Value) (*ecdsa.PrivateKey, error) {
 	return crypto.ToECDSA(keybits)
 }
 
-func (jsc *JSClient) PlayTransactions(blockService js.Value, jsKeyBits js.Value, tip js.Value, jsTransactions js.Value) interface{} {
-	t := then.New()
-	go func() {
-		trans, err := jsTransactionsToTransactions(jsTransactions)
-		if err != nil {
-			t.Reject(err.Error())
-			return
-		}
+// func (jsc *JSClient) PlayTransactions(blockService js.Value, jsKeyBits js.Value, tip js.Value, jsTransactions js.Value) interface{} {
+// 	t := then.New()
+// 	go func() {
+// 		trans, err := jsTransactionsToTransactions(jsTransactions)
+// 		if err != nil {
+// 			t.Reject(err.Error())
+// 			return
+// 		}
 
-		key, err := jsKeyBitsToPrivateKey(jsKeyBits)
-		if err != nil {
-			t.Reject(err.Error())
-			return
-		}
+// 		key, err := jsKeyBitsToPrivateKey(jsKeyBits)
+// 		if err != nil {
+// 			t.Reject(err.Error())
+// 			return
+// 		}
 
-		wrappedStore := jsstore.New(blockService)
+// 		wrappedStore := jsstore.New(blockService)
 
-		tip, err := helpers.JsCidToCid(tip)
-		if err != nil {
-			t.Reject(err.Error())
-			return
-		}
+// 		tip, err := helpers.JsCidToCid(tip)
+// 		if err != nil {
+// 			t.Reject(err.Error())
+// 			return
+// 		}
 
-		resp, err := jsc.playTransactions(wrappedStore, tip, key, trans)
-		if err != nil {
-			t.Reject(err.Error())
-			return
-		}
+// 		resp, err := jsc.playTransactions(wrappedStore, tip, key, trans)
+// 		if err != nil {
+// 			t.Reject(err.Error())
+// 			return
+// 		}
 
-		respBits, err := proto.Marshal(resp)
-		if err != nil {
-			t.Reject(err.Error())
-			return
-		}
-		t.Resolve(helpers.SliceToJSArray(respBits))
-	}()
+// 		respBits, err := proto.Marshal(resp)
+// 		if err != nil {
+// 			t.Reject(err.Error())
+// 			return
+// 		}
+// 		t.Resolve(helpers.SliceToJSArray(respBits))
+// 	}()
 
-	return t
-}
+// 	return t
+// }
 
-func (jsc *JSClient) playTransactions(store nodestore.DagStore, tip cid.Cid, treeKey *ecdsa.PrivateKey, transactions []*transactions.Transaction) (*signatures.TreeState, error) {
-	ctx := context.TODO()
+// func (jsc *JSClient) playTransactions(store nodestore.DagStore, tip cid.Cid, treeKey *ecdsa.PrivateKey, transactions []*transactions.Transaction) (*signatures.TreeState, error) {
+// 	ctx := context.TODO()
 
-	cTree, err := chaintree.NewChainTree(
-		ctx,
-		dag.NewDag(ctx, tip, store),
-		nil,
-		consensus.DefaultTransactors,
-	)
-	if err != nil {
-		return nil, errors.Wrap(err, "error creating chaintree")
-	}
+// 	cTree, err := chaintree.NewChainTree(
+// 		ctx,
+// 		dag.NewDag(ctx, tip, store),
+// 		nil,
+// 		consensus.DefaultTransactors,
+// 	)
+// 	if err != nil {
+// 		return nil, errors.Wrap(err, "error creating chaintree")
+// 	}
 
-	tree := consensus.NewSignedChainTreeFromChainTree(cTree)
-	c := client.New(jsc.notaryGroup, tree.MustId(), jsc.pubsub)
-	defer c.Stop()
+// 	tree := consensus.NewSignedChainTreeFromChainTree(cTree)
+// 	c := client.New(jsc.notaryGroup, tree.MustId(), jsc.pubsub)
+// 	defer c.Stop()
 
-	var remoteTip cid.Cid
-	if !tree.IsGenesis() {
-		remoteTip = tree.Tip()
-	}
+// 	var remoteTip cid.Cid
+// 	if !tree.IsGenesis() {
+// 		remoteTip = tree.Tip()
+// 	}
 
-	return c.PlayTransactions(tree, treeKey, &remoteTip, transactions)
-}
+// 	return c.PlayTransactions(tree, treeKey, &remoteTip, transactions)
+// }
 
-func VerifyCurrentState(humanConfig *config.NotaryGroup, state *signatures.TreeState) *then.Then {
-	t := then.New()
-	go func() {
-		ngConfig, err := types.HumanConfigToConfig(humanConfig)
-		if err != nil {
-			panic(errors.Wrap(err, "error decoding human config"))
-		}
+// func VerifyCurrentState(humanConfig *config.NotaryGroup, state *signatures.TreeState) *then.Then {
+// 	t := then.New()
+// 	go func() {
+// 		ngConfig, err := types.HumanConfigToConfig(humanConfig)
+// 		if err != nil {
+// 			panic(errors.Wrap(err, "error decoding human config"))
+// 		}
 
-		ng, err := ngConfig.NotaryGroup(nil)
-		if err != nil {
-			t.Reject(err.Error())
-			return
-		}
-		valid, err := client.VerifyCurrentState(context.TODO(), ng, state)
-		if err != nil {
-			t.Reject(err.Error())
-			return
-		}
-		t.Resolve(valid)
-		return
-	}()
+// 		ng, err := ngConfig.NotaryGroup(nil)
+// 		if err != nil {
+// 			t.Reject(err.Error())
+// 			return
+// 		}
+// 		valid, err := client.VerifyCurrentState(context.TODO(), ng, state)
+// 		if err != nil {
+// 			t.Reject(err.Error())
+// 			return
+// 		}
+// 		t.Resolve(valid)
+// 		return
+// 	}()
 
-	return t
-}
+// 	return t
+// }
 
 func GenerateKey() *then.Then {
 	t := then.New()

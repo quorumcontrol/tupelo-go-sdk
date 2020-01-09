@@ -3,23 +3,16 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jscrypto"
 	"syscall/js"
 
-	"github.com/quorumcontrol/messages/v2/build/go/signatures"
-	"github.com/quorumcontrol/tupelo-go-sdk/client"
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jscrypto"
+
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/helpers"
-	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jscommunity"
-
-	"github.com/pkg/errors"
-	"github.com/quorumcontrol/tupelo-go-sdk/wasm/then"
-
-	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jslibs"
-
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jsclient"
-	"github.com/quorumcontrol/tupelo-go-sdk/wasm/pubsub"
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jscommunity"
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jslibs"
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/then"
 )
 
 var exitChan chan bool
@@ -29,10 +22,6 @@ func init() {
 }
 
 func main() {
-	// Set this to 1 to avoid the `GetTip` request inside PlayTransactions, which
-	// is not supported in wasm client
-	client.MaxPlayTransactionsAttempts = uint(1)
-
 	js.Global().Get("Go").Set("exit", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		exitChan <- true
 		return nil
@@ -84,8 +73,11 @@ func main() {
 			}))
 
 			jsObj.Set("getCurrentState", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				jsOpts := args[0]
-				return jscommunity.GetCurrentState(context.TODO(), jsOpts.Get("tip"), jsOpts.Get("blockService"), jsOpts.Get("did"))
+				t := then.New()
+				t.Reject("currently unsupported")
+				return t
+				// jsOpts := args[0]
+				// return jscommunity.GetCurrentState(context.TODO(), jsOpts.Get("tip"), jsOpts.Get("blockService"), jsOpts.Get("did"))
 			}))
 
 			jsObj.Set("tokenPayloadForTransaction", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
@@ -109,22 +101,25 @@ func main() {
 			}))
 
 			jsObj.Set("verifyCurrentState", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				// JS gives us a js config and the protobuf bits from a current state
-				config, err := jsclient.JsConfigToHumanConfig(args[0])
-				if err != nil {
-					t := then.New()
-					t.Reject(errors.Wrap(err, "error converting config").Error())
-					return t
-				}
+				t := then.New()
+				t.Reject("currently unsupported")
+				return t
+				// // JS gives us a js config and the protobuf bits from a current state
+				// config, err := jsclient.JsConfigToHumanConfig(args[0])
+				// if err != nil {
+				// 	t := then.New()
+				// 	t.Reject(errors.Wrap(err, "error converting config").Error())
+				// 	return t
+				// }
 
-				state := &signatures.TreeState{}
-				err = state.Unmarshal(helpers.JsBufferToBytes(args[1]))
-				if err != nil {
-					t := then.New()
-					t.Reject(errors.Wrap(err, "error converting config").Error())
-					return t
-				}
-				return jsclient.VerifyCurrentState(config, state)
+				// state := &signatures.TreeState{}
+				// err = state.Unmarshal(helpers.JsBufferToBytes(args[1]))
+				// if err != nil {
+				// 	t := then.New()
+				// 	t.Reject(errors.Wrap(err, "error converting config").Error())
+				// 	return t
+				// }
+				// return jsclient.VerifyCurrentState(config, state)
 			}))
 
 			jsObj.Set("signMessage", js.FuncOf(jscrypto.JSSignMessage))
@@ -140,18 +135,20 @@ func main() {
 				//     tip: CID,
 				//     transactions: Uint8Array[], // protobuf encoded array of transactions.Transaction
 				// }
-				jsOpts := args[0]
+				// jsOpts := args[0]
 
-				config, err := jsclient.JsConfigToHumanConfig(jsOpts.Get("notaryGroup"))
-				if err != nil {
-					t := then.New()
-					t.Reject(errors.Wrap(err, "error converting config").Error())
-					return t
-				}
+				// config, err := jsclient.JsConfigToHumanConfig(jsOpts.Get("notaryGroup"))
+				// if err != nil {
+				// 	t := then.New()
+				// 	t.Reject(fmt.Errorf("error converting config %w", err).Error())
+				// 	return t
+				// }
 
-				bridge := pubsub.NewPubSubBridge(jsOpts.Get("publisher"))
-				cli := jsclient.New(bridge, config)
-				return cli.PlayTransactions(jsOpts.Get("blockService"), jsOpts.Get("privateKey"), jsOpts.Get("tip"), jsOpts.Get("transactions"))
+				// store := jsstore.New(jsOpts.Get("blockService"))
+				// bridge := jspubsub.NewPubSubBridge(jsOpts.Get("publisher"))
+				// cli := jsclient.New(bridge, config, store)
+				return nil
+				// return cli.PlayTransactions(jsOpts.Get("blockService"), jsOpts.Get("privateKey"), jsOpts.Get("tip"), jsOpts.Get("transactions"))
 			}))
 
 			return jsObj
