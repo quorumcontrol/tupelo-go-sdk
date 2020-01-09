@@ -18,6 +18,7 @@ import (
 	"github.com/quorumcontrol/messages/v2/build/go/services"
 	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client/pubsubinterfaces/pubsubwrapper"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/testhelpers"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
@@ -104,7 +105,7 @@ func TestClient(t *testing.T) {
 		err = cliHost.WaitForBootstrap(numMembers, 5*time.Second)
 		require.Nil(t, err)
 
-		cli := New(group, cliHost.GetPubSub(), peer)
+		cli := New(group, pubsubwrapper.WrapLibp2p(cliHost.GetPubSub()), peer)
 		// logging.SetLogLevel("g4-client", "debug")
 
 		err = cli.Start(ctx)

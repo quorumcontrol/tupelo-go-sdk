@@ -10,10 +10,10 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/hamtwrapper"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client/pubsubinterfaces"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 	sigfuncs "github.com/quorumcontrol/tupelo-go-sdk/signatures"
@@ -55,7 +55,7 @@ type conflictSetHolder map[uint64]roundConflictSet
 type roundSubscriber struct {
 	sync.RWMutex
 
-	pubsub     *pubsub.PubSub
+	pubsub     pubsubinterfaces.Pubsubber
 	bitswapper *p2p.BitswapPeer
 	hamtStore  *hamt.CborIpldStore
 	group      *types.NotaryGroup
@@ -67,7 +67,7 @@ type roundSubscriber struct {
 	stream *eventstream.EventStream
 }
 
-func newRoundSubscriber(logger logging.EventLogger, group *types.NotaryGroup, pubsub *pubsub.PubSub, bitswapper *p2p.BitswapPeer) *roundSubscriber {
+func newRoundSubscriber(logger logging.EventLogger, group *types.NotaryGroup, pubsub pubsubinterfaces.Pubsubber, bitswapper *p2p.BitswapPeer) *roundSubscriber {
 	hamtStore := hamtwrapper.DagStoreToCborIpld(bitswapper)
 
 	return &roundSubscriber{
@@ -124,7 +124,7 @@ func (rs *roundSubscriber) unsubscribe(sub subscription) {
 	rs.stream.Unsubscribe(sub)
 }
 
-func (rs *roundSubscriber) pubsubMessageToRoundConfirmation(ctx context.Context, msg *pubsub.Message) (*types.RoundConfirmation, error) {
+func (rs *roundSubscriber) pubsubMessageToRoundConfirmation(ctx context.Context, msg pubsubinterfaces.Message) (*types.RoundConfirmation, error) {
 	bits := msg.GetData()
 	confirmation := &types.RoundConfirmation{}
 	err := cbornode.DecodeInto(bits, confirmation)
@@ -140,7 +140,7 @@ func (rs *roundSubscriber) verKeys() []*bls.VerKey {
 	return keys
 }
 
-func (rs *roundSubscriber) handleMessage(ctx context.Context, msg *pubsub.Message) error {
+func (rs *roundSubscriber) handleMessage(ctx context.Context, msg pubsubinterfaces.Message) error {
 	rs.logger.Debugf("handling message")
 
 	confirmation, err := rs.pubsubMessageToRoundConfirmation(ctx, msg)

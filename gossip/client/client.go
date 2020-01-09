@@ -15,10 +15,10 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	logging "github.com/ipfs/go-log"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/hamtwrapper"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client/pubsubinterfaces"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 )
@@ -33,11 +33,11 @@ type Client struct {
 	Group      *types.NotaryGroup
 	logger     logging.EventLogger
 	subscriber *roundSubscriber
-	pubsub     *pubsub.PubSub
+	pubsub     pubsubinterfaces.Pubsubber
 }
 
 // New instantiates a Client specific to a ChainTree/NotaryGroup
-func New(group *types.NotaryGroup, pubsub *pubsub.PubSub, bitswapper *p2p.BitswapPeer) *Client {
+func New(group *types.NotaryGroup, pubsub pubsubinterfaces.Pubsubber, bitswapper *p2p.BitswapPeer) *Client {
 	logger := logging.Logger("g4-client")
 	subscriber := newRoundSubscriber(logger, group, pubsub, bitswapper)
 	return &Client{
