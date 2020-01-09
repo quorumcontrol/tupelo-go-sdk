@@ -38,10 +38,6 @@ func newTupeloSystem(ctx context.Context, testSet *testnotarygroup.TestSet) (*ty
 	}
 
 	for i := range ng.AllSigners() {
-		if err := logging.SetLogLevel(fmt.Sprintf("node-%d", i), "debug"); err != nil {
-			return nil, nil, fmt.Errorf("error setting log level: %v", err)
-		}
-
 		p2pNode, peer, err := p2p.NewHostAndBitSwapPeer(ctx, p2p.WithKey(testSet.EcdsaKeys[i]))
 		if err != nil {
 			return nil, nil, fmt.Errorf("error making node: %v", err)
@@ -57,6 +53,14 @@ func newTupeloSystem(ctx context.Context, testSet *testnotarygroup.TestSet) (*ty
 			return nil, nil, fmt.Errorf("error making node: %v", err)
 		}
 		nodes[i] = n
+	}
+	// setting log level to debug because it's useful output on test failures
+	// this happens after the AllSigners loop because the node name is based on the
+	// index in the signers
+	for i := range ng.AllSigners() {
+		if err := logging.SetLogLevel(fmt.Sprintf("node-%d", i), "debug"); err != nil {
+			return nil, nil, fmt.Errorf("error setting log level: %v", err)
+		}
 	}
 
 	return ng, nodes, nil
