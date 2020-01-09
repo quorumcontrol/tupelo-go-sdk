@@ -1,4 +1,4 @@
-package client2
+package client
 
 import (
 	"context"
@@ -69,7 +69,7 @@ func startNodes(t *testing.T, ctx context.Context, nodes []*gossip4.Node, bootAd
 	}
 }
 
-func TestClient2(t *testing.T) {
+func TestClient(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
