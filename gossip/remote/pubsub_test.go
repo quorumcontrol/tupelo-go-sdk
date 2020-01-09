@@ -81,7 +81,7 @@ func TestPubSub(t *testing.T) {
 
 		receiver, err := actorContext.SpawnNamed(actor.PropsFromFunc(parent), "pubsubtest-receiver-broadcast")
 		require.Nil(t, err)
-		defer receiver.Poison()
+		defer actor.EmptyRootContext.Poison(receiver)
 
 		_, err = ready.Result()
 		require.Nil(t, err)
@@ -127,7 +127,7 @@ func TestPubSub(t *testing.T) {
 
 		receiver, err := actorContext.SpawnNamed(actor.PropsFromFunc(parent), "pubsubtest-receiver-validations")
 		require.Nil(t, err)
-		defer receiver.Poison()
+		defer actor.EmptyRootContext.Poison(receiver)
 
 		_, err = ready.Result()
 		require.Nil(t, err)
@@ -174,7 +174,7 @@ func TestSimulatedBroadcaster(t *testing.T) {
 
 		receiver, err := actorContext.SpawnNamed(actor.PropsFromFunc(parent), "pubsubtest-simulator-broadcast")
 		require.Nil(t, err)
-		defer receiver.Poison()
+		defer actor.EmptyRootContext.Poison(receiver)
 
 		_, err = ready.Result()
 		require.Nil(t, err)
@@ -216,7 +216,7 @@ func TestSimulatedBroadcaster(t *testing.T) {
 
 		receiver, err := actorContext.SpawnNamed(actor.PropsFromFunc(parent), "pubsubtest-simulator-validations")
 		require.Nil(t, err)
-		defer receiver.Poison()
+		defer actor.EmptyRootContext.Poison(receiver)
 
 		_, err = ready.Result()
 		require.Nil(t, err)

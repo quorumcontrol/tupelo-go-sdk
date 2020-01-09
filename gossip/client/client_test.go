@@ -38,7 +38,9 @@ func newTupeloSystem(ctx context.Context, testSet *testnotarygroup.TestSet) (*ty
 	}
 
 	for i := range ng.AllSigners() {
-		logging.SetLogLevel(fmt.Sprintf("node-%d", i), "debug")
+		if err := logging.SetLogLevel(fmt.Sprintf("node-%d", i), "debug"); err != nil {
+			return nil, nil, fmt.Errorf("error setting log level: %v", err)
+		}
 
 		p2pNode, peer, err := p2p.NewHostAndBitSwapPeer(ctx, p2p.WithKey(testSet.EcdsaKeys[i]))
 		if err != nil {

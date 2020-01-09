@@ -173,7 +173,7 @@ func (b *bridge) NormalState(context actor.Context) {
 		b.Log.Infow("terminating stream due to lack of activity")
 		b.behavior.Become(b.TerminatedState)
 		b.clearStreams()
-		context.Self().Poison()
+		context.Poison(context.Self())
 	case *actor.Stopped:
 		b.clearStreams()
 	case network.Stream:
@@ -291,7 +291,7 @@ func (b *bridge) handleOutgoingWireDelivery(context actor.Context, wd *wireDeliv
 			time.Sleep(backoff * time.Millisecond)
 			b.backoffCount++
 			if b.backoffCount > maxBridgeBackoffs {
-				context.Self().Stop()
+				context.Stop(context.Self())
 				b.Log.Errorw("maximum backoff reached - possibly dropped messages", "count", b.backoffCount)
 				return
 			}

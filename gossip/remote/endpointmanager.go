@@ -2,12 +2,15 @@ package remote
 
 import (
 	"fmt"
+	logging "github.com/ipfs/go-log"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 )
+
+var endpointManagerLogger = logging.Logger("endpoingmanager")
 
 type actorRegistry map[string]*actor.PID
 
@@ -65,7 +68,16 @@ func newRemoteManager() *remoteManager {
 }
 
 func (rm *remoteManager) stop() {
+	futures := make([]*actor.Future, len(rm.gateways))
+	i := 0
 	for _, router := range rm.gateways {
-		router.GracefulStop()
+		futures[i] = actor.EmptyRootContext.StopFuture(router)
+		i++
+	}
+	for _, fut := range futures {
+		err := fut.Wait()
+		if err != nil {
+			endpointManagerLogger.Errorf("error stopping router: %v", err)
+		}
 	}
 }

@@ -1,8 +1,8 @@
 package remote
 
 import (
-	"github.com/quorumcontrol/messages/v2/build/go/services"
 	"context"
+	"github.com/quorumcontrol/messages/v2/build/go/services"
 	"testing"
 	"time"
 
@@ -87,15 +87,15 @@ func TestRemoteMessageSending(t *testing.T) {
 
 	host1Ping, err := rootContext.SpawnNamed(actor.PropsFromFunc(pingFunc), "ping-host1")
 	require.Nil(t, err)
-	defer host1Ping.Poison()
+	defer actor.EmptyRootContext.Poison(host1Ping)
 
 	host2Ping, err := rootContext.SpawnNamed(actor.PropsFromFunc(pingFunc), "ping-host2")
 	require.Nil(t, err)
-	defer host2Ping.Poison()
+	defer actor.EmptyRootContext.Poison(host2Ping)
 
 	host3Ping, err := rootContext.SpawnNamed(actor.PropsFromFunc(pingFunc), "ping-host3")
 	require.Nil(t, err)
-	defer host3Ping.Poison()
+	defer actor.EmptyRootContext.Poison(host3Ping)
 
 	Start()
 	defer Stop()
@@ -132,7 +132,7 @@ func TestRemoteMessageSending(t *testing.T) {
 		require.Nil(t, err)
 		host4Ping, err := rootContext.SpawnNamed(actor.PropsFromFunc(pingFunc), "ping-host4")
 		require.Nil(t, err)
-		
+
 		remote4Ping := actor.NewPID(types.NewRoutableAddress(host1.Identity(), host4.Identity()).String(), host4Ping.GetId())
 
 		NewRouter(host4)
@@ -141,7 +141,7 @@ func TestRemoteMessageSending(t *testing.T) {
 		require.Nil(t, err)
 		assert.Equal(t, resp.(*services.Pong).Msg, "hi")
 
-		host4Ping.Stop()
+		defer actor.EmptyRootContext.Stop(host4Ping)
 		cancel()
 
 		resp, err = rootContext.RequestFuture(remote4Ping, &services.Ping{Msg: "hi"}, 100*time.Millisecond).Result()
