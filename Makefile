@@ -23,7 +23,7 @@ build: $(gosources) go.mod go.sum
 	go build ./...
 
 lint: $(FIRSTGOPATH)/bin/golangci-lint build
-	$(FIRSTGOPATH)/bin/golangci-lint run --build-tags integration
+	$(FIRSTGOPATH)/bin/golangci-lint run --build-tags integration --skip-dirs gossip3
 
 test: $(gosources) go.mod go.sum $(FIRSTGOPATH)/bin/gotestsum
 	gotestsum -- -run $(TESTS_TO_RUN) ./...
