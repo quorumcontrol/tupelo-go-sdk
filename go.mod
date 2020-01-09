@@ -8,6 +8,7 @@ require (
 	github.com/avast/retry-go v2.4.3+incompatible
 	github.com/cskr/pubsub v1.0.2
 	github.com/ethereum/go-ethereum v1.9.3
+	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gogo/protobuf v1.3.1
 	github.com/hashicorp/golang-lru v0.5.3
 	github.com/ipfs/go-bitswap v0.1.9-0.20191015150653-291b2674f1f1

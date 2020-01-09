@@ -2,7 +2,7 @@ package client
 
 import (
 	"github.com/ipfs/go-cid"
-	"github.com/quorumcontrol/tupelo-go-sdk/gossip4/types"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
 )
 
 type Proof struct {

@@ -18,17 +18,17 @@ import (
 	"github.com/quorumcontrol/messages/v2/build/go/services"
 	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
-	"github.com/quorumcontrol/tupelo-go-sdk/gossip4/testhelpers"
-	"github.com/quorumcontrol/tupelo-go-sdk/gossip4/types"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip/testhelpers"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 	"github.com/quorumcontrol/tupelo-go-sdk/testnotarygroup"
-	"github.com/quorumcontrol/tupelo/gossip4"
+	"github.com/quorumcontrol/tupelo/gossip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func newTupeloSystem(ctx context.Context, testSet *testnotarygroup.TestSet) (*types.NotaryGroup, []*gossip4.Node, error) {
-	nodes := make([]*gossip4.Node, len(testSet.SignKeys))
+func newTupeloSystem(ctx context.Context, testSet *testnotarygroup.TestSet) (*types.NotaryGroup, []*gossip.Node, error) {
+	nodes := make([]*gossip.Node, len(testSet.SignKeys))
 
 	ng := types.NewNotaryGroup("testnotary")
 	for i, signKey := range testSet.SignKeys {
@@ -45,7 +45,7 @@ func newTupeloSystem(ctx context.Context, testSet *testnotarygroup.TestSet) (*ty
 			return nil, nil, fmt.Errorf("error making node: %v", err)
 		}
 
-		n, err := gossip4.NewNode(ctx, &gossip4.NewNodeOptions{
+		n, err := gossip.NewNode(ctx, &gossip.NewNodeOptions{
 			P2PNode:     p2pNode,
 			SignKey:     testSet.SignKeys[i],
 			NotaryGroup: ng,
@@ -60,7 +60,7 @@ func newTupeloSystem(ctx context.Context, testSet *testnotarygroup.TestSet) (*ty
 	return ng, nodes, nil
 }
 
-func startNodes(t *testing.T, ctx context.Context, nodes []*gossip4.Node, bootAddrs []string) {
+func startNodes(t *testing.T, ctx context.Context, nodes []*gossip.Node, bootAddrs []string) {
 	for _, node := range nodes {
 		err := node.Bootstrap(ctx, bootAddrs)
 		require.Nil(t, err)
