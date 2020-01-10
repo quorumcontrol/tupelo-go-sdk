@@ -16,12 +16,15 @@ import (
 )
 
 func NewTestChainTree(t *testing.T, ctx context.Context) *chaintree.ChainTree {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	key, err := crypto.GenerateKey()
 	assert.Nil(t, err)
 
 	store := nodestore.MustMemoryStore(context.TODO())
 	treeDID := AddrToDid(crypto.PubkeyToAddress(key.PublicKey).String())
-	emptyTree := NewEmptyTree(treeDID, store)
+	emptyTree := NewEmptyTree(ctx, treeDID, store)
 
 	testTree, err := chaintree.NewChainTree(ctx, emptyTree, nil, DefaultTransactors)
 	assert.Nil(t, err)
@@ -30,7 +33,8 @@ func NewTestChainTree(t *testing.T, ctx context.Context) *chaintree.ChainTree {
 }
 
 func TestTreeLedger(t *testing.T) {
-	ctx := context.TODO()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	testTree := NewTestChainTree(t, ctx)
 	treeDID, err := testTree.Id(ctx)

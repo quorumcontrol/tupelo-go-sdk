@@ -94,7 +94,7 @@ func BlockToHash(block chaintree.Block) ([]byte, error) {
 	return ObjToHash(block)
 }
 
-func NewEmptyTree(did string, nodeStore nodestore.DagStore) *dag.Dag {
+func NewEmptyTree(ctx context.Context, did string, nodeStore nodestore.DagStore) *dag.Dag {
 	sw := &safewrap.SafeWrap{}
 	treeNode := sw.WrapObject(make(map[string]string))
 
@@ -110,14 +110,14 @@ func NewEmptyTree(did string, nodeStore nodestore.DagStore) *dag.Dag {
 	if sw.Err != nil {
 		panic(sw.Err)
 	}
-	dag, err := dag.NewDagWithNodes(context.TODO(), nodeStore, root, treeNode, chainNode)
+	dag, err := dag.NewDagWithNodes(ctx, nodeStore, root, treeNode, chainNode)
 	if err != nil {
 		panic(err) // TODO: this err was introduced, keeping external interface the same
 	}
 	return dag
 }
 
-func SignBlock(blockWithHeaders *chaintree.BlockWithHeaders, key *ecdsa.PrivateKey) (*chaintree.BlockWithHeaders, error) {
+func SignBlock(ctx context.Context, blockWithHeaders *chaintree.BlockWithHeaders, key *ecdsa.PrivateKey) (*chaintree.BlockWithHeaders, error) {
 	hsh, err := BlockToHash(blockWithHeaders.Block)
 	if err != nil {
 		return nil, fmt.Errorf("error hashing block: %v", err)
@@ -162,7 +162,7 @@ func SignBlock(blockWithHeaders *chaintree.BlockWithHeaders, key *ecdsa.PrivateK
 	return blockWithHeaders, nil
 }
 
-func IsBlockSignedBy(blockWithHeaders *chaintree.BlockWithHeaders, addr string) (bool, error) {
+func IsBlockSignedBy(ctx context.Context, blockWithHeaders *chaintree.BlockWithHeaders, addr string) (bool, error) {
 	headers := &StandardHeaders{}
 	if blockWithHeaders.Headers != nil {
 		err := typecaster.ToType(blockWithHeaders.Headers, headers)
@@ -185,7 +185,7 @@ func IsBlockSignedBy(blockWithHeaders *chaintree.BlockWithHeaders, addr string) 
 
 	switch sig.Ownership.PublicKey.Type {
 	case signatures.PublicKey_KeyTypeSecp256k1:
-		err := sigfuncs.RestoreEcdsaPublicKey(sig, hsh)
+		err := sigfuncs.RestoreEcdsaPublicKey(ctx, sig, hsh)
 		if err != nil {
 			return false, fmt.Errorf("error restoring public key: %v", err)
 		}
@@ -196,7 +196,7 @@ func IsBlockSignedBy(blockWithHeaders *chaintree.BlockWithHeaders, addr string) 
 		if sigAddr.String() != addr {
 			return false, fmt.Errorf("unsigned by address %s != %s", sigAddr.String(), addr)
 		}
-		return sigfuncs.Valid(sig, hsh, nil) // TODO: maybe we want to have a custom scope here?
+		return sigfuncs.Valid(ctx, sig, hsh, nil) // TODO: maybe we want to have a custom scope here?
 	}
 
 	log.Error("unknown signature type")

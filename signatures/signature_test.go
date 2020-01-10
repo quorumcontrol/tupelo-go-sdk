@@ -1,6 +1,7 @@
 package signatures
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -71,6 +72,9 @@ func TestBLSAddr(t *testing.T) {
 }
 
 func TestEcdsaKeyRestore(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	key, err := crypto.GenerateKey()
 	require.Nil(t, err)
 	msg := crypto.Keccak256([]byte("hi hi"))
@@ -85,7 +89,7 @@ func TestEcdsaKeyRestore(t *testing.T) {
 		},
 		Signature: sigBits,
 	}
-	err = RestoreEcdsaPublicKey(sig, msg)
+	err = RestoreEcdsaPublicKey(ctx, sig, msg)
 	require.Nil(t, err)
 	assert.Len(t, sig.Ownership.PublicKey.PublicKey, 65)
 	assert.Equal(t, crypto.FromECDSAPub(&key.PublicKey), sig.Ownership.PublicKey.PublicKey)
@@ -114,43 +118,52 @@ func TestSignerCount(t *testing.T) {
 }
 
 func TestEcdsaSigning(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	key, err := crypto.GenerateKey()
 	require.Nil(t, err)
 	hsh := crypto.Keccak256([]byte("hi hi"))
 
-	sig, err := EcdsaSign(key, hsh)
+	sig, err := EcdsaSign(ctx, key, hsh)
 	require.Nil(t, err)
 
-	require.Nil(t, RestoreEcdsaPublicKey(sig, hsh))
-	verified, err := Valid(sig, hsh, nil)
+	require.Nil(t, RestoreEcdsaPublicKey(ctx, sig, hsh))
+	verified, err := Valid(ctx, sig, hsh, nil)
 	require.Nil(t, err)
 	assert.True(t, verified)
 }
 
 func TestEcdsaSigningWithConditions(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	key, err := crypto.GenerateKey()
 	require.Nil(t, err)
 	msg := crypto.Keccak256([]byte("hi hi"))
 
-	sig, err := EcdsaSign(key, msg)
+	sig, err := EcdsaSign(ctx, key, msg)
 	require.Nil(t, err)
 
 	sig.Ownership.Conditions = "false"
 
-	require.Nil(t, RestoreEcdsaPublicKey(sig, msg))
-	verified, err := Valid(sig, msg, nil)
+	require.Nil(t, RestoreEcdsaPublicKey(ctx, sig, msg))
+	verified, err := Valid(ctx, sig, msg, nil)
 	require.Nil(t, err)
 	// Conditions returned false so it should not verify
 	assert.False(t, verified)
 
 	sig.Ownership.Conditions = "true"
-	verified, err = Valid(sig, msg, nil)
+	verified, err = Valid(ctx, sig, msg, nil)
 	require.Nil(t, err)
 	// Conditions are now TRUE so should verify
 	assert.True(t, verified)
 }
 
 func TestHashPreimageConditions(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	key, err := crypto.GenerateKey()
 	require.Nil(t, err)
 	msg := crypto.Keccak256([]byte("hi hi"))
@@ -158,26 +171,29 @@ func TestHashPreimageConditions(t *testing.T) {
 	preImage := "secrets!"
 	hsh := crypto.Keccak256Hash([]byte(preImage)).String()
 
-	sig, err := EcdsaSign(key, msg)
+	sig, err := EcdsaSign(ctx, key, msg)
 	require.Nil(t, err)
 
 	sig.Ownership.Conditions = fmt.Sprintf(`(== (hashed-preimage) "%s")`, hsh)
 	sig.PreImage = "not the right one"
 
-	require.Nil(t, RestoreEcdsaPublicKey(sig, msg))
-	verified, err := Valid(sig, msg, nil)
+	require.Nil(t, RestoreEcdsaPublicKey(ctx, sig, msg))
+	verified, err := Valid(ctx, sig, msg, nil)
 	require.Nil(t, err)
 	// Conditions returned false so it should not verify
 	assert.False(t, verified)
 
 	sig.PreImage = preImage
-	verified, err = Valid(sig, msg, nil)
+	verified, err = Valid(ctx, sig, msg, nil)
 	require.Nil(t, err)
 	// Conditions are now TRUE so should verify
 	assert.True(t, verified)
 }
 
 func TestRestoreBLSPublicKey(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	key1, err := bls.NewSignKey()
 	assert.Nil(t, err)
 
@@ -192,7 +208,7 @@ func TestRestoreBLSPublicKey(t *testing.T) {
 		},
 		Signers: []uint32{1, 2},
 	}
-	require.Nil(t, RestoreBLSPublicKey(sig, []*bls.VerKey{key1.MustVerKey(), key2.MustVerKey()}))
+	require.Nil(t, RestoreBLSPublicKey(ctx, sig, []*bls.VerKey{key1.MustVerKey(), key2.MustVerKey()}))
 	assert.Equal(t, sig.Ownership.PublicKey.Type, signatures.PublicKey_KeyTypeBLSGroupSig)
 	aggregated, err := bls.SumVerKeys([]*bls.VerKey{key1.MustVerKey(), key2.MustVerKey(), key2.MustVerKey()})
 	require.Nil(t, err)
@@ -200,6 +216,9 @@ func TestRestoreBLSPublicKey(t *testing.T) {
 }
 
 func TestAggregateBLSSignatures(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	key1, err := bls.NewSignKey()
 	require.Nil(t, err)
 
@@ -208,10 +227,10 @@ func TestAggregateBLSSignatures(t *testing.T) {
 
 	msg := crypto.Keccak256([]byte("hi"))
 
-	sig1, err := BLSSign(key1, msg, 2, 0)
+	sig1, err := BLSSign(ctx, key1, msg, 2, 0)
 	require.Nil(t, err)
 
-	sig2, err := BLSSign(key2, msg, 2, 1)
+	sig2, err := BLSSign(ctx, key2, msg, 2, 1)
 	require.Nil(t, err)
 
 	expectedAggPub, err := bls.SumVerKeys([]*bls.VerKey{key1.MustVerKey(), key2.MustVerKey()})
@@ -220,7 +239,7 @@ func TestAggregateBLSSignatures(t *testing.T) {
 	expectedAggSig, err := bls.SumSignatures([][]byte{sig1.Signature, sig2.Signature})
 	require.Nil(t, err)
 
-	aggregate, err := AggregateBLSSignatures([]*signatures.Signature{sig1, sig2})
+	aggregate, err := AggregateBLSSignatures(ctx, []*signatures.Signature{sig1, sig2})
 	require.Nil(t, err)
 
 	assert.Equal(t, aggregate.Signers, []uint32{1, 1})
@@ -230,6 +249,9 @@ func TestAggregateBLSSignatures(t *testing.T) {
 }
 
 func BenchmarkWithConditions(b *testing.B) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	key, err := crypto.GenerateKey()
 	require.Nil(b, err)
 	msg := crypto.Keccak256([]byte("hi hi"))
@@ -249,17 +271,20 @@ func BenchmarkWithConditions(b *testing.B) {
 		Signature: sigBits,
 		PreImage:  preImage,
 	}
-	require.Nil(b, RestoreEcdsaPublicKey(sig, msg))
+	require.Nil(b, RestoreEcdsaPublicKey(ctx, sig, msg))
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, err = Valid(sig, msg, nil)
+		_, err = Valid(ctx, sig, msg, nil)
 	}
 	require.Nil(b, err)
 }
 
 func BenchmarkWithoutConditions(b *testing.B) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	key, err := crypto.GenerateKey()
 	require.Nil(b, err)
 	msg := crypto.Keccak256([]byte("hi hi"))
@@ -275,12 +300,12 @@ func BenchmarkWithoutConditions(b *testing.B) {
 		},
 		Signature: sigBits,
 	}
-	require.Nil(b, RestoreEcdsaPublicKey(sig, msg))
+	require.Nil(b, RestoreEcdsaPublicKey(ctx, sig, msg))
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, err = Valid(sig, msg, nil)
+		_, err = Valid(ctx, sig, msg, nil)
 	}
 	require.Nil(b, err)
 }

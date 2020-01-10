@@ -183,6 +183,8 @@ func HasBurnGenerator(ctx context.Context, ng *NotaryGroup) (chaintree.BlockVali
 // an authorized owner (in the consensus.TreePathForAuthentications path) has signed
 // this block.
 func IsOwner(tree *dag.Dag, blockWithHeaders *chaintree.BlockWithHeaders) (bool, chaintree.CodedError) {
+	ctx := context.TODO()
+
 	id, _, err := tree.Resolve(context.TODO(), []string{"id"})
 	if err != nil {
 		return false, &consensus.ErrorCode{Memo: fmt.Sprintf("error: %v", err), Code: consensus.ErrUnknown}
@@ -212,7 +214,7 @@ func IsOwner(tree *dag.Dag, blockWithHeaders *chaintree.BlockWithHeaders) (bool,
 	}
 
 	for _, addr := range addrs {
-		isSigned, err := consensus.IsBlockSignedBy(blockWithHeaders, addr)
+		isSigned, err := consensus.IsBlockSignedBy(ctx, blockWithHeaders, addr)
 		if err != nil {
 			return false, &consensus.ErrorCode{Memo: fmt.Sprintf("error finding if signed: %v", err), Code: consensus.ErrUnknown}
 		}

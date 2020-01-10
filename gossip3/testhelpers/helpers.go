@@ -47,12 +47,12 @@ func NewValidTransactionWithPathAndValue(t testing.TB, treeKey *ecdsa.PrivateKey
 	treeDID := consensus.AddrToDid(crypto.PubkeyToAddress(treeKey.PublicKey).String())
 
 	nodeStore := nodestore.MustMemoryStore(ctx)
-	emptyTree := consensus.NewEmptyTree(treeDID, nodeStore)
+	emptyTree := consensus.NewEmptyTree(ctx, treeDID, nodeStore)
 	emptyTip := emptyTree.Tip
 	testTree, err := chaintree.NewChainTree(ctx, emptyTree, nil, consensus.DefaultTransactors)
 	require.Nil(t, err)
 
-	blockWithHeaders, err := consensus.SignBlock(&unsignedBlock, treeKey)
+	blockWithHeaders, err := consensus.SignBlock(ctx, &unsignedBlock, treeKey)
 	require.Nil(t, err)
 
 	_, err = testTree.ProcessBlock(ctx, blockWithHeaders)
