@@ -28,6 +28,8 @@ func isQuorum(group *types.NotaryGroup, sig *signatures.Signature) bool {
 }
 
 func (rcs roundConflictSet) add(group *types.NotaryGroup, confirmation *types.RoundConfirmation) (makesQuorum bool, updated *types.RoundConfirmation, err error) {
+	ctx := context.TODO()
+
 	existing, ok := rcs[confirmation.CompletedRound]
 	if !ok {
 		// this is the first time we're seeing the completed round,
@@ -37,7 +39,7 @@ func (rcs roundConflictSet) add(group *types.NotaryGroup, confirmation *types.Ro
 	}
 
 	// otherwise we've already seen a confirmation for this, let's combine the signatures
-	newSig, err := sigfuncs.AggregateBLSSignatures([]*signatures.Signature{existing.Signature, confirmation.Signature})
+	newSig, err := sigfuncs.AggregateBLSSignatures(ctx, []*signatures.Signature{existing.Signature, confirmation.Signature})
 	if err != nil {
 		return false, nil, err
 	}
@@ -150,12 +152,12 @@ func (rs *roundSubscriber) handleMessage(ctx context.Context, msg *pubsub.Messag
 		return fmt.Errorf("confirmation of height %d is less than current %d", confirmation.Height, rs.current.Height)
 	}
 
-	err = sigfuncs.RestoreBLSPublicKey(confirmation.Signature, rs.verKeys())
+	err = sigfuncs.RestoreBLSPublicKey(ctx, confirmation.Signature, rs.verKeys())
 	if err != nil {
 		return fmt.Errorf("error restoring BLS key: %w", err)
 	}
 
-	verified, err := sigfuncs.Valid(confirmation.Signature, confirmation.CompletedRound.Bytes(), nil)
+	verified, err := sigfuncs.Valid(ctx, confirmation.Signature, confirmation.CompletedRound.Bytes(), nil)
 	if !verified || err != nil {
 		return fmt.Errorf("signature invalid with error: %v", err)
 	}

@@ -37,7 +37,7 @@ func (c *Client) NewAddBlockRequest(ctx context.Context, tree *consensus.SignedC
 		},
 	}
 
-	blockWithHeaders, err := consensus.SignBlock(unsignedBlock, treeKey)
+	blockWithHeaders, err := consensus.SignBlock(ctx, unsignedBlock, treeKey)
 	if err != nil {
 		return nil, fmt.Errorf("error signing block: %w", err)
 	}

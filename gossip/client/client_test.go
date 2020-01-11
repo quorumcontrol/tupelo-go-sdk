@@ -120,7 +120,7 @@ func TestClient(t *testing.T) {
 
 		treeKey, err := crypto.GenerateKey()
 		require.Nil(t, err)
-		tree, err := consensus.NewSignedChainTree(treeKey.PublicKey, nodestore.MustMemoryStore(ctx))
+		tree, err := consensus.NewSignedChainTree(ctx, treeKey.PublicKey, nodestore.MustMemoryStore(ctx))
 		require.Nil(t, err)
 
 		txn, err := chaintree.NewSetDataTransaction("down/in/the/thing", "sometestvalue")
@@ -139,7 +139,7 @@ func TestClient(t *testing.T) {
 
 		treeKey, err := crypto.GenerateKey()
 		require.Nil(t, err)
-		tree, err := consensus.NewSignedChainTree(treeKey.PublicKey, nodestore.MustMemoryStore(ctx))
+		tree, err := consensus.NewSignedChainTree(ctx, treeKey.PublicKey, nodestore.MustMemoryStore(ctx))
 		require.Nil(t, err)
 
 		txn, err := chaintree.NewSetDataTransaction("down/in/the/thing", "sometestvalue")
@@ -175,7 +175,7 @@ func TestClient(t *testing.T) {
 		require.Nil(t, err)
 		nodeStore := nodestore.MustMemoryStore(ctx)
 
-		testTree, err := consensus.NewSignedChainTree(treeKey.PublicKey, nodeStore)
+		testTree, err := consensus.NewSignedChainTree(ctx, treeKey.PublicKey, nodeStore)
 		require.Nil(t, err)
 
 		emptyTip := testTree.Tip()
@@ -217,14 +217,14 @@ func TestClient(t *testing.T) {
 		nodeStoreA := nodestore.MustMemoryStore(ctx)
 		nodeStoreB := nodestore.MustMemoryStore(ctx)
 
-		testTreeA, err := consensus.NewSignedChainTree(treeKey.PublicKey, nodeStoreA)
+		testTreeA, err := consensus.NewSignedChainTree(ctx, treeKey.PublicKey, nodeStoreA)
 		require.Nil(t, err)
 
 		// establish different first valid transactions on 2 different local chaintrees
 		transactLocal(t, testTreeA, treeKey, 0, "down/in/the/treeA", "atestvalue")
 		basisNodesA1 := testhelpers.DagToByteNodes(t, testTreeA.ChainTree.Dag)
 
-		testTreeB, err := consensus.NewSignedChainTree(treeKey.PublicKey, nodeStoreB)
+		testTreeB, err := consensus.NewSignedChainTree(ctx, treeKey.PublicKey, nodeStoreB)
 		require.Nil(t, err)
 		emptyTip := testTreeB.Tip()
 
@@ -277,7 +277,7 @@ func TestClient(t *testing.T) {
 		treeKey1, err := crypto.GenerateKey()
 		require.Nil(t, err)
 		nodeStore := nodestore.MustMemoryStore(ctx)
-		chain, err := consensus.NewSignedChainTree(treeKey1.PublicKey, nodeStore)
+		chain, err := consensus.NewSignedChainTree(ctx, treeKey1.PublicKey, nodeStore)
 		require.Nil(t, err)
 
 		treeKey2, err := crypto.GenerateKey()
@@ -311,7 +311,7 @@ func transactLocal(t testing.TB, tree *consensus.SignedChainTree, treeKey *ecdsa
 		},
 	}
 
-	blockWithHeaders, err := consensus.SignBlock(unsignedBlock, treeKey)
+	blockWithHeaders, err := consensus.SignBlock(ctx, unsignedBlock, treeKey)
 	require.Nil(t, err)
 
 	_, err = tree.ChainTree.ProcessBlock(ctx, blockWithHeaders)
