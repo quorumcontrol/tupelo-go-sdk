@@ -23,8 +23,6 @@ import (
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 )
 
-const transactionTopic = "g4-transactions"
-
 var ErrorTimeout = errors.New("error timeout")
 
 var DefaultTimeout = 10 * time.Second
@@ -112,7 +110,7 @@ func (c *Client) SendWithoutWait(ctx context.Context, abr *services.AddBlockRequ
 		return fmt.Errorf("error marshaling: %w", err)
 	}
 
-	err = c.pubsub.Publish(transactionTopic, bits)
+	err = c.pubsub.Publish(c.Group.Config().TransactionTopic, bits)
 	if err != nil {
 		return fmt.Errorf("error publishing: %w", err)
 	}
