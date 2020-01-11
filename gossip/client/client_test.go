@@ -96,7 +96,7 @@ func TestClientSendTransactions(t *testing.T) {
 
 	startNodes(t, ctx, nodes, bootAddrs)
 
-	newClient := func(ctx context.Context) *Client {
+	newClient := func(t *testing.T, ctx context.Context) *Client {
 		cliHost, peer, err := p2p.NewHostAndBitSwapPeer(ctx)
 		require.Nil(t, err)
 		_, err = cliHost.Bootstrap(bootAddrs)
@@ -117,7 +117,7 @@ func TestClientSendTransactions(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		cli := newClient(ctx)
+		cli := newClient(t, ctx)
 
 		treeKey, err := crypto.GenerateKey()
 		require.Nil(t, err)
@@ -136,7 +136,7 @@ func TestClientSendTransactions(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		cli := newClient(ctx)
+		cli := newClient(t, ctx)
 
 		treeKey, err := crypto.GenerateKey()
 		require.Nil(t, err)
@@ -170,7 +170,7 @@ func TestClientSendTransactions(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		cli := newClient(ctx)
+		cli := newClient(t, ctx)
 
 		treeKey, err := crypto.GenerateKey()
 		require.Nil(t, err)
@@ -210,8 +210,8 @@ func TestClientSendTransactions(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		clientA := newClient(ctx)
-		clientB := newClient(ctx)
+		clientA := newClient(t, ctx)
+		clientB := newClient(t, ctx)
 
 		treeKey, err := crypto.GenerateKey()
 		require.Nil(t, err)
@@ -274,7 +274,7 @@ func TestClientSendTransactions(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		cli := newClient(ctx)
+		cli := newClient(t, ctx)
 		treeKey1, err := crypto.GenerateKey()
 		require.Nil(t, err)
 		nodeStore := nodestore.MustMemoryStore(ctx)
@@ -371,7 +371,7 @@ func TestClientGetTip(t *testing.T) {
 
 	startNodes(t, ctx, nodes, bootAddrs)
 
-	newClient := func(ctx context.Context) *Client {
+	newClient := func(t *testing.T, ctx context.Context) *Client {
 		cliHost, peer, err := p2p.NewHostAndBitSwapPeer(ctx)
 		require.Nil(t, err)
 		_, err = cliHost.Bootstrap(bootAddrs)
@@ -392,7 +392,7 @@ func TestClientGetTip(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		cli := newClient(ctx)
+		cli := newClient(t, ctx)
 
 		treeKey, err := crypto.GenerateKey()
 		require.Nil(t, err)
@@ -416,7 +416,7 @@ func TestClientGetTip(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		cli := newClient(ctx)
+		cli := newClient(t, ctx)
 
 		treeKey, err := crypto.GenerateKey()
 		require.Nil(t, err)
