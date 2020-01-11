@@ -1,10 +1,11 @@
 package remote
 
 import (
-	"github.com/quorumcontrol/messages/v2/build/go/services"
 	"context"
 	"testing"
 	"time"
+
+	"github.com/quorumcontrol/messages/v2/build/go/services"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -113,12 +114,12 @@ func TestRemoteMessageSending(t *testing.T) {
 		assert.Equal(t, resp.(*services.Pong).Msg, "hi")
 	})
 
-	t.Run("sending a traceable when tracing is on", func(t *testing.T) {
-		// We *should* have serializable and traceable messages, but we don't.
-		// will take some work in the messages library (probaby with gogo protobuf)
-		// in order to bring those back. Without those, it's really hard to test this functionality.
-		t.Skip("we no longer have any serializable, and traceable messages at the moment.")
-	})
+	// t.Run("sending a traceable when tracing is on", func(t *testing.T) {
+	//	// We *should* have serializable and traceable messages, but we don't.
+	//	// will take some work in the messages library (probaby with gogo protobuf)
+	//	// in order to bring those back. Without those, it's really hard to test this functionality.
+	//	t.Skip("we no longer have any serializable, and traceable messages at the moment.")
+	// })
 
 	t.Run("when the otherside is closed permanently", func(t *testing.T) {
 		newCtx, cancel := context.WithCancel(context.Background())
@@ -132,7 +133,7 @@ func TestRemoteMessageSending(t *testing.T) {
 		require.Nil(t, err)
 		host4Ping, err := rootContext.SpawnNamed(actor.PropsFromFunc(pingFunc), "ping-host4")
 		require.Nil(t, err)
-		
+
 		remote4Ping := actor.NewPID(types.NewRoutableAddress(host1.Identity(), host4.Identity()).String(), host4Ping.GetId())
 
 		NewRouter(host4)

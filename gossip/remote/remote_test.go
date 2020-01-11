@@ -114,12 +114,12 @@ func TestRemoteMessageSending(t *testing.T) {
 		assert.Equal(t, resp.(*services.Pong).Msg, "hi")
 	})
 
-	t.Run("sending a traceable when tracing is on", func(t *testing.T) {
-		// We *should* have serializable and traceable messages, but we don't.
-		// will take some work in the messages library (probaby with gogo protobuf)
-		// in order to bring those back. Without those, it's really hard to test this functionality.
-		t.Skip("we no longer have any serializable, and traceable messages at the moment.")
-	})
+	// t.Run("sending a traceable when tracing is on", func(t *testing.T) {
+	//	// We *should* have serializable and traceable messages, but we don't.
+	//	// will take some work in the messages library (probaby with gogo protobuf)
+	//	// in order to bring those back. Without those, it's really hard to test this functionality.
+	//	t.Skip("we no longer have any serializable, and traceable messages at the moment.")
+	// })
 
 	t.Run("when the other side is closed permanently", func(t *testing.T) {
 		newCtx, cancel := context.WithCancel(context.Background())
