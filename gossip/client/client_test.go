@@ -96,40 +96,38 @@ func TestClientSendTransactions(t *testing.T) {
 
 	startNodes(t, ctx, nodes, bootAddrs)
 
-	newClient := func(t *testing.T, ctx context.Context) *Client {
+	newClient := func(ctx context.Context) (*Client, error) {
 		cliHost, peer, err := p2p.NewHostAndBitSwapPeer(ctx)
 		if err != nil {
-			t.Logf("debugging a fail: %v", err)
+			return nil, err
 		}
-		require.Nil(t, err)
+
 		_, err = cliHost.Bootstrap(bootAddrs)
 		if err != nil {
-			t.Logf("debugging a fail: %v", err)
+			return nil, err
 		}
-		require.Nil(t, err)
 
 		err = cliHost.WaitForBootstrap(numMembers, 5*time.Second)
 		if err != nil {
-			t.Logf("debugging a fail: %v", err)
+			return nil, err
 		}
-		require.Nil(t, err)
 
 		cli := New(group, pubsubwrapper.WrapLibp2p(cliHost.GetPubSub()), peer)
 		// logging.SetLogLevel("g4-client", "debug")
 
 		err = cli.Start(ctx)
 		if err != nil {
-			t.Logf("debugging a fail: %v", err)
+			return nil, err
 		}
-		require.Nil(t, err)
-		return cli
+		return cli, nil
 	}
 
 	t.Run("test basic setup", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		cli := newClient(t, ctx)
+		cli, err := newClient(ctx)
+		require.Nil(t, err)
 
 		treeKey, err := crypto.GenerateKey()
 		require.Nil(t, err)
@@ -148,7 +146,8 @@ func TestClientSendTransactions(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		cli := newClient(t, ctx)
+		cli, err := newClient(ctx)
+		require.Nil(t, err)
 
 		treeKey, err := crypto.GenerateKey()
 		require.Nil(t, err)
@@ -182,7 +181,8 @@ func TestClientSendTransactions(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		cli := newClient(t, ctx)
+		cli, err := newClient(ctx)
+		require.Nil(t, err)
 
 		treeKey, err := crypto.GenerateKey()
 		require.Nil(t, err)
@@ -222,8 +222,10 @@ func TestClientSendTransactions(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		clientA := newClient(t, ctx)
-		clientB := newClient(t, ctx)
+		clientA, err := newClient(ctx)
+		require.Nil(t, err)
+		clientB, err := newClient(ctx)
+		require.Nil(t, err)
 
 		treeKey, err := crypto.GenerateKey()
 		require.Nil(t, err)
@@ -286,7 +288,9 @@ func TestClientSendTransactions(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		cli := newClient(t, ctx)
+		cli, err := newClient(ctx)
+		require.Nil(t, err)
+
 		treeKey1, err := crypto.GenerateKey()
 		require.Nil(t, err)
 		nodeStore := nodestore.MustMemoryStore(ctx)
@@ -383,28 +387,37 @@ func TestClientGetTip(t *testing.T) {
 
 	startNodes(t, ctx, nodes, bootAddrs)
 
-	newClient := func(t *testing.T, ctx context.Context) *Client {
+	newClient := func(ctx context.Context) (*Client, error) {
 		cliHost, peer, err := p2p.NewHostAndBitSwapPeer(ctx)
-		require.Nil(t, err)
+		if err != nil {
+			return nil, err
+		}
+
 		_, err = cliHost.Bootstrap(bootAddrs)
-		require.Nil(t, err)
+		if err != nil {
+			return nil, err
+		}
 
 		err = cliHost.WaitForBootstrap(numMembers, 5*time.Second)
-		require.Nil(t, err)
+		if err != nil {
+			return nil, err
+		}
 
 		cli := New(group, pubsubwrapper.WrapLibp2p(cliHost.GetPubSub()), peer)
-		// logging.SetLogLevel("g4-client", "debug")
 
 		err = cli.Start(ctx)
-		require.Nil(t, err)
-		return cli
+		if err != nil {
+			return nil, err
+		}
+		return cli, nil
 	}
 
 	t.Run("test get existing tip", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		cli := newClient(t, ctx)
+		cli, err := newClient(ctx)
+		require.Nil(t, err)
 
 		treeKey, err := crypto.GenerateKey()
 		require.Nil(t, err)
@@ -428,7 +441,8 @@ func TestClientGetTip(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		cli := newClient(t, ctx)
+		cli, err := newClient(ctx)
+		require.Nil(t, err)
 
 		treeKey, err := crypto.GenerateKey()
 		require.Nil(t, err)
