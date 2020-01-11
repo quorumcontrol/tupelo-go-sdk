@@ -76,6 +76,31 @@ func startNodes(t *testing.T, ctx context.Context, nodes []*gossip.Node, bootAdd
 	}
 }
 
+func newClient(ctx context.Context, group *types.NotaryGroup, bootAddrs []string) (*Client, error) {
+	cliHost, peer, err := p2p.NewHostAndBitSwapPeer(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = cliHost.Bootstrap(bootAddrs)
+	if err != nil {
+		return nil, err
+	}
+
+	err = cliHost.WaitForBootstrap(len(group.AllSigners()), 5*time.Second)
+	if err != nil {
+		return nil, err
+	}
+
+	cli := New(group, pubsubwrapper.WrapLibp2p(cliHost.GetPubSub()), peer)
+
+	err = cli.Start(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return cli, nil
+}
+
 func TestClientSendTransactions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -96,37 +121,11 @@ func TestClientSendTransactions(t *testing.T) {
 
 	startNodes(t, ctx, nodes, bootAddrs)
 
-	newClient := func(ctx context.Context) (*Client, error) {
-		cliHost, peer, err := p2p.NewHostAndBitSwapPeer(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		_, err = cliHost.Bootstrap(bootAddrs)
-		if err != nil {
-			return nil, err
-		}
-
-		err = cliHost.WaitForBootstrap(numMembers, 5*time.Second)
-		if err != nil {
-			return nil, err
-		}
-
-		cli := New(group, pubsubwrapper.WrapLibp2p(cliHost.GetPubSub()), peer)
-		// logging.SetLogLevel("g4-client", "debug")
-
-		err = cli.Start(ctx)
-		if err != nil {
-			return nil, err
-		}
-		return cli, nil
-	}
-
 	t.Run("test basic setup", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		cli, err := newClient(ctx)
+		cli, err := newClient(ctx, group, bootAddrs)
 		require.Nil(t, err)
 
 		treeKey, err := crypto.GenerateKey()
@@ -146,7 +145,7 @@ func TestClientSendTransactions(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		cli, err := newClient(ctx)
+		cli, err := newClient(ctx, group, bootAddrs)
 		require.Nil(t, err)
 
 		treeKey, err := crypto.GenerateKey()
@@ -181,7 +180,7 @@ func TestClientSendTransactions(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		cli, err := newClient(ctx)
+		cli, err := newClient(ctx, group, bootAddrs)
 		require.Nil(t, err)
 
 		treeKey, err := crypto.GenerateKey()
@@ -222,9 +221,9 @@ func TestClientSendTransactions(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		clientA, err := newClient(ctx)
+		clientA, err := newClient(ctx, group, bootAddrs)
 		require.Nil(t, err)
-		clientB, err := newClient(ctx)
+		clientB, err := newClient(ctx, group, bootAddrs)
 		require.Nil(t, err)
 
 		treeKey, err := crypto.GenerateKey()
@@ -288,7 +287,7 @@ func TestClientSendTransactions(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		cli, err := newClient(ctx)
+		cli, err := newClient(ctx, group, bootAddrs)
 		require.Nil(t, err)
 
 		treeKey1, err := crypto.GenerateKey()
@@ -387,36 +386,11 @@ func TestClientGetTip(t *testing.T) {
 
 	startNodes(t, ctx, nodes, bootAddrs)
 
-	newClient := func(ctx context.Context) (*Client, error) {
-		cliHost, peer, err := p2p.NewHostAndBitSwapPeer(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		_, err = cliHost.Bootstrap(bootAddrs)
-		if err != nil {
-			return nil, err
-		}
-
-		err = cliHost.WaitForBootstrap(numMembers, 5*time.Second)
-		if err != nil {
-			return nil, err
-		}
-
-		cli := New(group, pubsubwrapper.WrapLibp2p(cliHost.GetPubSub()), peer)
-
-		err = cli.Start(ctx)
-		if err != nil {
-			return nil, err
-		}
-		return cli, nil
-	}
-
 	t.Run("test get existing tip", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		cli, err := newClient(ctx)
+		cli, err := newClient(ctx, group, bootAddrs)
 		require.Nil(t, err)
 
 		treeKey, err := crypto.GenerateKey()
@@ -441,9 +415,8 @@ func TestClientGetTip(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		cli, err := newClient(ctx)
+		cli, err := newClient(ctx, group, bootAddrs)
 		require.Nil(t, err)
-
 		treeKey, err := crypto.GenerateKey()
 		require.Nil(t, err)
 		tree, err := consensus.NewSignedChainTree(ctx, treeKey.PublicKey, nodestore.MustMemoryStore(ctx))
