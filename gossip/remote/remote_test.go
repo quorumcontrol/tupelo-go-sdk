@@ -88,15 +88,15 @@ func TestRemoteMessageSending(t *testing.T) {
 
 	host1Ping, err := rootContext.SpawnNamed(actor.PropsFromFunc(pingFunc), "ping-host1")
 	require.Nil(t, err)
-	defer host1Ping.Poison()
+	defer actor.EmptyRootContext.Poison(host1Ping)
 
 	host2Ping, err := rootContext.SpawnNamed(actor.PropsFromFunc(pingFunc), "ping-host2")
 	require.Nil(t, err)
-	defer host2Ping.Poison()
+	defer actor.EmptyRootContext.Poison(host2Ping)
 
 	host3Ping, err := rootContext.SpawnNamed(actor.PropsFromFunc(pingFunc), "ping-host3")
 	require.Nil(t, err)
-	defer host3Ping.Poison()
+	defer actor.EmptyRootContext.Poison(host3Ping)
 
 	Start()
 	defer Stop()
@@ -121,7 +121,7 @@ func TestRemoteMessageSending(t *testing.T) {
 	//	t.Skip("we no longer have any serializable, and traceable messages at the moment.")
 	// })
 
-	t.Run("when the otherside is closed permanently", func(t *testing.T) {
+	t.Run("when the other side is closed permanently", func(t *testing.T) {
 		newCtx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
@@ -142,7 +142,7 @@ func TestRemoteMessageSending(t *testing.T) {
 		require.Nil(t, err)
 		assert.Equal(t, resp.(*services.Pong).Msg, "hi")
 
-		host4Ping.Stop()
+		defer actor.EmptyRootContext.Stop(host4Ping)
 		cancel()
 
 		resp, err = rootContext.RequestFuture(remote4Ping, &services.Ping{Msg: "hi"}, 100*time.Millisecond).Result()
