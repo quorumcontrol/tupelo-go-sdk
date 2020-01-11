@@ -98,17 +98,29 @@ func TestClientSendTransactions(t *testing.T) {
 
 	newClient := func(t *testing.T, ctx context.Context) *Client {
 		cliHost, peer, err := p2p.NewHostAndBitSwapPeer(ctx)
+		if err != nil {
+			t.Logf("debugging a fail: %v", err)
+		}
 		require.Nil(t, err)
 		_, err = cliHost.Bootstrap(bootAddrs)
+		if err != nil {
+			t.Logf("debugging a fail: %v", err)
+		}
 		require.Nil(t, err)
 
 		err = cliHost.WaitForBootstrap(numMembers, 5*time.Second)
+		if err != nil {
+			t.Logf("debugging a fail: %v", err)
+		}
 		require.Nil(t, err)
 
 		cli := New(group, pubsubwrapper.WrapLibp2p(cliHost.GetPubSub()), peer)
 		// logging.SetLogLevel("g4-client", "debug")
 
 		err = cli.Start(ctx)
+		if err != nil {
+			t.Logf("debugging a fail: %v", err)
+		}
 		require.Nil(t, err)
 		return cli
 	}
