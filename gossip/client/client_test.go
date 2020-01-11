@@ -396,7 +396,7 @@ func TestClientGetTip(t *testing.T) {
 
 		treeKey, err := crypto.GenerateKey()
 		require.Nil(t, err)
-		tree, err := consensus.NewSignedChainTree(treeKey.PublicKey, nodestore.MustMemoryStore(ctx))
+		tree, err := consensus.NewSignedChainTree(ctx, treeKey.PublicKey, nodestore.MustMemoryStore(ctx))
 		require.Nil(t, err)
 
 		txn, err := chaintree.NewSetDataTransaction("down/in/the/thing", "sometestvalue")
@@ -420,7 +420,7 @@ func TestClientGetTip(t *testing.T) {
 
 		treeKey, err := crypto.GenerateKey()
 		require.Nil(t, err)
-		tree, err := consensus.NewSignedChainTree(treeKey.PublicKey, nodestore.MustMemoryStore(ctx))
+		tree, err := consensus.NewSignedChainTree(ctx, treeKey.PublicKey, nodestore.MustMemoryStore(ctx))
 		require.Nil(t, err)
 
 		txn, err := chaintree.NewSetDataTransaction("down/in/the/thing", "sometestvalue")
