@@ -2,9 +2,10 @@ package remote
 
 import (
 	"context"
-	"github.com/quorumcontrol/messages/v2/build/go/services"
 	"testing"
 	"time"
+
+	"github.com/quorumcontrol/messages/v2/build/go/services"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -120,7 +121,7 @@ func TestRemoteMessageSending(t *testing.T) {
 		t.Skip("we no longer have any serializable, and traceable messages at the moment.")
 	})
 
-	t.Run("when the otherside is closed permanently", func(t *testing.T) {
+	t.Run("when the other side is closed permanently", func(t *testing.T) {
 		newCtx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 

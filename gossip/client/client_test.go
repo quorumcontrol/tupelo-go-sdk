@@ -76,7 +76,6 @@ func startNodes(t *testing.T, ctx context.Context, nodes []*gossip.Node, bootAdd
 }
 
 func TestClient(t *testing.T) {
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

@@ -56,7 +56,7 @@ func (sb *SimulatedPubSub) Broadcast(topic string, message proto.Message) error 
 	return nil
 }
 
-// returns subscriber props that can be used to listent to broadcast events
+// returns subscriber props that can be used to listen to broadcast events
 func (sb *SimulatedPubSub) NewSubscriberProps(topic string) *actor.Props {
 	return newSimulatedSubscriberProps(topic, sb, true)
 }
@@ -98,9 +98,9 @@ type simulatedSubscriber struct {
 	subscribers  []*actor.PID
 }
 
-// A NetworkSubscriber is a subscription to a pubsub style system for a specific message type
-// it is designed to be spawned inside another context so that it can use Parent in order to
-// deliver the messages
+// A NetworkSubscriber is a subscription to a pubsub style system for a specific
+// message type it is designed to be spawned inside another context so that it
+// can use Parent in order to deliver the messages
 func newSimulatedSubscriberProps(topic string, simulatedPubSub *SimulatedPubSub, notifyParent bool, subscribers ...*actor.PID) *actor.Props {
 	return actor.PropsFromProducer(func() actor.Actor {
 		return &simulatedSubscriber{
@@ -121,8 +121,8 @@ func (bs *simulatedSubscriber) Receive(actorContext actor.Context) {
 		bs.Log.Debugw("subscribed", "topic", bs.topic, "subscribers", bs.subscribers)
 		parent := actorContext.Parent()
 		sub := bs.pubsubSystem.eventStream.Subscribe(func(evt interface{}) {
-			// there is a short delay on adding the predicate, so this make sure
-			// nothijng slips through
+			// there is a short delay on adding the predicate, so
+			// this makes sure nothing slips through
 			if evt.(*simulatorMessage).topic != bs.topic {
 				return
 			}

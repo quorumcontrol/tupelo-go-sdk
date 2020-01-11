@@ -108,7 +108,7 @@ func getHeight(ctx context.Context, tree *consensus.SignedChainTree) (uint64, er
 
 	unmarshaledRoot, err := ct.Dag.Get(ctx, ct.Dag.Tip)
 	if unmarshaledRoot == nil || err != nil {
-		return 0, fmt.Errorf("error,missing root: %v", err)
+		return 0, fmt.Errorf("error, missing root: %v", err)
 	}
 
 	root := &chaintree.RootNode{}

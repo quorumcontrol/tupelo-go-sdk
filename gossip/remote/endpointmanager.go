@@ -2,6 +2,7 @@ package remote
 
 import (
 	"fmt"
+
 	logging "github.com/ipfs/go-log"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
@@ -10,7 +11,7 @@ import (
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 )
 
-var endpointManagerLogger = logging.Logger("endpoingmanager")
+var endpointManagerLogger = logging.Logger("endpointmanager")
 
 type actorRegistry map[string]*actor.PID
 

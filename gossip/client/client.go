@@ -25,10 +25,6 @@ import (
 
 const transactionTopic = "g4-transactions"
 
-// How many times to attempt PlayTransactions before giving up.
-// 10 is the library's default, but this makes it explicit.
-// var MaxPlayTransactionsAttempts = uint(10)
-
 var ErrorTimeout = errors.New("error timeout")
 
 var DefaultTimeout = 10 * time.Second
@@ -55,7 +51,6 @@ func New(group *types.NotaryGroup, pubsub *pubsub.PubSub, bitswapper *p2p.Bitswa
 }
 
 func (c *Client) Start(ctx context.Context) error {
-
 	err := c.subscriber.start(ctx)
 	if err != nil {
 		return fmt.Errorf("error subscribing: %w", err)
