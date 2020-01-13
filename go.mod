@@ -43,3 +43,5 @@ require (
 	golang.org/x/crypto v0.0.0-20191111213947-16651526fdb4
 	golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7
 )
+
+replace github.com/ipfs/go-hamt-ipld => github.com/quorumcontrol/go-hamt-ipld v0.0.2-0.20191226140059-f380a50328f8

@@ -10,12 +10,12 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client/pubsubinterfaces"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/hamtwrapper"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
-	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 	sigfuncs "github.com/quorumcontrol/tupelo-go-sdk/signatures"
 )
 
@@ -55,11 +55,11 @@ type conflictSetHolder map[uint64]roundConflictSet
 type roundSubscriber struct {
 	sync.RWMutex
 
-	pubsub     *pubsub.PubSub
-	bitswapper *p2p.BitswapPeer
-	hamtStore  *hamt.CborIpldStore
-	group      *types.NotaryGroup
-	logger     logging.EventLogger
+	pubsub    pubsubinterfaces.Pubsubber
+	dagStore  nodestore.DagStore
+	hamtStore *hamt.CborIpldStore
+	group     *types.NotaryGroup
+	logger    logging.EventLogger
 
 	inflight conflictSetHolder
 	current  *types.RoundConfirmation
@@ -67,17 +67,17 @@ type roundSubscriber struct {
 	stream *eventstream.EventStream
 }
 
-func newRoundSubscriber(logger logging.EventLogger, group *types.NotaryGroup, pubsub *pubsub.PubSub, bitswapper *p2p.BitswapPeer) *roundSubscriber {
-	hamtStore := hamtwrapper.DagStoreToCborIpld(bitswapper)
+func newRoundSubscriber(logger logging.EventLogger, group *types.NotaryGroup, pubsub pubsubinterfaces.Pubsubber, store nodestore.DagStore) *roundSubscriber {
+	hamtStore := hamtwrapper.DagStoreToCborIpld(store)
 
 	return &roundSubscriber{
-		pubsub:     pubsub,
-		bitswapper: bitswapper,
-		hamtStore:  hamtStore,
-		group:      group,
-		inflight:   make(conflictSetHolder),
-		logger:     logger,
-		stream:     &eventstream.EventStream{},
+		pubsub:    pubsub,
+		dagStore:  store,
+		hamtStore: hamtStore,
+		group:     group,
+		inflight:  make(conflictSetHolder),
+		logger:    logger,
+		stream:    &eventstream.EventStream{},
 	}
 }
 
@@ -124,7 +124,7 @@ func (rs *roundSubscriber) unsubscribe(sub subscription) {
 	rs.stream.Unsubscribe(sub)
 }
 
-func (rs *roundSubscriber) pubsubMessageToRoundConfirmation(ctx context.Context, msg *pubsub.Message) (*types.RoundConfirmation, error) {
+func (rs *roundSubscriber) pubsubMessageToRoundConfirmation(ctx context.Context, msg pubsubinterfaces.Message) (*types.RoundConfirmation, error) {
 	bits := msg.GetData()
 	confirmation := &types.RoundConfirmation{}
 	err := cbornode.DecodeInto(bits, confirmation)
@@ -140,7 +140,7 @@ func (rs *roundSubscriber) verKeys() []*bls.VerKey {
 	return keys
 }
 
-func (rs *roundSubscriber) handleMessage(ctx context.Context, msg *pubsub.Message) error {
+func (rs *roundSubscriber) handleMessage(ctx context.Context, msg pubsubinterfaces.Message) error {
 	rs.logger.Debugf("handling message")
 
 	confirmation, err := rs.pubsubMessageToRoundConfirmation(ctx, msg)
@@ -184,9 +184,10 @@ func (rs *roundSubscriber) handleMessage(ctx context.Context, msg *pubsub.Messag
 }
 
 func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *types.RoundConfirmation) error {
+	// handleQuorum expects that it's already in a lock on the roundSubscriber
+
 	rs.logger.Debugf("hande Quorum: %v", confirmation)
 
-	// handleQuorum expects that it's already in a lock on the roundSubscriber
 	rs.current = confirmation
 	for key := range rs.inflight {
 		if key <= confirmation.Height {
@@ -194,36 +195,37 @@ func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *types
 		}
 	}
 
+	confirmation.SetStore(rs.dagStore)
+
+	// fetch the completed round and confirmation here as no ops so that they are cached
+	completedRound, err := confirmation.FetchCompletedRound(ctx)
+	if err != nil {
+		return err
+	}
+
+	_, err = completedRound.FetchCheckpoint(ctx)
+	if err != nil {
+		return err
+	}
+
+	rs.current = confirmation
+
 	return rs.publishTxs(ctx, confirmation)
 }
 
 func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.RoundConfirmation) error {
 	rs.logger.Debugf("publishingTxs")
-	roundNode, err := rs.bitswapper.Get(ctx, confirmation.CompletedRound)
-	if err != nil {
-		return err
-	}
 
-	rs.logger.Debugf("getting completed round")
-
-	completedRound := &types.CompletedRound{}
-	err = cbornode.DecodeInto(roundNode.RawData(), completedRound)
+	completedRound, err := confirmation.FetchCompletedRound(ctx)
 	if err != nil {
 		return err
 	}
 
 	rs.logger.Debugf("getting checkpoint")
-
-	checkpoint := &types.Checkpoint{}
-	checkpointNode, err := rs.bitswapper.Get(ctx, completedRound.Checkpoint)
+	checkpoint, err := completedRound.FetchCheckpoint(ctx)
 	if err != nil {
 		return err
 	}
-	err = cbornode.DecodeInto(checkpointNode.RawData(), checkpoint)
-	if err != nil {
-		return err
-	}
-
 	rs.logger.Debugf("checkpoint: %v", checkpoint)
 
 	for _, tx := range checkpoint.AddBlockRequests {

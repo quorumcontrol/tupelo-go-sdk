@@ -564,6 +564,8 @@ github.com/prometheus/procfs v0.0.3 h1:CTwfnzjQ+8dS6MhHHu4YswVAD99sL2wjPqP+VkURm
 github.com/prometheus/procfs v0.0.3/go.mod h1:4A/X28fw3Fc593LaREMrKMqOKvUAntwMDaekg4FpcdQ=
 github.com/quorumcontrol/chaintree v0.9.4 h1:FfAd7l/Il53ZG2snvtb/6vx57Lme5ELl/XUxmgIPGI8=
 github.com/quorumcontrol/chaintree v0.9.4/go.mod h1:XZMtCWpLgWM6UVSRk431n+HIjJcndppvLvxP1v19gwU=
+github.com/quorumcontrol/go-hamt-ipld v0.0.2-0.20191226140059-f380a50328f8 h1:N6UJAeGhuGIvSqchQcbn7ekDlX2quZqglyHjVEP5C9c=
+github.com/quorumcontrol/go-hamt-ipld v0.0.2-0.20191226140059-f380a50328f8/go.mod h1:8yRx0xLUps1Xq8ZDnIwIVdQRp7JjA55gGvCiRHT91Vk=
 github.com/quorumcontrol/messages v1.1.1 h1:e90LvAM7YCZrFnXGM9H3pin+jjGqYPjW+YthBJkZHLc=
 github.com/quorumcontrol/messages v1.1.1/go.mod h1:PubykIzNsMO+CMecd7HDFKjBa4shVrPal8/GxM1+plc=
 github.com/quorumcontrol/messages/v2 v2.1.2 h1:5LQQYWJc97fAH+bXpRXXsQbM6sSS+mYDjHNfLI8Snwk=
