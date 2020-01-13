@@ -116,6 +116,7 @@ func (c *Client) GetTip(ctx context.Context, did string) (*Proof, error) {
 		ObjectId:          did,
 		RoundConfirmation: *confirmation,
 		Tip:               id,
+		AbrCid:            *txCID,
 	}, nil
 }
 

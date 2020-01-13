@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"syscall/js"
+	logging "github.com/ipfs/go-log"
 
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jscrypto"
 
@@ -80,12 +81,9 @@ func main() {
 				return jsclient.NewEmptyTree(args[0], args[1])
 			}))
 
-			jsObj.Set("getCurrentState", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				t := then.New()
-				t.Reject("currently unsupported")
-				return t
-				// jsOpts := args[0]
-				// return jscommunity.GetCurrentState(context.TODO(), jsOpts.Get("tip"), jsOpts.Get("blockService"), jsOpts.Get("did"))
+			jsObj.Set("getTip", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				go fmt.Println("getTip: ", args[0].String())
+				return clientSingleton.GetTip(args[0])
 			}))
 
 			jsObj.Set("tokenPayloadForTransaction", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
@@ -154,7 +152,7 @@ func main() {
 				cli := jsclient.New(bridge, config, store)
 				go cli.Start(ctx)
 				clientSingleton = cli
-				// logging.SetLogLevel("g4-client", "debug")
+				logging.SetLogLevel("g4-client", "debug")
 				return nil
 			}))
 

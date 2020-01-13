@@ -5,8 +5,10 @@ package jsclient
 import (
 	"context"
 	"crypto/ecdsa"
-	cbornode "github.com/ipfs/go-ipld-cbor"
+	"fmt"
 	"syscall/js"
+
+	cbornode "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/ipfs/go-cid"
 	"github.com/quorumcontrol/chaintree/safewrap"
@@ -100,6 +102,33 @@ func jsKeyBitsToPrivateKey(jsKeyBits js.Value) (*ecdsa.PrivateKey, error) {
 	return crypto.ToECDSA(keybits)
 }
 
+func (jsc *JSClient) GetTip(jsDid js.Value) interface{} {
+	did := jsDid.String()
+	t := then.New()
+	go func() {
+		ctx := context.TODO()
+		fmt.Println("getting did: ", did)
+		proof, err := jsc.client.GetTip(ctx, did)
+		if err != nil {
+			t.Reject(fmt.Errorf("error getting tip: %w", err).Error())
+			return
+		}
+
+		fmt.Println("proof: ", proof, "err: ", err)
+
+		sw := &safewrap.SafeWrap{}
+
+		wrapped := sw.WrapObject(proof)
+		if sw.Err != nil {
+			t.Reject(fmt.Errorf("error encoding: %w", sw.Err).Error())
+			return
+		}
+
+		t.Resolve(helpers.SliceToJSArray(wrapped.RawData()))
+	}()
+	return t
+}
+
 func (jsc *JSClient) PlayTransactions(jsKeyBits js.Value, tip js.Value, jsTransactions js.Value) interface{} {
 	t := then.New()
 	go func() {
@@ -128,8 +157,14 @@ func (jsc *JSClient) PlayTransactions(jsKeyBits js.Value, tip js.Value, jsTransa
 		}
 
 		sw := &safewrap.SafeWrap{}
+		wrapped := sw.WrapObject(proof)
 
-		t.Resolve(helpers.SliceToJSArray(sw.WrapObject(proof).RawData()))
+		if sw.Err != nil {
+			t.Reject(sw.Err.Error())
+			return
+		}
+
+		t.Resolve(helpers.SliceToJSArray(wrapped.RawData()))
 	}()
 
 	return t
