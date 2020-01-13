@@ -3,6 +3,7 @@
 package jscrypto
 
 import (
+	"context"
 	"fmt"
 	jshelpers "github.com/quorumcontrol/tupelo-go-sdk/wasm/helpers"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/then"
@@ -44,13 +45,15 @@ func JSVerifyMessage(this js.Value, args []js.Value) interface{} {
 }
 
 func SignMessage(keyBits []byte, message []byte) ([]byte, error) {
+	ctx := context.TODO()
+
 	key, err := crypto.ToECDSA(keyBits)
 	if err != nil {
 		return nil, fmt.Errorf("error converting key: %w", err)
 	}
 	hsh := crypto.Keccak256(message)
 
-	sig, err := sigfuncs.EcdsaSign(key, hsh)
+	sig, err := sigfuncs.EcdsaSign(ctx, key, hsh)
 	if err != nil {
 		return nil, fmt.Errorf("error signing: %w", err)
 	}
@@ -63,6 +66,8 @@ func SignMessage(keyBits []byte, message []byte) ([]byte, error) {
 }
 
 func VerifySignature(address string, message []byte, signatureBits []byte) (bool, error) {
+	ctx := context.TODO()
+
 	sig := &signatures.Signature{}
 	err := sig.Unmarshal(signatureBits)
 	if err != nil {
@@ -71,7 +76,7 @@ func VerifySignature(address string, message []byte, signatureBits []byte) (bool
 
 	hsh := crypto.Keccak256(message)
 
-	err = sigfuncs.RestoreEcdsaPublicKey(sig, hsh)
+	err = sigfuncs.RestoreEcdsaPublicKey(ctx, sig, hsh)
 	if err != nil {
 		return false, fmt.Errorf("error restoring public key: %v", err)
 	}
@@ -84,5 +89,5 @@ func VerifySignature(address string, message []byte, signatureBits []byte) (bool
 		return false, fmt.Errorf("unsigned by address %s != %s", sigAddr.String(), address)
 	}
 
-	return sigfuncs.Valid(sig, hsh, nil) // TODO: maybe we want to have a custom scope here?
+	return sigfuncs.Valid(ctx, sig, hsh, nil) // TODO: maybe we want to have a custom scope here?
 }
