@@ -5,27 +5,24 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"time"
-
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-hamt-ipld"
+	cbornode "github.com/ipfs/go-ipld-cbor"
+	logging "github.com/ipfs/go-log"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/messages/v2/build/go/services"
-
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
-	logging "github.com/ipfs/go-log"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client/pubsubinterfaces"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/hamtwrapper"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
-	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
+	"time"
 )
 
-const transactionTopic = "g4-transactions"
-
-var ErrorTimeout = errors.New("error timeout")
+var ErrTimeout = errors.New("error timeout")
+var ErrNotFound = hamt.ErrNotFound
 
 var DefaultTimeout = 10 * time.Second
 
@@ -35,18 +32,21 @@ type Client struct {
 	Group      *types.NotaryGroup
 	logger     logging.EventLogger
 	subscriber *roundSubscriber
-	pubsub     *pubsub.PubSub
+	pubsub     pubsubinterfaces.Pubsubber
+	store      nodestore.DagStore
 }
 
-// New instantiates a Client specific to a ChainTree/NotaryGroup
-func New(group *types.NotaryGroup, pubsub *pubsub.PubSub, bitswapper *p2p.BitswapPeer) *Client {
+// New instantiates a Client specific to a ChainTree/NotaryGroup. The store should probably be a bitswap peer.
+// The store definitely needs access to the round confirmation, checkpoints, etc
+func New(group *types.NotaryGroup, pubsub pubsubinterfaces.Pubsubber, store nodestore.DagStore) *Client {
 	logger := logging.Logger("g4-client")
-	subscriber := newRoundSubscriber(logger, group, pubsub, bitswapper)
+	subscriber := newRoundSubscriber(logger, group, pubsub, store)
 	return &Client{
 		Group:      group,
 		logger:     logger,
 		subscriber: subscriber,
 		pubsub:     pubsub,
+		store:      store,
 	}
 }
 
@@ -77,6 +77,48 @@ func (c *Client) PlayTransactions(ctx context.Context, tree *consensus.SignedCha
 	return proof, nil
 }
 
+func (c *Client) GetTip(ctx context.Context, did string) (*Proof, error) {
+	confirmation := c.subscriber.Current()
+	currentRound, err := confirmation.FetchCompletedRound(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching round: %w", err)
+	}
+	hamtNode, err := currentRound.FetchHamt(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching hamt: %w", err)
+	}
+
+	txCID := &cid.Cid{}
+	err = hamtNode.Find(ctx, did, txCID)
+	if err != nil {
+		if err == hamt.ErrNotFound {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("error fetching tip: %w", err)
+	}
+
+	abrNode, err := c.store.Get(ctx, *txCID)
+	if err != nil {
+		return nil, fmt.Errorf("error getting ABR: %w", err)
+	}
+	abr := &services.AddBlockRequest{}
+	err = cbornode.DecodeInto(abrNode.RawData(), abr)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding ABR: %w", err)
+	}
+
+	id, err := cid.Cast(abr.NewTip)
+	if err != nil {
+		return nil, fmt.Errorf("error casting tip: %w", err)
+	}
+
+	return &Proof{
+		ObjectId:          did,
+		RoundConfirmation: *confirmation,
+		Tip:               id,
+	}, nil
+}
+
 func (c *Client) Send(ctx context.Context, abr *services.AddBlockRequest, timeout time.Duration) (*Proof, error) {
 	tip, err := cid.Cast(abr.NewTip)
 	if err != nil {
@@ -102,7 +144,7 @@ func (c *Client) Send(ctx context.Context, abr *services.AddBlockRequest, timeou
 		proof.ObjectId = string(abr.ObjectId)
 		return proof, nil
 	case <-ticker.C:
-		return nil, ErrorTimeout
+		return nil, ErrTimeout
 	}
 }
 
@@ -112,7 +154,7 @@ func (c *Client) SendWithoutWait(ctx context.Context, abr *services.AddBlockRequ
 		return fmt.Errorf("error marshaling: %w", err)
 	}
 
-	err = c.pubsub.Publish(transactionTopic, bits)
+	err = c.pubsub.Publish(c.Group.Config().TransactionTopic, bits)
 	if err != nil {
 		return fmt.Errorf("error publishing: %w", err)
 	}
