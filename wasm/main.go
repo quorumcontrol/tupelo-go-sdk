@@ -3,8 +3,10 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"syscall/js"
+	logging "github.com/ipfs/go-log"
 
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jscrypto"
 
@@ -12,16 +14,23 @@ import (
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jsclient"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jscommunity"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jslibs"
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jspubsub"
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jsstore"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/then"
 )
 
 var exitChan chan bool
+
+var clientSingleton *jsclient.JSClient
 
 func init() {
 	exitChan = make(chan bool)
 }
 
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	js.Global().Get("Go").Set("exit", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		exitChan <- true
 		return nil
@@ -72,12 +81,9 @@ func main() {
 				return jsclient.NewEmptyTree(args[0], args[1])
 			}))
 
-			jsObj.Set("getCurrentState", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				t := then.New()
-				t.Reject("currently unsupported")
-				return t
-				// jsOpts := args[0]
-				// return jscommunity.GetCurrentState(context.TODO(), jsOpts.Get("tip"), jsOpts.Get("blockService"), jsOpts.Get("did"))
+			jsObj.Set("getTip", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				go fmt.Println("getTip: ", args[0].String())
+				return clientSingleton.GetTip(args[0])
 			}))
 
 			jsObj.Set("tokenPayloadForTransaction", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
@@ -125,30 +131,47 @@ func main() {
 			jsObj.Set("signMessage", js.FuncOf(jscrypto.JSSignMessage))
 			jsObj.Set("verifyMessage", js.FuncOf(jscrypto.JSVerifyMessage))
 
+			jsObj.Set("startClient", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				// js passes in:
+				// interface IClientOptions {
+				//     pubsub: IPubSub,
+				//     notaryGroup: Uint8Array // protobuf encoded config.NotaryGroup
+				//     blockService: IBlockService,
+				// }
+				jsOpts := args[0]
+
+				config, err := jsclient.JsConfigToHumanConfig(jsOpts.Get("notaryGroup"))
+				if err != nil {
+					t := then.New()
+					t.Reject(fmt.Errorf("error converting config %w", err).Error())
+					return t
+				}
+
+				store := jsstore.New(jsOpts.Get("blockService"))
+				bridge := jspubsub.NewPubSubBridge(jsOpts.Get("pubsub"))
+				cli := jsclient.New(bridge, config, store)
+				go cli.Start(ctx)
+				clientSingleton = cli
+				logging.SetLogLevel("g4-client", "debug")
+				return nil
+			}))
+
 			jsObj.Set("playTransactions", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				// js passes in:
 				// interface IPlayTransactionOptions {
-				//     publisher: IPubSub,
-				//     notaryGroup: Uint8Array // protobuf encoded config.NotaryGroup
-				//     blockService: IBlockService,
 				//     privateKey: Uint8Array,
 				//     tip: CID,
 				//     transactions: Uint8Array[], // protobuf encoded array of transactions.Transaction
 				// }
-				// jsOpts := args[0]
+				jsOpts := args[0]
 
-				// config, err := jsclient.JsConfigToHumanConfig(jsOpts.Get("notaryGroup"))
-				// if err != nil {
-				// 	t := then.New()
-				// 	t.Reject(fmt.Errorf("error converting config %w", err).Error())
-				// 	return t
-				// }
+				if clientSingleton == nil {
+					t := then.New()
+					t.Reject(fmt.Errorf("no client has been started"))
+					return t
+				}
 
-				// store := jsstore.New(jsOpts.Get("blockService"))
-				// bridge := jspubsub.NewPubSubBridge(jsOpts.Get("publisher"))
-				// cli := jsclient.New(bridge, config, store)
-				return nil
-				// return cli.PlayTransactions(jsOpts.Get("blockService"), jsOpts.Get("privateKey"), jsOpts.Get("tip"), jsOpts.Get("transactions"))
+				return clientSingleton.PlayTransactions(jsOpts.Get("privateKey"), jsOpts.Get("tip"), jsOpts.Get("transactions"))
 			}))
 
 			return jsObj

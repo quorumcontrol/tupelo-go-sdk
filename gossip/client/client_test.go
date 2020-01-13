@@ -358,9 +358,10 @@ func transactRemote(ctx context.Context, t testing.TB, client *Client, treeID st
 	t.Logf("sending remote transaction id: %s height: %d", base64.StdEncoding.EncodeToString(consensus.RequestID(transMsg)), transMsg.Height)
 
 	resp := make(chan *Proof, 1)
-	sub := client.SubscribeToAbr(ctx, transMsg, resp)
+	sub, err := client.SubscribeToAbr(ctx, transMsg, resp)
+	require.Nil(t, err)
 
-	err := client.SendWithoutWait(ctx, transMsg)
+	err = client.SendWithoutWait(ctx, transMsg)
 	require.Nil(t, err)
 
 	return resp, sub

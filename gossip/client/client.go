@@ -24,7 +24,7 @@ import (
 var ErrTimeout = errors.New("error timeout")
 var ErrNotFound = hamt.ErrNotFound
 
-var DefaultTimeout = 10 * time.Second
+var DefaultTimeout = 30 * time.Second
 
 // Client represents a Tupelo client for interacting with and
 // listening to ChainTree events
@@ -116,6 +116,7 @@ func (c *Client) GetTip(ctx context.Context, did string) (*Proof, error) {
 		ObjectId:          did,
 		RoundConfirmation: *confirmation,
 		Tip:               id,
+		AbrCid:            *txCID,
 	}, nil
 }
 
@@ -128,7 +129,10 @@ func (c *Client) Send(ctx context.Context, abr *services.AddBlockRequest, timeou
 	resp := make(chan *Proof)
 	defer close(resp)
 
-	sub := c.SubscribeToAbr(ctx, abr, resp)
+	sub, err := c.SubscribeToAbr(ctx, abr, resp)
+	if err != nil {
+		return nil, err
+	}
 	defer c.UnsubscribeFromAbr(sub)
 
 	if err := c.SendWithoutWait(ctx, abr); err != nil {
@@ -162,22 +166,24 @@ func (c *Client) SendWithoutWait(ctx context.Context, abr *services.AddBlockRequ
 	return nil
 }
 
-func (c *Client) SubscribeToAbr(ctx context.Context, abr *services.AddBlockRequest, ch chan *Proof) subscription {
-	id := abrToHamtCID(ctx, abr)
+func (c *Client) SubscribeToAbr(ctx context.Context, abr *services.AddBlockRequest, ch chan *Proof) (subscription, error) {
+	id, err := abrToHamtCID(ctx, abr)
+	if err != nil {
+		return nil, fmt.Errorf("error getting CID: %w", err)
+	}
 	c.logger.Debugf("subscribing: %s", id.String())
 
-	return c.subscriber.subscribe(id, ch)
+	return c.subscriber.subscribe(id, ch), nil
 }
 
 func (c *Client) UnsubscribeFromAbr(s subscription) {
 	c.subscriber.unsubscribe(s)
 }
 
-func abrToHamtCID(ctx context.Context, abr *services.AddBlockRequest) cid.Cid {
+func abrToHamtCID(ctx context.Context, abr *services.AddBlockRequest) (cid.Cid, error) {
 	underlyingStore := nodestore.MustMemoryStore(ctx)
 	hamtStore := hamt.CborIpldStore{
 		Blocks: hamtwrapper.NewStore(underlyingStore),
 	}
-	id, _ := hamtStore.Put(ctx, abr)
-	return id
+	return hamtStore.Put(ctx, abr)
 }

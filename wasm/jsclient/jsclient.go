@@ -5,14 +5,20 @@ package jsclient
 import (
 	"context"
 	"crypto/ecdsa"
+	"fmt"
 	"syscall/js"
 
+	cbornode "github.com/ipfs/go-ipld-cbor"
+
+	"github.com/ipfs/go-cid"
+	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client/pubsubinterfaces"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
 
 	"github.com/quorumcontrol/messages/v2/build/go/config"
 
+	"github.com/quorumcontrol/messages/v2/build/go/services"
 	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 
 	"github.com/quorumcontrol/chaintree/chaintree"
@@ -32,11 +38,18 @@ import (
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/then"
 )
 
+// TODO: these probably belong elsewhere
+func init() {
+	cbornode.RegisterCborType(client.Proof{})
+	cbornode.RegisterCborType(services.AddBlockRequest{})
+}
+
 // JSClient is a javascript bridging client
 type JSClient struct {
 	client      *client.Client
 	pubsub      pubsubinterfaces.Pubsubber
 	notaryGroup *types.NotaryGroup
+	store       nodestore.DagStore
 }
 
 func New(pubsub pubsubinterfaces.Pubsubber, humanConfig *config.NotaryGroup, store nodestore.DagStore) *JSClient {
@@ -45,7 +58,10 @@ func New(pubsub pubsubinterfaces.Pubsubber, humanConfig *config.NotaryGroup, sto
 		panic(errors.Wrap(err, "error decoding human config"))
 	}
 
-	ng := types.NewNotaryGroupFromConfig(ngConfig)
+	ng, err := ngConfig.NotaryGroup(nil)
+	if err != nil {
+		panic(errors.Wrap(err, "error getting notary group from config"))
+	}
 
 	cli := client.New(ng, pubsub, store)
 
@@ -53,6 +69,7 @@ func New(pubsub pubsubinterfaces.Pubsubber, humanConfig *config.NotaryGroup, sto
 		client:      cli,
 		pubsub:      pubsub,
 		notaryGroup: ng,
+		store:       store,
 	}
 }
 
@@ -85,70 +102,91 @@ func jsKeyBitsToPrivateKey(jsKeyBits js.Value) (*ecdsa.PrivateKey, error) {
 	return crypto.ToECDSA(keybits)
 }
 
-// func (jsc *JSClient) PlayTransactions(blockService js.Value, jsKeyBits js.Value, tip js.Value, jsTransactions js.Value) interface{} {
-// 	t := then.New()
-// 	go func() {
-// 		trans, err := jsTransactionsToTransactions(jsTransactions)
-// 		if err != nil {
-// 			t.Reject(err.Error())
-// 			return
-// 		}
+func (jsc *JSClient) GetTip(jsDid js.Value) interface{} {
+	did := jsDid.String()
+	t := then.New()
+	go func() {
+		ctx := context.TODO()
+		fmt.Println("getting did: ", did)
+		proof, err := jsc.client.GetTip(ctx, did)
+		if err != nil {
+			t.Reject(fmt.Errorf("error getting tip: %w", err).Error())
+			return
+		}
 
-// 		key, err := jsKeyBitsToPrivateKey(jsKeyBits)
-// 		if err != nil {
-// 			t.Reject(err.Error())
-// 			return
-// 		}
+		fmt.Println("proof: ", proof, "err: ", err)
 
-// 		wrappedStore := jsstore.New(blockService)
+		sw := &safewrap.SafeWrap{}
 
-// 		tip, err := helpers.JsCidToCid(tip)
-// 		if err != nil {
-// 			t.Reject(err.Error())
-// 			return
-// 		}
+		wrapped := sw.WrapObject(proof)
+		if sw.Err != nil {
+			t.Reject(fmt.Errorf("error encoding: %w", sw.Err).Error())
+			return
+		}
 
-// 		resp, err := jsc.playTransactions(wrappedStore, tip, key, trans)
-// 		if err != nil {
-// 			t.Reject(err.Error())
-// 			return
-// 		}
+		t.Resolve(helpers.SliceToJSArray(wrapped.RawData()))
+	}()
+	return t
+}
 
-// 		respBits, err := proto.Marshal(resp)
-// 		if err != nil {
-// 			t.Reject(err.Error())
-// 			return
-// 		}
-// 		t.Resolve(helpers.SliceToJSArray(respBits))
-// 	}()
+func (jsc *JSClient) PlayTransactions(jsKeyBits js.Value, tip js.Value, jsTransactions js.Value) interface{} {
+	t := then.New()
+	go func() {
+		trans, err := jsTransactionsToTransactions(jsTransactions)
+		if err != nil {
+			t.Reject(err.Error())
+			return
+		}
 
-// 	return t
-// }
+		key, err := jsKeyBitsToPrivateKey(jsKeyBits)
+		if err != nil {
+			t.Reject(err.Error())
+			return
+		}
 
-// func (jsc *JSClient) playTransactions(store nodestore.DagStore, tip cid.Cid, treeKey *ecdsa.PrivateKey, transactions []*transactions.Transaction) (*signatures.TreeState, error) {
-// 	ctx := context.TODO()
+		tip, err := helpers.JsCidToCid(tip)
+		if err != nil {
+			t.Reject(err.Error())
+			return
+		}
 
-// 	cTree, err := chaintree.NewChainTree(
-// 		ctx,
-// 		dag.NewDag(ctx, tip, store),
-// 		nil,
-// 		consensus.DefaultTransactors,
-// 	)
-// 	if err != nil {
-// 		return nil, errors.Wrap(err, "error creating chaintree")
-// 	}
+		proof, err := jsc.playTransactions(key, tip, trans)
+		if err != nil {
+			t.Reject(err.Error())
+			return
+		}
 
-// 	tree := consensus.NewSignedChainTreeFromChainTree(cTree)
-// 	c := client.New(jsc.notaryGroup, tree.MustId(), jsc.pubsub)
-// 	defer c.Stop()
+		sw := &safewrap.SafeWrap{}
+		wrapped := sw.WrapObject(proof)
 
-// 	var remoteTip cid.Cid
-// 	if !tree.IsGenesis() {
-// 		remoteTip = tree.Tip()
-// 	}
+		if sw.Err != nil {
+			t.Reject(sw.Err.Error())
+			return
+		}
 
-// 	return c.PlayTransactions(tree, treeKey, &remoteTip, transactions)
-// }
+		t.Resolve(helpers.SliceToJSArray(wrapped.RawData()))
+	}()
+
+	return t
+}
+
+func (jsc *JSClient) playTransactions(treeKey *ecdsa.PrivateKey, tip cid.Cid, transactions []*transactions.Transaction) (*client.Proof, error) {
+	ctx := context.TODO()
+
+	cTree, err := chaintree.NewChainTree(
+		ctx,
+		dag.NewDag(ctx, tip, jsc.store),
+		nil,
+		consensus.DefaultTransactors,
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "error creating chaintree")
+	}
+
+	tree := consensus.NewSignedChainTreeFromChainTree(cTree)
+
+	return jsc.client.PlayTransactions(ctx, tree, treeKey, transactions)
+}
 
 // func VerifyCurrentState(humanConfig *config.NotaryGroup, state *signatures.TreeState) *then.Then {
 // 	t := then.New()
@@ -264,6 +302,8 @@ func EcdsaPubkeyToAddress(jsPubKeyBits js.Value) *then.Then {
 // a new blank ChainTree given a private key. It will populate the node store and return the tip
 // of the new Dag (so javascript can reconstitute the chaintree on its side.)
 func NewEmptyTree(jsBlockService js.Value, jsPublicKeyBits js.Value) *then.Then {
+	ctx := context.TODO()
+
 	t := then.New()
 	go func() {
 		store := jsstore.New(jsBlockService)
@@ -273,7 +313,7 @@ func NewEmptyTree(jsBlockService js.Value, jsPublicKeyBits js.Value) *then.Then 
 			return
 		}
 		did := consensus.EcdsaPubkeyToDid(*treeKey)
-		dag := consensus.NewEmptyTree(did, store)
+		dag := consensus.NewEmptyTree(ctx, did, store)
 		t.Resolve(helpers.CidToJSCID(dag.Tip))
 	}()
 	return t
