@@ -113,7 +113,7 @@ func TestPubSub(t *testing.T) {
 		require.Nil(t, err)
 		defer networkPubsubB.UnregisterTopicValidator(topicName)
 
-		subscriber := actor.NewFuture(200 * time.Millisecond)
+		subscriber := actor.NewFuture(5 * time.Second)
 		ready := actor.NewFuture(1 * time.Second)
 		parent := func(actCtx actor.Context) {
 			switch msg := actCtx.Message().(type) {
