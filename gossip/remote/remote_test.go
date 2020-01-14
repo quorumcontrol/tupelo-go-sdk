@@ -144,6 +144,7 @@ func TestRemoteMessageSending(t *testing.T) {
 
 		defer actor.EmptyRootContext.Stop(host4Ping)
 		cancel()
+		time.Sleep(500 * time.Millisecond)
 
 		resp, err = rootContext.RequestFuture(remote4Ping, &services.Ping{Msg: "hi"}, 100*time.Millisecond).Result()
 		assert.NotNil(t, err)
