@@ -2,8 +2,13 @@ package client
 
 import (
 	"github.com/ipfs/go-cid"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
 )
+
+func init() {
+	cbornode.RegisterCborType(Proof{})
+}
 
 type Proof struct {
 	RoundConfirmation types.RoundConfirmation

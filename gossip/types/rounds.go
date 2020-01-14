@@ -9,11 +9,13 @@ import (
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
+	"github.com/quorumcontrol/messages/build/go/services"
 	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/hamtwrapper"
 )
 
 func init() {
+	cbornode.RegisterCborType(services.AddBlockRequest{})
 	cbornode.RegisterCborType(CompletedRound{})
 	cbornode.RegisterCborType(RoundConfirmation{})
 }

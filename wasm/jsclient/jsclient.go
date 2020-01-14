@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"syscall/js"
 
-	cbornode "github.com/ipfs/go-ipld-cbor"
-
 	"github.com/ipfs/go-cid"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client"
@@ -18,7 +16,6 @@ import (
 
 	"github.com/quorumcontrol/messages/v2/build/go/config"
 
-	"github.com/quorumcontrol/messages/v2/build/go/services"
 	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 
 	"github.com/quorumcontrol/chaintree/chaintree"
@@ -37,12 +34,6 @@ import (
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/helpers"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/then"
 )
-
-// TODO: these probably belong elsewhere
-func init() {
-	cbornode.RegisterCborType(client.Proof{})
-	cbornode.RegisterCborType(services.AddBlockRequest{})
-}
 
 // JSClient is a javascript bridging client
 type JSClient struct {
@@ -189,28 +180,28 @@ func (jsc *JSClient) playTransactions(treeKey *ecdsa.PrivateKey, tip cid.Cid, tr
 }
 
 // func VerifyCurrentState(humanConfig *config.NotaryGroup, state *signatures.TreeState) *then.Then {
-// 	t := then.New()
-// 	go func() {
-// 		ngConfig, err := types.HumanConfigToConfig(humanConfig)
-// 		if err != nil {
-// 			panic(errors.Wrap(err, "error decoding human config"))
-// 		}
+//	t := then.New()
+//	go func() {
+//		ngConfig, err := types.HumanConfigToConfig(humanConfig)
+//		if err != nil {
+//			panic(errors.Wrap(err, "error decoding human config"))
+//		}
 
-// 		ng, err := ngConfig.NotaryGroup(nil)
-// 		if err != nil {
-// 			t.Reject(err.Error())
-// 			return
-// 		}
-// 		valid, err := client.VerifyCurrentState(context.TODO(), ng, state)
-// 		if err != nil {
-// 			t.Reject(err.Error())
-// 			return
-// 		}
-// 		t.Resolve(valid)
-// 		return
-// 	}()
+//		ng, err := ngConfig.NotaryGroup(nil)
+//		if err != nil {
+//			t.Reject(err.Error())
+//			return
+//		}
+//		valid, err := client.VerifyCurrentState(context.TODO(), ng, state)
+//		if err != nil {
+//			t.Reject(err.Error())
+//			return
+//		}
+//		t.Resolve(valid)
+//		return
+//	}()
 
-// 	return t
+//	return t
 // }
 
 func GenerateKey() *then.Then {
