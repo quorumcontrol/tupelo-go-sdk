@@ -4,6 +4,7 @@ import (
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/messages/build/go/gossip"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
 )
 
 func init() {
@@ -14,9 +15,9 @@ type ValidationNotification struct {
 	AbrCid            cid.Cid
 	ObjectId          string
 	Tip               cid.Cid
-	Checkpoint        *gossip.Checkpoint
-	RoundConfirmation *gossip.RoundConfirmation
-	CompletedRound    *gossip.Round
+	Checkpoint        *types.WrappedCheckpoint
+	RoundConfirmation *types.WrappedRoundConfirmation
+	CompletedRound    *types.WrappedRound
 
 	// dag store and hamt?
 }

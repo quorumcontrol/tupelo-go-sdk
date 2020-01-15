@@ -30,7 +30,7 @@ func (c *WrappedCheckpoint) CID() cid.Cid {
 	return c.Wrapped().Cid()
 }
 
-func (c *WrappedCheckpoint) Checkpoint() *gossip.Checkpoint {
+func (c *WrappedCheckpoint) Value() *gossip.Checkpoint {
 	return c.value
 }
 

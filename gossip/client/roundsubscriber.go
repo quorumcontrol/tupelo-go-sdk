@@ -69,7 +69,7 @@ type roundSubscriber struct {
 	logger    logging.EventLogger
 
 	inflight conflictSetHolder
-	current  *gossip.RoundConfirmation
+	current  *types.WrappedRoundConfirmation
 
 	stream *eventstream.EventStream
 }
@@ -88,7 +88,7 @@ func newRoundSubscriber(logger logging.EventLogger, group *types.NotaryGroup, pu
 	}
 }
 
-func (rs *roundSubscriber) Current() *gossip.RoundConfirmation {
+func (rs *roundSubscriber) Current() *types.WrappedRoundConfirmation {
 	rs.RLock()
 	defer rs.RUnlock()
 	return rs.current
@@ -135,9 +135,9 @@ func (rs *roundSubscriber) subscribe(ctx context.Context, subscriptionCID cid.Ci
 				ObjectId:          []byte(noty.ObjectId),
 				Tip:               noty.Tip.Bytes(),
 				AddBlockRequest:   &abr,
-				Checkpoint:        noty.Checkpoint,
-				Round:             noty.CompletedRound,
-				RoundConfirmation: noty.RoundConfirmation,
+				Checkpoint:        noty.Checkpoint.Value(),
+				Round:             noty.CompletedRound.Value(),
+				RoundConfirmation: noty.RoundConfirmation.Value(),
 			}
 			ch <- p
 		}
@@ -174,7 +174,7 @@ func (rs *roundSubscriber) handleMessage(ctx context.Context, msg pubsubinterfac
 		return fmt.Errorf("error unmarshaling: %w", err)
 	}
 
-	if rs.current != nil && confirmation.Height <= rs.current.Height {
+	if rs.current != nil && confirmation.Height <= rs.current.Height() {
 		return fmt.Errorf("confirmation of height %d is less than current %d", confirmation.Height, rs.current.Height)
 	}
 
@@ -214,32 +214,33 @@ func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *gossi
 
 	rs.logger.Debugf("hande Quorum: %v", confirmation)
 
-	rs.current = confirmation
+	rs.current = types.WrapRoundConfirmation(confirmation)
 	for key := range rs.inflight {
 		if key <= confirmation.Height {
 			delete(rs.inflight, key)
 		}
 	}
 
-	confirmation.SetStore(rs.dagStore)
+	wrappedConfirmation := types.WrapRoundConfirmation(confirmation)
+	wrappedConfirmation.SetStore(rs.dagStore)
 
 	// fetch the completed round and confirmation here as no ops so that they are cached
-	completedRound, err := confirmation.FetchCompletedRound(ctx)
+	wrappedCompletedRound, err := wrappedConfirmation.FetchCompletedRound(ctx)
 	if err != nil {
 		return err
 	}
 
-	_, err = completedRound.FetchCheckpoint(ctx)
+	_, err = wrappedCompletedRound.FetchCheckpoint(ctx)
 	if err != nil {
 		return err
 	}
 
-	rs.current = confirmation
+	rs.current = types.WrapRoundConfirmation(confirmation)
 
-	return rs.publishTxs(ctx, confirmation)
+	return rs.publishTxs(ctx, wrappedConfirmation)
 }
 
-func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *gossip.RoundConfirmation) error {
+func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.WrappedRoundConfirmation) error {
 	rs.logger.Debugf("publishingTxs")
 
 	completedRound, err := confirmation.FetchCompletedRound(ctx)
@@ -248,13 +249,13 @@ func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *gossip.
 	}
 
 	rs.logger.Debugf("getting checkpoint")
-	checkpoint, err := completedRound.FetchCheckpoint(ctx)
+	wrappedCheckpoint, err := completedRound.FetchCheckpoint(ctx)
 	if err != nil {
 		return err
 	}
-	rs.logger.Debugf("checkpoint: %v", checkpoint)
+	rs.logger.Debugf("checkpoint: %v", wrappedCheckpoint.Value())
 
-	for _, cidBytes := range checkpoint.AddBlockRequests {
+	for _, cidBytes := range wrappedCheckpoint.AddBlockRequests() {
 		abrCid, err := cid.Cast(cidBytes)
 		if err != nil {
 			return fmt.Errorf("error casting cid: %v", err)
@@ -264,8 +265,8 @@ func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *gossip.
 			RoundConfirmation: confirmation,
 			AbrCid:            abrCid,
 
-			Checkpoint:     *checkpoint,
-			CompletedRound: *completedRound,
+			Checkpoint:     wrappedCheckpoint,
+			CompletedRound: completedRound,
 		})
 	}
 	return nil

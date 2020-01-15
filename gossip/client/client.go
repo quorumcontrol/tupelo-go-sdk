@@ -115,7 +115,7 @@ func (c *Client) GetTip(ctx context.Context, did string) (*gossip.Proof, error) 
 
 	return &gossip.Proof{
 		ObjectId:          []byte(did),
-		RoundConfirmation: confirmation,
+		RoundConfirmation: confirmation.Value(),
 		Tip:               abr.NewTip,
 		AddBlockRequest:   abr,
 	}, nil

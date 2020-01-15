@@ -24,7 +24,7 @@ type WrappedRound struct {
 	round   *gossip.Round
 	wrapped *cbornode.Node
 
-	checkpoint *gossip.Checkpoint
+	checkpoint *WrappedCheckpoint
 	hamtNode   *hamt.Node
 	store      nodestore.DagStore
 }
@@ -36,6 +36,10 @@ func WrapRound(round *gossip.Round) *WrappedRound {
 		round:   round,
 		wrapped: node,
 	}
+}
+
+func (r *WrappedRound) Value() *gossip.Round {
+	return r.round
 }
 
 func (r *WrappedRound) CID() cid.Cid {
@@ -54,7 +58,7 @@ func (r *WrappedRound) SetStore(store nodestore.DagStore) {
 	r.store = store
 }
 
-func (r *WrappedRound) FetchCheckpoint(ctx context.Context) (*gossip.Checkpoint, error) {
+func (r *WrappedRound) FetchCheckpoint(ctx context.Context) (*WrappedCheckpoint, error) {
 	if r.checkpoint != nil {
 		return r.checkpoint, nil
 	}
@@ -76,9 +80,9 @@ func (r *WrappedRound) FetchCheckpoint(ctx context.Context) (*gossip.Checkpoint,
 	if err != nil {
 		return nil, fmt.Errorf("error decoding %w", err)
 	}
-	r.checkpoint = checkpoint
+	r.checkpoint = WrapCheckpoint(checkpoint)
 
-	return checkpoint, nil
+	return r.checkpoint, nil
 }
 
 func (r *WrappedRound) FetchHamt(ctx context.Context) (*hamt.Node, error) {
@@ -106,16 +110,34 @@ func (r *WrappedRound) FetchHamt(ctx context.Context) (*hamt.Node, error) {
 	return n, nil
 }
 
+func WrapRoundConfirmation(conf *gossip.RoundConfirmation) *WrappedRoundConfirmation {
+	sw := safewrap.SafeWrap{}
+	wrapped := sw.WrapObject(conf)
+
+	return &WrappedRoundConfirmation{
+		value:   conf,
+		wrapped: wrapped,
+	}
+}
+
 type WrappedRoundConfirmation struct {
-	confirmation *gossip.RoundConfirmation
-	wrapped      *cbornode.Node
+	value   *gossip.RoundConfirmation
+	wrapped *cbornode.Node
 
 	completedRound *WrappedRound
 	store          nodestore.DagStore
 }
 
+func (rc *WrappedRoundConfirmation) Value() *gossip.RoundConfirmation {
+	return rc.value
+}
+
 func (rc *WrappedRoundConfirmation) SetStore(store nodestore.DagStore) {
 	rc.store = store
+}
+
+func (rc *WrappedRoundConfirmation) Height() uint64 {
+	return rc.value.Height
 }
 
 func (rc *WrappedRoundConfirmation) FetchCompletedRound(ctx context.Context) (*WrappedRound, error) {
@@ -127,7 +149,7 @@ func (rc *WrappedRoundConfirmation) FetchCompletedRound(ctx context.Context) (*W
 		return nil, fmt.Errorf("missing a store on the round confirmation, use SetStore")
 	}
 
-	roundCid, err := cid.Cast(rc.confirmation.RoundCid)
+	roundCid, err := cid.Cast(rc.value.RoundCid)
 	if err != nil {
 		return nil, fmt.Errorf("error casting round cid: %v", err)
 	}
