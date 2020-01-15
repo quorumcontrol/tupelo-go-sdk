@@ -4,21 +4,28 @@ import (
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/messages/build/go/gossip"
-	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
 )
 
 func init() {
-	cbornode.RegisterCborType(Proof{})
+	cbornode.RegisterCborType(gossip.Proof{})
 }
 
-type Proof struct {
-	RoundConfirmation types.RoundConfirmation
+type ValidationNotification struct {
 	AbrCid            cid.Cid
 	ObjectId          string
 	Tip               cid.Cid
-
-	completedRound types.CompletedRound
-	checkpoint     gossip.Checkpoint
+	Checkpoint        *gossip.Checkpoint
+	RoundConfirmation *gossip.RoundConfirmation
+	CompletedRound    *gossip.Round
 
 	// dag store and hamt?
 }
+
+// func (p *Proof) Prove(tx *transactions.Transaction) error {
+//	// Transaction
+//	// AddBlockRequest
+//	// Checkpoint
+//	// Round
+//	// RoundConfirmation
+//	return nil
+// }

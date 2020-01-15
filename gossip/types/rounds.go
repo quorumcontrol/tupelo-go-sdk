@@ -11,46 +11,50 @@ import (
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/messages/build/go/gossip"
 	"github.com/quorumcontrol/messages/build/go/services"
-	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/hamtwrapper"
 )
 
 func init() {
 	cbornode.RegisterCborType(services.AddBlockRequest{})
-	cbornode.RegisterCborType(CompletedRound{})
-	cbornode.RegisterCborType(RoundConfirmation{})
+	cbornode.RegisterCborType(gossip.Round{})
+	cbornode.RegisterCborType(gossip.RoundConfirmation{})
 }
 
-type CompletedRound struct {
-	Height     uint64
-	Checkpoint cid.Cid
-	State      cid.Cid
-	wrapped    *cbornode.Node
+type WrappedRound struct {
+	round   *gossip.Round
+	wrapped *cbornode.Node
 
 	checkpoint *gossip.Checkpoint
 	hamtNode   *hamt.Node
 	store      nodestore.DagStore
 }
 
-func (r *CompletedRound) CID() cid.Cid {
+func WrapRound(round *gossip.Round) *WrappedRound {
+	sw := safewrap.SafeWrap{}
+	node := sw.WrapObject(round)
+	return &WrappedRound{
+		round:   round,
+		wrapped: node,
+	}
+}
+
+func (r *WrappedRound) CID() cid.Cid {
 	return r.Wrapped().Cid()
 }
 
-func (r *CompletedRound) Wrapped() *cbornode.Node {
-	if r.wrapped != nil {
-		return r.wrapped
-	}
-	sw := safewrap.SafeWrap{}
-	n := sw.WrapObject(r)
-	r.wrapped = n
-	return n
+func (r *WrappedRound) Wrapped() *cbornode.Node {
+	return r.wrapped
 }
 
-func (r *CompletedRound) SetStore(store nodestore.DagStore) {
+func (r *WrappedRound) Height() uint64 {
+	return r.round.Height
+}
+
+func (r *WrappedRound) SetStore(store nodestore.DagStore) {
 	r.store = store
 }
 
-func (r *CompletedRound) FetchCheckpoint(ctx context.Context) (*gossip.Checkpoint, error) {
+func (r *WrappedRound) FetchCheckpoint(ctx context.Context) (*gossip.Checkpoint, error) {
 	if r.checkpoint != nil {
 		return r.checkpoint, nil
 	}
@@ -60,7 +64,11 @@ func (r *CompletedRound) FetchCheckpoint(ctx context.Context) (*gossip.Checkpoin
 	}
 
 	checkpoint := &gossip.Checkpoint{}
-	checkpointNode, err := r.store.Get(ctx, r.Checkpoint)
+	checkpointCid, err := cid.Cast(r.round.CheckpointCid)
+	if err != nil {
+		return nil, fmt.Errorf("error casting checkpoint cid: %v", err)
+	}
+	checkpointNode, err := r.store.Get(ctx, checkpointCid)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching checkpoint %w", err)
 	}
@@ -73,7 +81,7 @@ func (r *CompletedRound) FetchCheckpoint(ctx context.Context) (*gossip.Checkpoin
 	return checkpoint, nil
 }
 
-func (r *CompletedRound) FetchHamt(ctx context.Context) (*hamt.Node, error) {
+func (r *WrappedRound) FetchHamt(ctx context.Context) (*hamt.Node, error) {
 	if r.hamtNode != nil {
 		return r.hamtNode, nil
 	}
@@ -83,7 +91,12 @@ func (r *CompletedRound) FetchHamt(ctx context.Context) (*hamt.Node, error) {
 	}
 
 	hamtStore := hamtwrapper.DagStoreToCborIpld(r.store)
-	n, err := hamt.LoadNode(ctx, hamtStore, r.State, hamt.UseTreeBitWidth(5))
+	stateCid, err := cid.Cast(r.round.StateCid)
+	if err != nil {
+		return nil, fmt.Errorf("error casting state cid: %v", err)
+	}
+
+	n, err := hamt.LoadNode(ctx, hamtStore, stateCid, hamt.UseTreeBitWidth(5))
 	if err != nil {
 		return nil, fmt.Errorf("error loading hamt %w", err)
 	}
@@ -93,21 +106,19 @@ func (r *CompletedRound) FetchHamt(ctx context.Context) (*hamt.Node, error) {
 	return n, nil
 }
 
-type RoundConfirmation struct {
-	Height         uint64
-	CompletedRound cid.Cid
-	Signature      *signatures.Signature
-	wrapped        *cbornode.Node
+type WrappedRoundConfirmation struct {
+	confirmation *gossip.RoundConfirmation
+	wrapped      *cbornode.Node
 
-	completedRound *CompletedRound
+	completedRound *WrappedRound
 	store          nodestore.DagStore
 }
 
-func (rc *RoundConfirmation) SetStore(store nodestore.DagStore) {
+func (rc *WrappedRoundConfirmation) SetStore(store nodestore.DagStore) {
 	rc.store = store
 }
 
-func (rc *RoundConfirmation) FetchCompletedRound(ctx context.Context) (*CompletedRound, error) {
+func (rc *WrappedRoundConfirmation) FetchCompletedRound(ctx context.Context) (*WrappedRound, error) {
 	if rc.completedRound != nil {
 		return rc.completedRound, nil
 	}
@@ -116,27 +127,34 @@ func (rc *RoundConfirmation) FetchCompletedRound(ctx context.Context) (*Complete
 		return nil, fmt.Errorf("missing a store on the round confirmation, use SetStore")
 	}
 
-	roundNode, err := rc.store.Get(ctx, rc.CompletedRound)
+	roundCid, err := cid.Cast(rc.confirmation.RoundCid)
+	if err != nil {
+		return nil, fmt.Errorf("error casting round cid: %v", err)
+	}
+
+	roundNode, err := rc.store.Get(ctx, roundCid)
 	if err != nil {
 		return nil, fmt.Errorf("error getting node: %w", err)
 	}
 
-	completedRound := &CompletedRound{}
+	completedRound := &gossip.Round{}
 	err = cbornode.DecodeInto(roundNode.RawData(), completedRound)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding: %w", err)
 	}
-	completedRound.SetStore(rc.store)
-	rc.completedRound = completedRound
 
-	return completedRound, nil
+	wrappedCompletedRound := WrapRound(completedRound)
+	wrappedCompletedRound.SetStore(rc.store)
+	rc.completedRound = WrapRound(completedRound)
+
+	return wrappedCompletedRound, nil
 }
 
-func (rc *RoundConfirmation) Data() []byte {
+func (rc *WrappedRoundConfirmation) Data() []byte {
 	return rc.Wrapped().RawData()
 }
 
-func (rc *RoundConfirmation) Wrapped() *cbornode.Node {
+func (rc *WrappedRoundConfirmation) Wrapped() *cbornode.Node {
 	if rc.wrapped != nil {
 		return rc.wrapped
 	}

@@ -11,6 +11,8 @@ import (
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/quorumcontrol/chaintree/nodestore"
+	"github.com/quorumcontrol/messages/build/go/gossip"
+	"github.com/quorumcontrol/messages/v2/build/go/services"
 	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client/pubsubinterfaces"
@@ -21,20 +23,25 @@ import (
 
 type subscription *eventstream.Subscription
 
-type roundConflictSet map[cid.Cid]*types.RoundConfirmation
+type roundConflictSet map[cid.Cid]*gossip.RoundConfirmation
 
 func isQuorum(group *types.NotaryGroup, sig *signatures.Signature) bool {
 	return uint64(sigfuncs.SignerCount(sig)) > group.QuorumCount()
 }
 
-func (rcs roundConflictSet) add(group *types.NotaryGroup, confirmation *types.RoundConfirmation) (makesQuorum bool, updated *types.RoundConfirmation, err error) {
+func (rcs roundConflictSet) add(group *types.NotaryGroup, confirmation *gossip.RoundConfirmation) (makesQuorum bool, updated *gossip.RoundConfirmation, err error) {
 	ctx := context.TODO()
 
-	existing, ok := rcs[confirmation.CompletedRound]
+	cid, err := cid.Cast(confirmation.RoundCid)
+	if err != nil {
+		return false, nil, fmt.Errorf("error casting round cid: %v", err)
+	}
+
+	existing, ok := rcs[cid]
 	if !ok {
 		// this is the first time we're seeing the completed round,
 		// just add it to the conflict set and move on
-		rcs[confirmation.CompletedRound] = confirmation
+		rcs[cid] = confirmation
 		return isQuorum(group, confirmation.Signature), confirmation, nil
 	}
 
@@ -45,7 +52,7 @@ func (rcs roundConflictSet) add(group *types.NotaryGroup, confirmation *types.Ro
 	}
 
 	existing.Signature = newSig
-	rcs[confirmation.CompletedRound] = existing
+	rcs[cid] = existing
 
 	return isQuorum(group, existing.Signature), existing, nil
 }
@@ -62,7 +69,7 @@ type roundSubscriber struct {
 	logger    logging.EventLogger
 
 	inflight conflictSetHolder
-	current  *types.RoundConfirmation
+	current  *gossip.RoundConfirmation
 
 	stream *eventstream.EventStream
 }
@@ -81,7 +88,7 @@ func newRoundSubscriber(logger logging.EventLogger, group *types.NotaryGroup, pu
 	}
 }
 
-func (rs *roundSubscriber) Current() *types.RoundConfirmation {
+func (rs *roundSubscriber) Current() *gossip.RoundConfirmation {
 	rs.RLock()
 	defer rs.RUnlock()
 	return rs.current
@@ -108,12 +115,31 @@ func (rs *roundSubscriber) start(ctx context.Context) error {
 	return nil
 }
 
-func (rs *roundSubscriber) subscribe(subscriptionCID cid.Cid, ch chan *Proof) subscription {
+func (rs *roundSubscriber) subscribe(ctx context.Context, subscriptionCID cid.Cid, ch chan *gossip.Proof) subscription {
 	rs.Lock()
 	defer rs.Unlock()
 	return rs.stream.Subscribe(func(evt interface{}) {
-		if proof := evt.(*Proof); proof.AbrCid.Equals(subscriptionCID) {
-			ch <- proof
+		if noty := evt.(*ValidationNotification); noty.AbrCid.Equals(subscriptionCID) {
+			abrNode, err := rs.dagStore.Get(ctx, noty.AbrCid)
+			if err != nil {
+				panic(fmt.Errorf("error fetching add block request from dag store: %v", err))
+			}
+
+			abr := services.AddBlockRequest{}
+			err = cbornode.DecodeInto(abrNode.RawData(), abr)
+			if err != nil {
+				panic(fmt.Errorf("error decoding add block request: %v", err))
+			}
+
+			p := &gossip.Proof{
+				ObjectId:          []byte(noty.ObjectId),
+				Tip:               noty.Tip.Bytes(),
+				AddBlockRequest:   &abr,
+				Checkpoint:        noty.Checkpoint,
+				Round:             noty.CompletedRound,
+				RoundConfirmation: noty.RoundConfirmation,
+			}
+			ch <- p
 		}
 	})
 }
@@ -124,9 +150,9 @@ func (rs *roundSubscriber) unsubscribe(sub subscription) {
 	rs.stream.Unsubscribe(sub)
 }
 
-func (rs *roundSubscriber) pubsubMessageToRoundConfirmation(ctx context.Context, msg pubsubinterfaces.Message) (*types.RoundConfirmation, error) {
+func (rs *roundSubscriber) pubsubMessageToRoundConfirmation(ctx context.Context, msg pubsubinterfaces.Message) (*gossip.RoundConfirmation, error) {
 	bits := msg.GetData()
-	confirmation := &types.RoundConfirmation{}
+	confirmation := &gossip.RoundConfirmation{}
 	err := cbornode.DecodeInto(bits, confirmation)
 	return confirmation, err
 }
@@ -157,7 +183,7 @@ func (rs *roundSubscriber) handleMessage(ctx context.Context, msg pubsubinterfac
 		return fmt.Errorf("error restoring BLS key: %w", err)
 	}
 
-	verified, err := sigfuncs.Valid(ctx, confirmation.Signature, confirmation.CompletedRound.Bytes(), nil)
+	verified, err := sigfuncs.Valid(ctx, confirmation.Signature, confirmation.RoundCid, nil)
 	if !verified || err != nil {
 		return fmt.Errorf("signature invalid with error: %v", err)
 	}
@@ -183,7 +209,7 @@ func (rs *roundSubscriber) handleMessage(ctx context.Context, msg pubsubinterfac
 	return nil
 }
 
-func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *types.RoundConfirmation) error {
+func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *gossip.RoundConfirmation) error {
 	// handleQuorum expects that it's already in a lock on the roundSubscriber
 
 	rs.logger.Debugf("hande Quorum: %v", confirmation)
@@ -213,7 +239,7 @@ func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *types
 	return rs.publishTxs(ctx, confirmation)
 }
 
-func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.RoundConfirmation) error {
+func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *gossip.RoundConfirmation) error {
 	rs.logger.Debugf("publishingTxs")
 
 	completedRound, err := confirmation.FetchCompletedRound(ctx)
@@ -234,12 +260,12 @@ func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.R
 			return fmt.Errorf("error casting cid: %v", err)
 		}
 		rs.logger.Debugf("publishing: %s", abrCid.String())
-		rs.stream.Publish(&Proof{
-			RoundConfirmation: *confirmation,
+		rs.stream.Publish(&ValidationNotification{
+			RoundConfirmation: confirmation,
 			AbrCid:            abrCid,
 
-			checkpoint:     *checkpoint,
-			completedRound: *completedRound,
+			Checkpoint:     *checkpoint,
+			CompletedRound: *completedRound,
 		})
 	}
 	return nil
