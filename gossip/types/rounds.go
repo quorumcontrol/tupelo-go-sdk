@@ -9,6 +9,7 @@ import (
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
+	"github.com/quorumcontrol/messages/build/go/gossip"
 	"github.com/quorumcontrol/messages/build/go/services"
 	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/hamtwrapper"
@@ -26,7 +27,7 @@ type CompletedRound struct {
 	State      cid.Cid
 	wrapped    *cbornode.Node
 
-	checkpoint *Checkpoint
+	checkpoint *gossip.Checkpoint
 	hamtNode   *hamt.Node
 	store      nodestore.DagStore
 }
@@ -49,7 +50,7 @@ func (r *CompletedRound) SetStore(store nodestore.DagStore) {
 	r.store = store
 }
 
-func (r *CompletedRound) FetchCheckpoint(ctx context.Context) (*Checkpoint, error) {
+func (r *CompletedRound) FetchCheckpoint(ctx context.Context) (*gossip.Checkpoint, error) {
 	if r.checkpoint != nil {
 		return r.checkpoint, nil
 	}
@@ -58,7 +59,7 @@ func (r *CompletedRound) FetchCheckpoint(ctx context.Context) (*Checkpoint, erro
 		return nil, fmt.Errorf("missing a store on the completed round, use SetStore")
 	}
 
-	checkpoint := &Checkpoint{}
+	checkpoint := &gossip.Checkpoint{}
 	checkpointNode, err := r.store.Get(ctx, r.Checkpoint)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching checkpoint %w", err)

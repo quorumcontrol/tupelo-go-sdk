@@ -4,32 +4,40 @@ import (
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/safewrap"
+	"github.com/quorumcontrol/messages/build/go/gossip"
 )
 
 func init() {
-	cbornode.RegisterCborType(Checkpoint{})
+	cbornode.RegisterCborType(gossip.Checkpoint{})
 }
 
-type Checkpoint struct {
-	Height           uint64
-	AddBlockRequests []cid.Cid
-	wrapped          *cbornode.Node
+func WrapCheckpoint(c *gossip.Checkpoint) *wrappedCheckpoint {
+	sw := safewrap.SafeWrap{}
+	n := sw.WrapObject(c)
+
+	return &wrappedCheckpoint{
+		value:   c,
+		wrapped: n,
+	}
 }
 
-func (c *Checkpoint) CID() cid.Cid {
+type wrappedCheckpoint struct {
+	value   *gossip.Checkpoint
+	wrapped *cbornode.Node
+}
+
+func (c *wrappedCheckpoint) CID() cid.Cid {
 	return c.Wrapped().Cid()
 }
 
-func (c *Checkpoint) Wrapped() *cbornode.Node {
-	if c.wrapped != nil {
-		return c.wrapped
-	}
-	sw := safewrap.SafeWrap{}
-	n := sw.WrapObject(c)
-	c.wrapped = n
-	return n
+func (c *wrappedCheckpoint) Value() *gossip.Checkpoint {
+	return c.value
 }
 
-func (c *Checkpoint) Length() int {
-	return len(c.AddBlockRequests)
+func (c *wrappedCheckpoint) Wrapped() *cbornode.Node {
+	return c.wrapped
+}
+
+func (c *wrappedCheckpoint) Length() int {
+	return len(c.value.AddBlockRequests)
 }

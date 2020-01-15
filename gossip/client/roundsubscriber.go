@@ -228,11 +228,15 @@ func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.R
 	}
 	rs.logger.Debugf("checkpoint: %v", checkpoint)
 
-	for _, tx := range checkpoint.AddBlockRequests {
-		rs.logger.Debugf("publishing: %s", tx.String())
+	for _, cidBytes := range checkpoint.AddBlockRequests {
+		abrCid, err := cid.Cast(cidBytes)
+		if err != nil {
+			return fmt.Errorf("error casting cid: %v", err)
+		}
+		rs.logger.Debugf("publishing: %s", abrCid.String())
 		rs.stream.Publish(&Proof{
 			RoundConfirmation: *confirmation,
-			AbrCid:            tx,
+			AbrCid:            abrCid,
 
 			checkpoint:     *checkpoint,
 			completedRound: *completedRound,

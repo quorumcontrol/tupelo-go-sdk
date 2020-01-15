@@ -3,6 +3,7 @@ package client
 import (
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
+	"github.com/quorumcontrol/messages/build/go/gossip"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
 )
 
@@ -17,7 +18,7 @@ type Proof struct {
 	Tip               cid.Cid
 
 	completedRound types.CompletedRound
-	checkpoint     types.Checkpoint
+	checkpoint     gossip.Checkpoint
 
 	// dag store and hamt?
 }
