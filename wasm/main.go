@@ -5,8 +5,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"syscall/js"
 	logging "github.com/ipfs/go-log"
+	"syscall/js"
 
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jscrypto"
 
@@ -82,7 +82,6 @@ func main() {
 			}))
 
 			jsObj.Set("getTip", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				go fmt.Println("getTip: ", args[0].String())
 				return clientSingleton.GetTip(args[0])
 			}))
 

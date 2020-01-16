@@ -107,7 +107,6 @@ func (jsc *JSClient) GetTip(jsDid js.Value) interface{} {
 	t := then.New()
 	go func() {
 		ctx := context.TODO()
-		fmt.Println("getting did: ", did)
 		proof, err := jsc.client.GetTip(ctx, did)
 		if err != nil {
 			t.Reject(fmt.Errorf("error getting tip: %w", err).Error())
