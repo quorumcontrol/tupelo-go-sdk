@@ -113,8 +113,6 @@ func (jsc *JSClient) GetTip(jsDid js.Value) interface{} {
 			return
 		}
 
-		fmt.Println("proof: ", proof, "err: ", err)
-
 		sw := &safewrap.SafeWrap{}
 
 		wrapped := sw.WrapObject(proof)
