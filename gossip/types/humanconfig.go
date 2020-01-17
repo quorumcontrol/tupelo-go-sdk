@@ -218,7 +218,7 @@ func TomlToConfig(tomlBytes string) (*Config, error) {
 	}
 	hc, err := tc.toPBConfig()
 	if err != nil {
-		return nil, fmt.Errorf("error converting toml config to config")
+		return nil, fmt.Errorf("error converting toml config to config: %v", err)
 	}
 	return HumanConfigToConfig(hc)
 }
