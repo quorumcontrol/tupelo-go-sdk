@@ -570,6 +570,8 @@ github.com/quorumcontrol/messages v1.1.1 h1:e90LvAM7YCZrFnXGM9H3pin+jjGqYPjW+Yth
 github.com/quorumcontrol/messages v1.1.1/go.mod h1:PubykIzNsMO+CMecd7HDFKjBa4shVrPal8/GxM1+plc=
 github.com/quorumcontrol/messages/v2 v2.1.2 h1:5LQQYWJc97fAH+bXpRXXsQbM6sSS+mYDjHNfLI8Snwk=
 github.com/quorumcontrol/messages/v2 v2.1.2/go.mod h1:on7qxEZYufdF6ZIyXFFWonyEmSdCuY+McIk2kLDiGwg=
+github.com/quorumcontrol/opencensus-go v0.21.1-0.20200117203331-36d95539b227 h1:aGPNg+H1CEvUexBZiIF7KzusElm70kNUEDUDlAAHi+0=
+github.com/quorumcontrol/opencensus-go v0.21.1-0.20200117203331-36d95539b227/go.mod h1:GiHo0Vmtk6gDrlaGu2RIATnyjxbwGZry884qx0IyhAw=
 github.com/quorumcontrol/tupelo v0.5.12-0.20200106164423-ae217697b350 h1:rVM7Z+mVbWpPCaG6pDhSeYCBrLE8jyOtV8Fo20t/0Z4=
 github.com/quorumcontrol/tupelo v0.5.12-0.20200106164423-ae217697b350/go.mod h1:w38FdPQhXO6Nom4xb0lfDumX2NyS91sN00JkZ8qCNfI=
 github.com/quorumcontrol/tupelo v0.5.12-0.20200107121538-1064cab4a868 h1:uAQbkciIjg1x5bGGhWOAIgGUp1kgKnZYTyNrtqzhTN4=

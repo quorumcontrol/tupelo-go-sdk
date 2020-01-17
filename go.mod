@@ -45,3 +45,5 @@ require (
 )
 
 replace github.com/ipfs/go-hamt-ipld => github.com/quorumcontrol/go-hamt-ipld v0.0.2-0.20191226140059-f380a50328f8
+
+replace go.opencensus.io => github.com/quorumcontrol/opencensus-go v0.21.1-0.20200117203331-36d95539b227
