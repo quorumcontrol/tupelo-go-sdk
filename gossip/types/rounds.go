@@ -24,7 +24,7 @@ type WrappedRound struct {
 	round   *gossip.Round
 	wrapped *cbornode.Node
 
-	checkpoint *WrappedCheckpoint
+	checkpoint *CheckpointWrapper
 	hamtNode   *hamt.Node
 	store      nodestore.DagStore
 }
@@ -58,7 +58,7 @@ func (r *WrappedRound) SetStore(store nodestore.DagStore) {
 	r.store = store
 }
 
-func (r *WrappedRound) FetchCheckpoint(ctx context.Context) (*WrappedCheckpoint, error) {
+func (r *WrappedRound) FetchCheckpoint(ctx context.Context) (*CheckpointWrapper, error) {
 	if r.checkpoint != nil {
 		return r.checkpoint, nil
 	}

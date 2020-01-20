@@ -15,7 +15,7 @@ type ValidationNotification struct {
 	AbrCid            cid.Cid
 	ObjectId          string
 	Tip               cid.Cid
-	Checkpoint        *types.WrappedCheckpoint
+	Checkpoint        *types.CheckpointWrapper
 	RoundConfirmation *types.WrappedRoundConfirmation
 	CompletedRound    *types.WrappedRound
 

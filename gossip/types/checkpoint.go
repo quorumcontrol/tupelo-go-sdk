@@ -11,37 +11,37 @@ func init() {
 	cbornode.RegisterCborType(gossip.Checkpoint{})
 }
 
-func WrapCheckpoint(c *gossip.Checkpoint) *WrappedCheckpoint {
+func WrapCheckpoint(c *gossip.Checkpoint) *CheckpointWrapper {
 	sw := safewrap.SafeWrap{}
 	n := sw.WrapObject(c)
 
-	return &WrappedCheckpoint{
+	return &CheckpointWrapper{
 		value:   c,
 		wrapped: n,
 	}
 }
 
-type WrappedCheckpoint struct {
+type CheckpointWrapper struct {
 	value   *gossip.Checkpoint
 	wrapped *cbornode.Node
 }
 
-func (c *WrappedCheckpoint) CID() cid.Cid {
+func (c *CheckpointWrapper) CID() cid.Cid {
 	return c.Wrapped().Cid()
 }
 
-func (c *WrappedCheckpoint) Value() *gossip.Checkpoint {
+func (c *CheckpointWrapper) Value() *gossip.Checkpoint {
 	return c.value
 }
 
-func (c *WrappedCheckpoint) Wrapped() *cbornode.Node {
+func (c *CheckpointWrapper) Wrapped() *cbornode.Node {
 	return c.wrapped
 }
 
-func (c *WrappedCheckpoint) Length() int {
+func (c *CheckpointWrapper) Length() int {
 	return len(c.value.AddBlockRequests)
 }
 
-func (c *WrappedCheckpoint) AddBlockRequests() [][]byte {
+func (c *CheckpointWrapper) AddBlockRequests() [][]byte {
 	return c.value.AddBlockRequests
 }

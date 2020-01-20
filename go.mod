@@ -31,6 +31,7 @@ require (
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.8.1
 	github.com/quorumcontrol/chaintree v0.9.4
+	github.com/quorumcontrol/messages v1.1.1
 	github.com/quorumcontrol/messages/v2 v2.1.2
 	github.com/quorumcontrol/tupelo v0.5.12-0.20200111205713-bdcd8177fb62
 	github.com/spy16/parens v0.0.8
