@@ -17,7 +17,7 @@ type ValidationNotification struct {
 	Tip               cid.Cid
 	Checkpoint        *types.CheckpointWrapper
 	RoundConfirmation *types.RoundConfirmationWrapper
-	CompletedRound    *types.WrappedRound
+	CompletedRound    *types.RoundWrapper
 
 	// dag store and hamt?
 }

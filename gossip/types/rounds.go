@@ -20,7 +20,7 @@ func init() {
 	cbornode.RegisterCborType(gossip.RoundConfirmation{})
 }
 
-type WrappedRound struct {
+type RoundWrapper struct {
 	round   *gossip.Round
 	wrapped *cbornode.Node
 
@@ -29,36 +29,36 @@ type WrappedRound struct {
 	store      nodestore.DagStore
 }
 
-func WrapRound(round *gossip.Round) *WrappedRound {
+func WrapRound(round *gossip.Round) *RoundWrapper {
 	sw := safewrap.SafeWrap{}
 	node := sw.WrapObject(round)
-	return &WrappedRound{
+	return &RoundWrapper{
 		round:   round,
 		wrapped: node,
 	}
 }
 
-func (r *WrappedRound) Value() *gossip.Round {
+func (r *RoundWrapper) Value() *gossip.Round {
 	return r.round
 }
 
-func (r *WrappedRound) CID() cid.Cid {
+func (r *RoundWrapper) CID() cid.Cid {
 	return r.Wrapped().Cid()
 }
 
-func (r *WrappedRound) Wrapped() *cbornode.Node {
+func (r *RoundWrapper) Wrapped() *cbornode.Node {
 	return r.wrapped
 }
 
-func (r *WrappedRound) Height() uint64 {
+func (r *RoundWrapper) Height() uint64 {
 	return r.round.Height
 }
 
-func (r *WrappedRound) SetStore(store nodestore.DagStore) {
+func (r *RoundWrapper) SetStore(store nodestore.DagStore) {
 	r.store = store
 }
 
-func (r *WrappedRound) FetchCheckpoint(ctx context.Context) (*CheckpointWrapper, error) {
+func (r *RoundWrapper) FetchCheckpoint(ctx context.Context) (*CheckpointWrapper, error) {
 	if r.checkpoint != nil {
 		return r.checkpoint, nil
 	}
@@ -85,7 +85,7 @@ func (r *WrappedRound) FetchCheckpoint(ctx context.Context) (*CheckpointWrapper,
 	return r.checkpoint, nil
 }
 
-func (r *WrappedRound) FetchHamt(ctx context.Context) (*hamt.Node, error) {
+func (r *RoundWrapper) FetchHamt(ctx context.Context) (*hamt.Node, error) {
 	if r.hamtNode != nil {
 		return r.hamtNode, nil
 	}
@@ -124,7 +124,7 @@ type RoundConfirmationWrapper struct {
 	value   *gossip.RoundConfirmation
 	wrapped *cbornode.Node
 
-	completedRound *WrappedRound
+	completedRound *RoundWrapper
 	store          nodestore.DagStore
 }
 
@@ -140,7 +140,7 @@ func (rc *RoundConfirmationWrapper) Height() uint64 {
 	return rc.value.Height
 }
 
-func (rc *RoundConfirmationWrapper) FetchCompletedRound(ctx context.Context) (*WrappedRound, error) {
+func (rc *RoundConfirmationWrapper) FetchCompletedRound(ctx context.Context) (*RoundWrapper, error) {
 	if rc.completedRound != nil {
 		return rc.completedRound, nil
 	}
