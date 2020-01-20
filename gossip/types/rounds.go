@@ -110,17 +110,17 @@ func (r *WrappedRound) FetchHamt(ctx context.Context) (*hamt.Node, error) {
 	return n, nil
 }
 
-func WrapRoundConfirmation(conf *gossip.RoundConfirmation) *WrappedRoundConfirmation {
+func WrapRoundConfirmation(conf *gossip.RoundConfirmation) *RoundConfirmationWrapper {
 	sw := safewrap.SafeWrap{}
 	wrapped := sw.WrapObject(conf)
 
-	return &WrappedRoundConfirmation{
+	return &RoundConfirmationWrapper{
 		value:   conf,
 		wrapped: wrapped,
 	}
 }
 
-type WrappedRoundConfirmation struct {
+type RoundConfirmationWrapper struct {
 	value   *gossip.RoundConfirmation
 	wrapped *cbornode.Node
 
@@ -128,19 +128,19 @@ type WrappedRoundConfirmation struct {
 	store          nodestore.DagStore
 }
 
-func (rc *WrappedRoundConfirmation) Value() *gossip.RoundConfirmation {
+func (rc *RoundConfirmationWrapper) Value() *gossip.RoundConfirmation {
 	return rc.value
 }
 
-func (rc *WrappedRoundConfirmation) SetStore(store nodestore.DagStore) {
+func (rc *RoundConfirmationWrapper) SetStore(store nodestore.DagStore) {
 	rc.store = store
 }
 
-func (rc *WrappedRoundConfirmation) Height() uint64 {
+func (rc *RoundConfirmationWrapper) Height() uint64 {
 	return rc.value.Height
 }
 
-func (rc *WrappedRoundConfirmation) FetchCompletedRound(ctx context.Context) (*WrappedRound, error) {
+func (rc *RoundConfirmationWrapper) FetchCompletedRound(ctx context.Context) (*WrappedRound, error) {
 	if rc.completedRound != nil {
 		return rc.completedRound, nil
 	}
@@ -172,11 +172,11 @@ func (rc *WrappedRoundConfirmation) FetchCompletedRound(ctx context.Context) (*W
 	return wrappedCompletedRound, nil
 }
 
-func (rc *WrappedRoundConfirmation) Data() []byte {
+func (rc *RoundConfirmationWrapper) Data() []byte {
 	return rc.Wrapped().RawData()
 }
 
-func (rc *WrappedRoundConfirmation) Wrapped() *cbornode.Node {
+func (rc *RoundConfirmationWrapper) Wrapped() *cbornode.Node {
 	if rc.wrapped != nil {
 		return rc.wrapped
 	}

@@ -69,7 +69,7 @@ type roundSubscriber struct {
 	logger    logging.EventLogger
 
 	inflight conflictSetHolder
-	current  *types.WrappedRoundConfirmation
+	current  *types.RoundConfirmationWrapper
 
 	stream *eventstream.EventStream
 }
@@ -88,7 +88,7 @@ func newRoundSubscriber(logger logging.EventLogger, group *types.NotaryGroup, pu
 	}
 }
 
-func (rs *roundSubscriber) Current() *types.WrappedRoundConfirmation {
+func (rs *roundSubscriber) Current() *types.RoundConfirmationWrapper {
 	rs.RLock()
 	defer rs.RUnlock()
 	return rs.current
@@ -240,7 +240,7 @@ func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *gossi
 	return rs.publishTxs(ctx, wrappedConfirmation)
 }
 
-func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.WrappedRoundConfirmation) error {
+func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.RoundConfirmationWrapper) error {
 	rs.logger.Debugf("publishingTxs")
 
 	completedRound, err := confirmation.FetchCompletedRound(ctx)
