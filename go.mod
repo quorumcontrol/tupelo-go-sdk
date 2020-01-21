@@ -3,7 +3,7 @@ module github.com/quorumcontrol/tupelo-go-sdk
 go 1.12
 
 require (
-	github.com/AsynkronIT/protoactor-go v0.0.0-20190429152931-21e2d03dcae5
+	github.com/AsynkronIT/protoactor-go v0.0.0-20191119210846-07df21a705b8
 	github.com/BurntSushi/toml v0.3.1
 	github.com/ethereum/go-ethereum v1.9.3
 	github.com/gogo/protobuf v1.3.1
@@ -34,13 +34,13 @@ require (
 	github.com/quorumcontrol/messages/v2 v2.1.2
 	github.com/quorumcontrol/tupelo v0.5.12-0.20200111205713-bdcd8177fb62
 	github.com/spy16/parens v0.0.8
-	github.com/stretchr/testify v1.3.0
+	github.com/stretchr/testify v1.4.0
 	github.com/uber/jaeger-client-go v2.15.0+incompatible
 	github.com/uber/jaeger-lib v1.5.0
 	go.dedis.ch/kyber/v3 v3.0.9
 	go.elastic.co/apm/module/apmot v1.6.0
 	go.uber.org/zap v1.10.0
-	golang.org/x/crypto v0.0.0-20191111213947-16651526fdb4
+	golang.org/x/crypto v0.0.0-20191117063200-497ca9f6d64f
 	golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7
 )
 
