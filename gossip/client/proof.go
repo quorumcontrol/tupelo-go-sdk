@@ -3,7 +3,7 @@ package client
 import (
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
-	"github.com/quorumcontrol/messages/build/go/gossip"
+	"github.com/quorumcontrol/messages/v2/build/go/gossip"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
 )
 

@@ -9,8 +9,8 @@ import (
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
-	"github.com/quorumcontrol/messages/build/go/gossip"
 	"github.com/quorumcontrol/messages/build/go/services"
+	"github.com/quorumcontrol/messages/v2/build/go/gossip"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/hamtwrapper"
 )
 

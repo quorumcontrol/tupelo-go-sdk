@@ -14,7 +14,7 @@ import (
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/nodestore"
-	"github.com/quorumcontrol/messages/build/go/gossip"
+	"github.com/quorumcontrol/messages/v2/build/go/gossip"
 	"github.com/quorumcontrol/messages/v2/build/go/services"
 	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
