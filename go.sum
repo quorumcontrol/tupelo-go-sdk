@@ -568,6 +568,7 @@ github.com/quorumcontrol/go-hamt-ipld v0.0.2-0.20191226140059-f380a50328f8 h1:N6
 github.com/quorumcontrol/go-hamt-ipld v0.0.2-0.20191226140059-f380a50328f8/go.mod h1:8yRx0xLUps1Xq8ZDnIwIVdQRp7JjA55gGvCiRHT91Vk=
 github.com/quorumcontrol/messages v1.1.1 h1:e90LvAM7YCZrFnXGM9H3pin+jjGqYPjW+YthBJkZHLc=
 github.com/quorumcontrol/messages v1.1.1/go.mod h1:PubykIzNsMO+CMecd7HDFKjBa4shVrPal8/GxM1+plc=
+github.com/quorumcontrol/messages v2.0.1+incompatible h1:8bqzWXzanPcs/YW/mYGzZbI1bT5t0nngsUBBQKV6YmA=
 github.com/quorumcontrol/messages/v2 v2.1.2 h1:5LQQYWJc97fAH+bXpRXXsQbM6sSS+mYDjHNfLI8Snwk=
 github.com/quorumcontrol/messages/v2 v2.1.2/go.mod h1:on7qxEZYufdF6ZIyXFFWonyEmSdCuY+McIk2kLDiGwg=
 github.com/quorumcontrol/tupelo v0.5.12-0.20200106164423-ae217697b350 h1:rVM7Z+mVbWpPCaG6pDhSeYCBrLE8jyOtV8Fo20t/0Z4=
