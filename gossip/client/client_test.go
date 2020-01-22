@@ -20,6 +20,7 @@ import (
 	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client/pubsubinterfaces/pubsubwrapper"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip/testhelpers"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 	"github.com/quorumcontrol/tupelo-go-sdk/testnotarygroup"
@@ -141,40 +142,40 @@ func TestClientSendTransactions(t *testing.T) {
 		assert.Equal(t, proof.Tip, tree.Tip().Bytes())
 	})
 
-	// t.Run("test 3 subsequent transactions", func(t *testing.T) {
-	// 	ctx, cancel := context.WithCancel(ctx)
-	// 	defer cancel()
+	t.Run("test 3 subsequent transactions", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
 
-	// 	cli, err := newClient(ctx, group, bootAddrs)
-	// 	require.Nil(t, err)
+		cli, err := newClient(ctx, group, bootAddrs)
+		require.Nil(t, err)
 
-	// 	treeKey, err := crypto.GenerateKey()
-	// 	require.Nil(t, err)
-	// 	tree, err := consensus.NewSignedChainTree(ctx, treeKey.PublicKey, nodestore.MustMemoryStore(ctx))
-	// 	require.Nil(t, err)
+		treeKey, err := crypto.GenerateKey()
+		require.Nil(t, err)
+		tree, err := consensus.NewSignedChainTree(ctx, treeKey.PublicKey, nodestore.MustMemoryStore(ctx))
+		require.Nil(t, err)
 
-	// 	txn, err := chaintree.NewSetDataTransaction("down/in/the/thing", "sometestvalue")
-	// 	require.Nil(t, err)
+		txn, err := chaintree.NewSetDataTransaction("down/in/the/thing", "sometestvalue")
+		require.Nil(t, err)
 
-	// 	proof, err := cli.PlayTransactions(ctx, tree, treeKey, []*transactions.Transaction{txn})
-	// 	require.Nil(t, err)
-	// 	assert.Equal(t, proof.Tip, tree.Tip().Bytes())
+		proof, err := cli.PlayTransactions(ctx, tree, treeKey, []*transactions.Transaction{txn})
+		require.Nil(t, err)
+		assert.Equal(t, proof.Tip, tree.Tip().Bytes())
 
-	// 	txn2, err := chaintree.NewSetDataTransaction("down/in/the/thing", "some other2")
-	// 	require.Nil(t, err)
+		txn2, err := chaintree.NewSetDataTransaction("down/in/the/thing", "some other2")
+		require.Nil(t, err)
 
-	// 	proof2, err := cli.PlayTransactions(ctx, tree, treeKey, []*transactions.Transaction{txn2})
-	// 	require.Nil(t, err)
-	// 	assert.Equal(t, proof2.Tip, tree.Tip().Bytes())
+		proof2, err := cli.PlayTransactions(ctx, tree, treeKey, []*transactions.Transaction{txn2})
+		require.Nil(t, err)
+		assert.Equal(t, proof2.Tip, tree.Tip().Bytes())
 
-	// 	txn3, err := chaintree.NewSetDataTransaction("down/in/the/thing", "some other3")
-	// 	require.Nil(t, err)
+		txn3, err := chaintree.NewSetDataTransaction("down/in/the/thing", "some other3")
+		require.Nil(t, err)
 
-	// 	proof3, err := cli.PlayTransactions(ctx, tree, treeKey, []*transactions.Transaction{txn3})
-	// 	require.Nil(t, err)
-	// 	assert.Equal(t, proof3.Tip, tree.Tip().Bytes())
+		proof3, err := cli.PlayTransactions(ctx, tree, treeKey, []*transactions.Transaction{txn3})
+		require.Nil(t, err)
+		assert.Equal(t, proof3.Tip, tree.Tip().Bytes())
 
-	// })
+	})
 
 	// t.Run("transactions played out of order succeed", func(t *testing.T) {
 	// 	ctx, cancel := context.WithCancel(ctx)
@@ -217,95 +218,95 @@ func TestClientSendTransactions(t *testing.T) {
 	// 	require.IsType(t, &gossip.Proof{}, resp1)
 	// })
 
-	// t.Run("invalid previous tip fails", func(t *testing.T) {
-	// 	ctx, cancel := context.WithCancel(ctx)
-	// 	defer cancel()
+	t.Run("invalid previous tip fails", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
 
-	// 	clientA, err := newClient(ctx, group, bootAddrs)
-	// 	require.Nil(t, err)
-	// 	clientB, err := newClient(ctx, group, bootAddrs)
-	// 	require.Nil(t, err)
+		clientA, err := newClient(ctx, group, bootAddrs)
+		require.Nil(t, err)
+		clientB, err := newClient(ctx, group, bootAddrs)
+		require.Nil(t, err)
 
-	// 	treeKey, err := crypto.GenerateKey()
-	// 	require.Nil(t, err)
-	// 	nodeStoreA := nodestore.MustMemoryStore(ctx)
-	// 	nodeStoreB := nodestore.MustMemoryStore(ctx)
+		treeKey, err := crypto.GenerateKey()
+		require.Nil(t, err)
+		nodeStoreA := nodestore.MustMemoryStore(ctx)
+		nodeStoreB := nodestore.MustMemoryStore(ctx)
 
-	// 	testTreeA, err := consensus.NewSignedChainTree(ctx, treeKey.PublicKey, nodeStoreA)
-	// 	require.Nil(t, err)
+		testTreeA, err := consensus.NewSignedChainTree(ctx, treeKey.PublicKey, nodeStoreA)
+		require.Nil(t, err)
 
-	// 	// establish different first valid transactions on 2 different local chaintrees
-	// 	transactLocal(t, testTreeA, treeKey, 0, "down/in/the/treeA", "atestvalue")
-	// 	basisNodesA1 := testhelpers.DagToByteNodes(t, testTreeA.ChainTree.Dag)
+		// establish different first valid transactions on 2 different local chaintrees
+		transactLocal(t, testTreeA, treeKey, 0, "down/in/the/treeA", "atestvalue")
+		basisNodesA1 := testhelpers.DagToByteNodes(t, testTreeA.ChainTree.Dag)
 
-	// 	testTreeB, err := consensus.NewSignedChainTree(ctx, treeKey.PublicKey, nodeStoreB)
-	// 	require.Nil(t, err)
-	// 	emptyTip := testTreeB.Tip()
+		testTreeB, err := consensus.NewSignedChainTree(ctx, treeKey.PublicKey, nodeStoreB)
+		require.Nil(t, err)
+		emptyTip := testTreeB.Tip()
 
-	// 	basisNodesB0 := testhelpers.DagToByteNodes(t, testTreeB.ChainTree.Dag)
-	// 	blockWithHeadersB0 := transactLocal(t, testTreeB, treeKey, 0, "down/in/the/treeB", "btestvalue")
-	// 	tipB0 := testTreeB.Tip()
+		basisNodesB0 := testhelpers.DagToByteNodes(t, testTreeB.ChainTree.Dag)
+		blockWithHeadersB0 := transactLocal(t, testTreeB, treeKey, 0, "down/in/the/treeB", "btestvalue")
+		tipB0 := testTreeB.Tip()
 
-	// 	// run a second transaction on the first local chaintree
-	// 	blockWithHeadersA1 := transactLocal(t, testTreeA, treeKey, 1, "other/thing", "sometestvalue")
-	// 	tipA1 := testTreeA.Tip()
+		// run a second transaction on the first local chaintree
+		blockWithHeadersA1 := transactLocal(t, testTreeA, treeKey, 1, "other/thing", "sometestvalue")
+		tipA1 := testTreeA.Tip()
 
-	// 	/* Now send tx at height 1 from chaintree A followed by
-	// 	   tx at height 0 from chaintree B
-	// 	   tx at height 1 should be a byzantine transaction because its previous tip value
-	// 	   from chaintree A won't line up with tx at height 0 from chaintree B.
-	// 	   This can't be checked until after tx 0 is committed and this test is for
-	// 	   verifying that that happens and result is an invalid tx
-	// 	*/
-	// 	respCh1, sub1 := transactRemote(ctx, t, clientB, testTreeB.MustId(), blockWithHeadersA1, tipA1, basisNodesA1, emptyTip)
-	// 	defer clientB.UnsubscribeFromAbr(sub1)
-	// 	defer close(respCh1)
+		/* Now send tx at height 1 from chaintree A followed by
+		   tx at height 0 from chaintree B
+		   tx at height 1 should be a byzantine transaction because its previous tip value
+		   from chaintree A won't line up with tx at height 0 from chaintree B.
+		   This can't be checked until after tx 0 is committed and this test is for
+		   verifying that that happens and result is an invalid tx
+		*/
+		respCh1, sub1 := transactRemote(ctx, t, clientB, testTreeB.MustId(), blockWithHeadersA1, tipA1, basisNodesA1, emptyTip)
+		defer clientB.UnsubscribeFromAbr(sub1)
+		defer close(respCh1)
 
-	// 	time.Sleep(1 * time.Second)
+		time.Sleep(1 * time.Second)
 
-	// 	respCh0, sub0 := transactRemote(ctx, t, clientA, testTreeB.MustId(), blockWithHeadersB0, tipB0, basisNodesB0, emptyTip)
-	// 	defer clientA.UnsubscribeFromAbr(sub0)
-	// 	defer close(respCh0)
+		respCh0, sub0 := transactRemote(ctx, t, clientA, testTreeB.MustId(), blockWithHeadersB0, tipB0, basisNodesB0, emptyTip)
+		defer clientA.UnsubscribeFromAbr(sub0)
+		defer close(respCh0)
 
-	// 	resp0 := <-respCh0
-	// 	require.IsType(t, &gossip.Proof{}, resp0)
+		resp0 := <-respCh0
+		require.IsType(t, &gossip.Proof{}, resp0)
 
-	// 	// TODO: this is now a timeout error.
-	// 	// we can probably figure out a more elegant way to test this - like maybe sending in a successful 3rd transaction
-	// 	ticker := time.NewTimer(2 * time.Second)
-	// 	defer ticker.Stop()
+		// TODO: this is now a timeout error.
+		// we can probably figure out a more elegant way to test this - like maybe sending in a successful 3rd transaction
+		ticker := time.NewTimer(2 * time.Second)
+		defer ticker.Stop()
 
-	// 	select {
-	// 	case <-respCh1:
-	// 		t.Fatalf("received a proof when we shouldn't have")
-	// 	case <-ticker.C:
-	// 		// yay a pass!
-	// 	}
-	// })
+		select {
+		case <-respCh1:
+			t.Fatalf("received a proof when we shouldn't have")
+		case <-ticker.C:
+			// yay a pass!
+		}
+	})
 
-	// t.Run("non-owner transactions fail", func(t *testing.T) {
-	// 	ctx, cancel := context.WithCancel(ctx)
-	// 	defer cancel()
+	t.Run("non-owner transactions fail", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
 
-	// 	cli, err := newClient(ctx, group, bootAddrs)
-	// 	require.Nil(t, err)
+		cli, err := newClient(ctx, group, bootAddrs)
+		require.Nil(t, err)
 
-	// 	treeKey1, err := crypto.GenerateKey()
-	// 	require.Nil(t, err)
-	// 	nodeStore := nodestore.MustMemoryStore(ctx)
-	// 	chain, err := consensus.NewSignedChainTree(ctx, treeKey1.PublicKey, nodeStore)
-	// 	require.Nil(t, err)
+		treeKey1, err := crypto.GenerateKey()
+		require.Nil(t, err)
+		nodeStore := nodestore.MustMemoryStore(ctx)
+		chain, err := consensus.NewSignedChainTree(ctx, treeKey1.PublicKey, nodeStore)
+		require.Nil(t, err)
 
-	// 	treeKey2, err := crypto.GenerateKey()
-	// 	require.Nil(t, err)
+		treeKey2, err := crypto.GenerateKey()
+		require.Nil(t, err)
 
-	// 	// transaction with non-owner key should fail
-	// 	txn, err := chaintree.NewSetDataTransaction("down/in/the/thing", "sometestvalue")
-	// 	require.Nil(t, err)
+		// transaction with non-owner key should fail
+		txn, err := chaintree.NewSetDataTransaction("down/in/the/thing", "sometestvalue")
+		require.Nil(t, err)
 
-	// 	_, err = cli.PlayTransactions(ctx, chain, treeKey2, []*transactions.Transaction{txn})
-	// 	require.NotNil(t, err)
-	// })
+		_, err = cli.PlayTransactions(ctx, chain, treeKey2, []*transactions.Transaction{txn})
+		require.NotNil(t, err)
+	})
 
 }
 

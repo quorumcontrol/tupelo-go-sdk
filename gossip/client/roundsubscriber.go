@@ -216,15 +216,15 @@ func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *gossi
 
 	rs.logger.Debugf("hande Quorum: %v", confirmation)
 
-	rs.current = types.WrapRoundConfirmation(confirmation)
+	wrappedConfirmation := types.WrapRoundConfirmation(confirmation)
+	wrappedConfirmation.SetStore(rs.dagStore)
+
+	rs.current = wrappedConfirmation
 	for key := range rs.inflight {
 		if key <= confirmation.Height {
 			delete(rs.inflight, key)
 		}
 	}
-
-	wrappedConfirmation := types.WrapRoundConfirmation(confirmation)
-	wrappedConfirmation.SetStore(rs.dagStore)
 
 	// fetch the completed round and confirmation here as no ops so that they are cached
 	wrappedCompletedRound, err := wrappedConfirmation.FetchCompletedRound(ctx)
@@ -236,8 +236,6 @@ func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *gossi
 	if err != nil {
 		return err
 	}
-
-	rs.current = types.WrapRoundConfirmation(confirmation)
 
 	return rs.publishTxs(ctx, wrappedConfirmation)
 }
