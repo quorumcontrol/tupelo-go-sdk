@@ -125,7 +125,7 @@ func (rs *roundSubscriber) subscribe(ctx context.Context, subscriptionCID cid.Ci
 				panic(fmt.Errorf("error fetching add block request from dag store: %v", err))
 			}
 
-			abr := services.AddBlockRequest{}
+			abr := &services.AddBlockRequest{}
 			err = cbornode.DecodeInto(abrNode.RawData(), abr)
 			if err != nil {
 				panic(fmt.Errorf("error decoding add block request: %v", err))
@@ -134,7 +134,7 @@ func (rs *roundSubscriber) subscribe(ctx context.Context, subscriptionCID cid.Ci
 			p := &gossip.Proof{
 				ObjectId:          []byte(noty.ObjectId),
 				Tip:               noty.Tip.Bytes(),
-				AddBlockRequest:   &abr,
+				AddBlockRequest:   abr,
 				Checkpoint:        noty.Checkpoint.Value(),
 				Round:             noty.CompletedRound.Value(),
 				RoundConfirmation: noty.RoundConfirmation.Value(),
@@ -175,7 +175,7 @@ func (rs *roundSubscriber) handleMessage(ctx context.Context, msg pubsubinterfac
 	}
 
 	if rs.current != nil && confirmation.Height <= rs.current.Height() {
-		return fmt.Errorf("confirmation of height %d is less than current %d", confirmation.Height, rs.current.Height)
+		return fmt.Errorf("confirmation of height %d is less than current %d", confirmation.Height, rs.current.Height())
 	}
 
 	err = sigfuncs.RestoreBLSPublicKey(ctx, confirmation.Signature, rs.verKeys())
@@ -203,7 +203,9 @@ func (rs *roundSubscriber) handleMessage(ctx context.Context, msg pubsubinterfac
 	}
 	rs.inflight[confirmation.Height] = conflictSet
 	if madeQuorum {
-		return rs.handleQuorum(ctx, updated)
+		if err := rs.handleQuorum(ctx, updated); err != nil {
+			return fmt.Errorf("error handling quorum: %w", err)
+		}
 	}
 
 	return nil
@@ -245,13 +247,13 @@ func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.R
 
 	completedRound, err := confirmation.FetchCompletedRound(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("error fetching completed round: %w", err)
 	}
 
 	rs.logger.Debugf("getting checkpoint")
 	wrappedCheckpoint, err := completedRound.FetchCheckpoint(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("error fetching checkpoint: %w", err)
 	}
 	rs.logger.Debugf("checkpoint: %v", wrappedCheckpoint.Value())
 

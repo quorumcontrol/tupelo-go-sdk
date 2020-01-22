@@ -167,7 +167,7 @@ func (rc *RoundConfirmationWrapper) FetchCompletedRound(ctx context.Context) (*R
 
 	wrappedCompletedRound := WrapRound(completedRound)
 	wrappedCompletedRound.SetStore(rc.store)
-	rc.completedRound = WrapRound(completedRound)
+	rc.completedRound = wrappedCompletedRound
 
 	return wrappedCompletedRound, nil
 }
