@@ -177,46 +177,47 @@ func TestClientSendTransactions(t *testing.T) {
 
 	})
 
-	// t.Run("transactions played out of order succeed", func(t *testing.T) {
-	// 	ctx, cancel := context.WithCancel(ctx)
-	// 	defer cancel()
+	t.Run("transactions played out of order succeed", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
 
-	// 	cli, err := newClient(ctx, group, bootAddrs)
-	// 	require.Nil(t, err)
+		cli, err := newClient(ctx, group, bootAddrs)
+		require.Nil(t, err)
 
-	// 	treeKey, err := crypto.GenerateKey()
-	// 	require.Nil(t, err)
-	// 	nodeStore := nodestore.MustMemoryStore(ctx)
+		treeKey, err := crypto.GenerateKey()
+		require.Nil(t, err)
+		nodeStore := nodestore.MustMemoryStore(ctx)
 
-	// 	testTree, err := consensus.NewSignedChainTree(ctx, treeKey.PublicKey, nodeStore)
-	// 	require.Nil(t, err)
+		testTree, err := consensus.NewSignedChainTree(ctx, treeKey.PublicKey, nodeStore)
+		require.Nil(t, err)
 
-	// 	emptyTip := testTree.Tip()
+		emptyTip := testTree.Tip()
 
-	// 	basisNodes0 := testhelpers.DagToByteNodes(t, testTree.ChainTree.Dag)
+		basisNodes0 := testhelpers.DagToByteNodes(t, testTree.ChainTree.Dag)
 
-	// 	blockWithHeaders0 := transactLocal(t, testTree, treeKey, 0, "down/in/the/tree", "atestvalue")
-	// 	tip0 := testTree.Tip()
+		blockWithHeaders0 := transactLocal(t, testTree, treeKey, 0, "down/in/the/tree", "atestvalue")
+		tip0 := testTree.Tip()
 
-	// 	basisNodes1 := testhelpers.DagToByteNodes(t, testTree.ChainTree.Dag)
+		basisNodes1 := testhelpers.DagToByteNodes(t, testTree.ChainTree.Dag)
 
-	// 	blockWithHeaders1 := transactLocal(t, testTree, treeKey, 1, "other/thing", "sometestvalue")
-	// 	tip1 := testTree.Tip()
+		blockWithHeaders1 := transactLocal(t, testTree, treeKey, 1, "other/thing", "sometestvalue")
+		tip1 := testTree.Tip()
 
-	// 	respCh1, sub1 := transactRemote(ctx, t, cli, testTree.MustId(), blockWithHeaders1, tip1, basisNodes1, emptyTip)
-	// 	defer cli.UnsubscribeFromAbr(sub1)
-	// 	defer close(respCh1)
+		respCh1, sub1 := transactRemote(ctx, t, cli, testTree.MustId(), blockWithHeaders1, tip1, basisNodes1, emptyTip)
+		defer cli.UnsubscribeFromAbr(sub1)
+		defer close(respCh1)
 
-	// 	respCh0, sub0 := transactRemote(ctx, t, cli, testTree.MustId(), blockWithHeaders0, tip0, basisNodes0, emptyTip)
-	// 	defer cli.UnsubscribeFromAbr(sub0)
-	// 	defer close(respCh0)
+		respCh0, sub0 := transactRemote(ctx, t, cli, testTree.MustId(), blockWithHeaders0, tip0, basisNodes0, emptyTip)
+		defer cli.UnsubscribeFromAbr(sub0)
+		defer close(respCh0)
 
-	// 	resp0 := <-respCh1
-	// 	require.IsType(t, &gossip.Proof{}, resp0)
+		resp0 := <-respCh0
+		require.IsType(t, &gossip.Proof{}, resp0)
 
-	// 	resp1 := <-respCh0
-	// 	require.IsType(t, &gossip.Proof{}, resp1)
-	// })
+		resp1 := <-respCh1
+		require.IsType(t, &gossip.Proof{}, resp1)
+
+	})
 
 	t.Run("invalid previous tip fails", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
