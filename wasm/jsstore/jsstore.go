@@ -49,10 +49,13 @@ func (jss *JSStore) Remove(ctx context.Context, c cid.Cid) error {
 		respCh <- err
 		return nil
 	})
+
 	defer func() {
 		onSuccess.Release()
 		onError.Release()
+		close(respCh)
 	}()
+
 	go func() {
 		promise := jss.bridged.Call("delete", helpers.CidToJSCID(c))
 		promise.Call("then", onSuccess, onError)
@@ -95,6 +98,7 @@ func (jss *JSStore) GetMany(ctx context.Context, cids []cid.Cid) <-chan *format.
 
 func (jss *JSStore) Add(ctx context.Context, n format.Node) error {
 	respCh := make(chan error)
+
 	onSuccess := js.FuncOf(func(_this js.Value, args []js.Value) interface{} {
 		respCh <- nil
 		return nil
@@ -104,10 +108,13 @@ func (jss *JSStore) Add(ctx context.Context, n format.Node) error {
 		respCh <- err
 		return nil
 	})
+
 	defer func() {
 		onSuccess.Release()
 		onError.Release()
+		close(respCh)
 	}()
+
 	go func() {
 		promise := jss.bridged.Call("put", nodeToJSBlock(n))
 		promise.Call("then", onSuccess, onError)
@@ -154,10 +161,13 @@ func (jss *JSStore) Get(ctx context.Context, c cid.Cid) (format.Node, error) {
 		respCh <- err
 		return nil
 	})
+
 	defer func() {
 		onSuccess.Release()
 		onError.Release()
+		close(respCh)
 	}()
+
 	go func() {
 		promise := jss.bridged.Call("get", helpers.CidToJSCID(c))
 		promise.Call("then", onSuccess, onError)

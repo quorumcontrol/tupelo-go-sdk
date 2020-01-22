@@ -5,8 +5,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"syscall/js"
 	logging "github.com/ipfs/go-log"
+	"syscall/js"
 
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jscrypto"
 
@@ -82,7 +82,6 @@ func main() {
 			}))
 
 			jsObj.Set("getTip", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				go fmt.Println("getTip: ", args[0].String())
 				return clientSingleton.GetTip(args[0])
 			}))
 
@@ -131,6 +130,11 @@ func main() {
 			jsObj.Set("signMessage", js.FuncOf(jscrypto.JSSignMessage))
 			jsObj.Set("verifyMessage", js.FuncOf(jscrypto.JSVerifyMessage))
 
+			jsObj.Set("setLogLevel", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				logging.SetLogLevel(args[0].String(), args[1].String())
+				return nil
+			}))
+
 			jsObj.Set("startClient", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				// js passes in:
 				// interface IClientOptions {
@@ -152,7 +156,6 @@ func main() {
 				cli := jsclient.New(bridge, config, store)
 				go cli.Start(ctx)
 				clientSingleton = cli
-				logging.SetLogLevel("g4-client", "debug")
 				return nil
 			}))
 

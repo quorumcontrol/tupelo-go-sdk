@@ -3,9 +3,9 @@
 package jspubsub
 
 import (
-	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client/pubsubinterfaces"
 	"context"
 	"fmt"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client/pubsubinterfaces"
 	"syscall/js"
 
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/helpers"
@@ -53,12 +53,12 @@ func (bs *BridgedSubscription) QueueJS(msg js.Value) {
 	//     topicIDs: [ 'test' ]
 	//   }
 	pubsubMsg := &pb.Message{
-			From:     []byte(msg.Get("from").String()),
-			Seqno:    helpers.JsBufferToBytes(msg.Get("seqno")),
-			Data:     helpers.JsBufferToBytes(msg.Get("data")),
-			TopicIDs: helpers.JsStringArrayToStringSlice(msg.Get("topicIDs")),
-		}
-	
+		From:     []byte(msg.Get("from").String()),
+		Seqno:    helpers.JsBufferToBytes(msg.Get("seqno")),
+		Data:     helpers.JsBufferToBytes(msg.Get("data")),
+		TopicIDs: helpers.JsStringArrayToStringSlice(msg.Get("topicIDs")),
+	}
+
 	bs.ch <- pubsubMsg
 
 }
