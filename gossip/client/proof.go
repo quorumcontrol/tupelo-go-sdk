@@ -18,15 +18,4 @@ type ValidationNotification struct {
 	Checkpoint        *types.CheckpointWrapper
 	RoundConfirmation *types.RoundConfirmationWrapper
 	CompletedRound    *types.RoundWrapper
-
-	// dag store and hamt?
 }
-
-// func (p *Proof) Prove(tx *transactions.Transaction) error {
-//	// Transaction
-//	// AddBlockRequest
-//	// Checkpoint
-//	// Round
-//	// RoundConfirmation
-//	return nil
-// }
