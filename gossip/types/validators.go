@@ -5,15 +5,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/quorumcontrol/messages/v2/build/go/signatures"
-
+	"github.com/ipfs/go-cid"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 
 	"github.com/quorumcontrol/chaintree/typecaster"
 
-	cid "github.com/ipfs/go-cid"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
+	"github.com/quorumcontrol/messages/v2/build/go/gossip"
 	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 )
 
@@ -86,18 +85,17 @@ func IsTokenRecipient(tree *dag.Dag, blockWithHeaders *chaintree.BlockWithHeader
 	return true, nil
 }
 
-// isValidSignature checks payloads with both Signature and Tip elements to
-// verify that the Signature is indeed valid for Tip. It is currently used for
-// RECEIVE_TOKEN transactions and so looks for them explicitly, but should be
-// generalized to other transaction types that have similar Signature & Tip
-// elements when/if they appear.
-//
-// GenerateIsValidSignature is a higher-order function that takes a signature
-// verifier function arg and returns an IsValidSignature validator function
-// (see above) that calls the given sigVerifier with the Signature and Tip it
-// receives and uses its return values to determine validity.
-func GenerateIsValidSignature(sigVerifier func(state *signatures.TreeState) (bool, error)) chaintree.BlockValidatorFunc {
-	isValidSignature := func(tree *dag.Dag, blockWithHeaders *chaintree.BlockWithHeaders) (bool, chaintree.CodedError) {
+// GenerateHasValidProof is a higher-order function that takes a proof verifier
+// function arg and returns a proof validator function (see below) that calls
+// the given proof verifier with the Proof and Tip it receives and uses its
+// return values to indicate validity.
+func GenerateHasValidProof(proofVerifier func(proof *gossip.Proof) (bool, error)) chaintree.BlockValidatorFunc {
+	//  return function that checks payloads with both Proof and Tip
+	//  elements to verify that the Proof is indeed valid for Tip. It is
+	//  currently used for RECEIVE_TOKEN transactions and so looks for them
+	//  explicitly, but should be generalized to other transaction types
+	//  that have similar Proof & Tip elements when/if they appear.
+	return func(tree *dag.Dag, blockWithHeaders *chaintree.BlockWithHeaders) (bool, chaintree.CodedError) {
 		// first determine if there any RECEIVE_TOKEN transactions in here
 		receiveTokens, err := getReceiveTokenPayloads(blockWithHeaders.Transactions)
 		if err != nil {
@@ -111,25 +109,25 @@ func GenerateIsValidSignature(sigVerifier func(state *signatures.TreeState) (boo
 
 		// we have at least one RECEIVE_TOKEN transaction; make sure Signature is valid for Tip
 		for _, rt := range receiveTokens {
-			receiveState := rt.TreeState
+			receiveProof := rt.Proof
 
 			tip, err := cid.Cast(rt.Tip)
 			if err != nil {
 				return false, &consensus.ErrorCode{Code: consensus.ErrInvalidTip, Memo: fmt.Sprintf("error casting tip to CID: %v", err)}
 			}
 
-			sigNewTip, err := cid.Cast(receiveState.NewTip)
+			proofTip, err := cid.Cast(receiveProof.Tip)
 			if err != nil {
-				return false, &consensus.ErrorCode{Code: consensus.ErrInvalidTip, Memo: fmt.Sprintf("error casting tip to CID: %v", err)}
+				return false, &consensus.ErrorCode{Code: consensus.ErrInvalidTip, Memo: fmt.Sprintf("error casting proof tip to CID: %v", err)}
 			}
 
-			if !sigNewTip.Equals(tip) {
+			if !proofTip.Equals(tip) {
 				return false, nil
 			}
 
-			valid, err := sigVerifier(receiveState)
+			valid, err := proofVerifier(receiveProof)
 			if err != nil {
-				return false, &consensus.ErrorCode{Code: consensus.ErrUnknown, Memo: fmt.Sprintf("error verifying signature: %v", err)}
+				return false, &consensus.ErrorCode{Code: consensus.ErrUnknown, Memo: fmt.Sprintf("error verifying proof: %v", err)}
 			}
 
 			if !valid {
@@ -139,8 +137,6 @@ func GenerateIsValidSignature(sigVerifier func(state *signatures.TreeState) (boo
 
 		return true, nil
 	}
-
-	return isValidSignature
 }
 
 func isTokenBurn(tokenName string, burnAmount uint64, tx *transactions.Transaction) bool {

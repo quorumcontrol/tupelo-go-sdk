@@ -14,12 +14,14 @@ import (
 	sigfuncs "github.com/quorumcontrol/tupelo-go-sdk/signatures"
 )
 
-func verifyRoundConfirmation(rootCtx context.Context, conf *gossip.RoundConfirmation, verKeys []*bls.VerKey) (bool, error) {
+func verifyRoundConfirmation(rootCtx context.Context, conf *gossip.RoundConfirmation, quorumCount uint64, verKeys []*bls.VerKey) (bool, error) {
 	sp, ctx := opentracing.StartSpanFromContext(rootCtx, "verifyRoundConfirmation")
 	defer sp.Finish()
 
 	sig := conf.Signature
-	msg := conf.RoundCid
+	if uint64(sigfuncs.SignerCount(sig)) < quorumCount {
+		return false, nil
+	}
 
 	err := sigfuncs.RestoreBLSPublicKey(ctx, sig, verKeys)
 	if err != nil {
@@ -27,6 +29,7 @@ func verifyRoundConfirmation(rootCtx context.Context, conf *gossip.RoundConfirma
 		return false, fmt.Errorf("error restoring public key: %v", err)
 	}
 
+	msg := conf.RoundCid
 	isVerified, err := sigfuncs.Valid(ctx, sig, msg, nil)
 	if err != nil {
 		sp.SetTag("error", true)
@@ -36,11 +39,11 @@ func verifyRoundConfirmation(rootCtx context.Context, conf *gossip.RoundConfirma
 	return isVerified, nil
 }
 
-func Verify(rootCtx context.Context, proof *gossip.Proof, verKeys []*bls.VerKey) (bool, error) {
+func Verify(rootCtx context.Context, proof *gossip.Proof, quorumCount uint64, verKeys []*bls.VerKey) (bool, error) {
 	sp, ctx := opentracing.StartSpanFromContext(rootCtx, "validateProof")
 	defer sp.Finish()
 
-	validRoundConfirmation, err := verifyRoundConfirmation(ctx, proof.RoundConfirmation, verKeys)
+	validRoundConfirmation, err := verifyRoundConfirmation(ctx, proof.RoundConfirmation, quorumCount, verKeys)
 	if err != nil {
 		return false, fmt.Errorf("error verifying round confirmation: %v", err)
 	}
