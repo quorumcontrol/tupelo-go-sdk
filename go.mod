@@ -30,9 +30,9 @@ require (
 	github.com/multiformats/go-multiaddr v0.1.1
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.8.1
-	github.com/quorumcontrol/chaintree v0.9.4
+	github.com/quorumcontrol/chaintree v1.0.2-0.20200123185821-453f01cdbbb9
 	github.com/quorumcontrol/messages v1.1.1
-	github.com/quorumcontrol/messages/v2 v2.1.2
+	github.com/quorumcontrol/messages/v2 v2.1.3-0.20200123172240-224b207a9631
 	github.com/quorumcontrol/tupelo v0.5.12-0.20200111205713-bdcd8177fb62
 	github.com/spy16/parens v0.0.8
 	github.com/stretchr/testify v1.3.0
@@ -58,6 +58,5 @@ replace (
 
 replace github.com/ipfs/go-hamt-ipld => github.com/quorumcontrol/go-hamt-ipld v0.0.2-0.20191226140059-f380a50328f8
 
-replace github.com/quorumcontrol/messages/v2 => ../messages
 
 replace github.com/quorumcontrol/tupelo => ../tupelo

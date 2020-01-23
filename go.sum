@@ -816,6 +816,8 @@ github.com/prometheus/tsdb v0.7.1/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40T
 github.com/quasilyte/go-consistent v0.0.0-20190521200055-c6f3937de18c/go.mod h1:5STLWrekHfjyYwxBRVRXNOSewLJ3PWfDJd1VyTS21fI=
 github.com/quorumcontrol/chaintree v0.9.4 h1:FfAd7l/Il53ZG2snvtb/6vx57Lme5ELl/XUxmgIPGI8=
 github.com/quorumcontrol/chaintree v0.9.4/go.mod h1:XZMtCWpLgWM6UVSRk431n+HIjJcndppvLvxP1v19gwU=
+github.com/quorumcontrol/chaintree v1.0.2-0.20200123185821-453f01cdbbb9 h1:7t4Kqy4t4sB+KicE1yNNNVCWu2PoDHZMFo7GzINvl9g=
+github.com/quorumcontrol/chaintree v1.0.2-0.20200123185821-453f01cdbbb9/go.mod h1:PHUsyPwSBW+m9cuE5isdhJ8ZnSkFRqD6qQo4Oxva2Yw=
 github.com/quorumcontrol/go-hamt-ipld v0.0.2-0.20191226140059-f380a50328f8 h1:N6UJAeGhuGIvSqchQcbn7ekDlX2quZqglyHjVEP5C9c=
 github.com/quorumcontrol/go-hamt-ipld v0.0.2-0.20191226140059-f380a50328f8/go.mod h1:8yRx0xLUps1Xq8ZDnIwIVdQRp7JjA55gGvCiRHT91Vk=
 github.com/quorumcontrol/messages v1.1.1 h1:e90LvAM7YCZrFnXGM9H3pin+jjGqYPjW+YthBJkZHLc=
@@ -823,6 +825,8 @@ github.com/quorumcontrol/messages v1.1.1/go.mod h1:PubykIzNsMO+CMecd7HDFKjBa4shV
 github.com/quorumcontrol/messages v2.0.1+incompatible h1:8bqzWXzanPcs/YW/mYGzZbI1bT5t0nngsUBBQKV6YmA=
 github.com/quorumcontrol/messages/v2 v2.1.2 h1:5LQQYWJc97fAH+bXpRXXsQbM6sSS+mYDjHNfLI8Snwk=
 github.com/quorumcontrol/messages/v2 v2.1.2/go.mod h1:on7qxEZYufdF6ZIyXFFWonyEmSdCuY+McIk2kLDiGwg=
+github.com/quorumcontrol/messages/v2 v2.1.3-0.20200123172240-224b207a9631 h1:RuzyZRiiUA4GX0yeq0uYPdOyQyPyQ1+XiRAJ0G/Izis=
+github.com/quorumcontrol/messages/v2 v2.1.3-0.20200123172240-224b207a9631/go.mod h1:deggrbG3fDQ1RIpGrhC+Ujn5S7hTWNkAbnT06FEmlD8=
 github.com/quorumcontrol/tupelo v0.5.12-0.20200106164423-ae217697b350 h1:rVM7Z+mVbWpPCaG6pDhSeYCBrLE8jyOtV8Fo20t/0Z4=
 github.com/quorumcontrol/tupelo v0.5.12-0.20200106164423-ae217697b350/go.mod h1:w38FdPQhXO6Nom4xb0lfDumX2NyS91sN00JkZ8qCNfI=
 github.com/quorumcontrol/tupelo v0.5.12-0.20200107121538-1064cab4a868 h1:uAQbkciIjg1x5bGGhWOAIgGUp1kgKnZYTyNrtqzhTN4=
@@ -839,6 +843,7 @@ github.com/quorumcontrol/tupelo-go-sdk v0.6.0-beta1.0.20200109062614-43239ffb933
 github.com/quorumcontrol/tupelo-go-sdk v0.6.0-beta1.0.20200111013635-908b6d631822/go.mod h1:a0oCEBXbnQdnZQLL6gFmyXw7TBxpTKZILqLAXK7wcGg=
 github.com/quorumcontrol/tupelo-go-sdk v0.6.0-beta1.0.20200111041028-c872b16c033b/go.mod h1:eEl6oezYQDGnlM3Xfm6bFQJE4k/TjJC1f7nOGwhZHz0=
 github.com/quorumcontrol/tupelo-go-sdk v0.6.0-beta1.0.20200120142430-df0fb799984c/go.mod h1:yGMtIJDFSATAZTAwUvmhOgQd7qf0tGZbUgdQm/oGdKc=
+github.com/quorumcontrol/tupelo-go-sdk v0.6.0-beta1.0.20200122163552-2e47d54bc4d2/go.mod h1:yGMtIJDFSATAZTAwUvmhOgQd7qf0tGZbUgdQm/oGdKc=
 github.com/rogpeppe/go-internal v1.1.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rogpeppe/go-internal v1.3.0 h1:RR9dF3JtopPvtkroDZuVD7qquD0bnHlKSqaQhgwt8yk=
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
