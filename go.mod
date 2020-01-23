@@ -33,7 +33,7 @@ require (
 	github.com/quorumcontrol/chaintree v1.0.2-0.20200123185821-453f01cdbbb9
 	github.com/quorumcontrol/messages v1.1.1
 	github.com/quorumcontrol/messages/v2 v2.1.3-0.20200123172240-224b207a9631
-	github.com/quorumcontrol/tupelo v0.5.12-0.20200111205713-bdcd8177fb62
+	github.com/quorumcontrol/tupelo 540022241c703e35d71a8b135d75372fb5e1d646
 	github.com/spy16/parens v0.0.8
 	github.com/stretchr/testify v1.3.0
 	github.com/uber/jaeger-client-go v2.15.0+incompatible
@@ -59,4 +59,3 @@ replace (
 replace github.com/ipfs/go-hamt-ipld => github.com/quorumcontrol/go-hamt-ipld v0.0.2-0.20191226140059-f380a50328f8
 
 
-replace github.com/quorumcontrol/tupelo => ../tupelo
