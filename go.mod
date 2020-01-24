@@ -30,7 +30,7 @@ require (
 	github.com/multiformats/go-multiaddr v0.1.1
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.8.1
-	github.com/quorumcontrol/chaintree v1.0.2-0.20200123185821-453f01cdbbb9
+	github.com/quorumcontrol/chaintree v1.0.2-0.20200124091942-25ceb93627b9
 	github.com/quorumcontrol/messages v1.1.1
 	github.com/quorumcontrol/messages/v2 v2.1.3-0.20200123172240-224b207a9631
 	github.com/quorumcontrol/tupelo v0.5.12-0.20200123190536-540022241c70

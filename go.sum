@@ -818,6 +818,8 @@ github.com/quorumcontrol/chaintree v0.9.4 h1:FfAd7l/Il53ZG2snvtb/6vx57Lme5ELl/XU
 github.com/quorumcontrol/chaintree v0.9.4/go.mod h1:XZMtCWpLgWM6UVSRk431n+HIjJcndppvLvxP1v19gwU=
 github.com/quorumcontrol/chaintree v1.0.2-0.20200123185821-453f01cdbbb9 h1:7t4Kqy4t4sB+KicE1yNNNVCWu2PoDHZMFo7GzINvl9g=
 github.com/quorumcontrol/chaintree v1.0.2-0.20200123185821-453f01cdbbb9/go.mod h1:PHUsyPwSBW+m9cuE5isdhJ8ZnSkFRqD6qQo4Oxva2Yw=
+github.com/quorumcontrol/chaintree v1.0.2-0.20200124091942-25ceb93627b9 h1:7Rl0EE1sR8NdjwIw1er+018yDXXHbnvk03pGbEQPXOQ=
+github.com/quorumcontrol/chaintree v1.0.2-0.20200124091942-25ceb93627b9/go.mod h1:PHUsyPwSBW+m9cuE5isdhJ8ZnSkFRqD6qQo4Oxva2Yw=
 github.com/quorumcontrol/go-hamt-ipld v0.0.2-0.20191226140059-f380a50328f8 h1:N6UJAeGhuGIvSqchQcbn7ekDlX2quZqglyHjVEP5C9c=
 github.com/quorumcontrol/go-hamt-ipld v0.0.2-0.20191226140059-f380a50328f8/go.mod h1:8yRx0xLUps1Xq8ZDnIwIVdQRp7JjA55gGvCiRHT91Vk=
 github.com/quorumcontrol/messages v1.1.1 h1:e90LvAM7YCZrFnXGM9H3pin+jjGqYPjW+YthBJkZHLc=
