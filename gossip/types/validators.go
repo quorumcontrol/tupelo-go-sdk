@@ -107,7 +107,7 @@ func GenerateHasValidProof(proofVerifier func(proof *gossip.Proof) (bool, error)
 			return true, nil
 		}
 
-		// we have at least one RECEIVE_TOKEN transaction; make sure Signature is valid for Tip
+		// we have at least one RECEIVE_TOKEN transaction; make sure Proof is valid for Tip
 		for _, rt := range receiveTokens {
 			receiveProof := rt.Proof
 
