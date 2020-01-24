@@ -103,7 +103,7 @@ func Verify(rootCtx context.Context, proof *gossip.Proof, quorumCount uint64, ve
 		}
 	}
 
-	if abrFound == false {
+	if !abrFound {
 		return false, nil
 	}
 

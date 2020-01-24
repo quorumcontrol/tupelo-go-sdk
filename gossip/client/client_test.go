@@ -94,7 +94,12 @@ func newClient(ctx context.Context, group *types.NotaryGroup, bootAddrs []string
 	}
 
 	cli := New(group, pubsubwrapper.WrapLibp2p(cliHost.GetPubSub()), peer)
-	logging.SetLogLevel("g4-client", "debug")
+
+	err = logging.SetLogLevel("g4-client", "debug")
+	if err != nil {
+		return nil, err
+	}
+
 	err = cli.Start(ctx)
 	if err != nil {
 		return nil, err
