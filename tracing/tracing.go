@@ -37,14 +37,8 @@ func StartJaeger(serviceName string) {
 
 	cfg.ServiceName = serviceName
 
-	cfg.Sampler = &jaegercfg.SamplerConfig{
-		Type:  jaeger.SamplerTypeConst,
-		Param: 1,
-	}
-
-	cfg.Reporter = &jaegercfg.ReporterConfig{
-		LogSpans: true,
-	}
+	cfg.Sampler.Type = jaeger.SamplerTypeConst
+	cfg.Sampler.Param = 1
 
 	tracer, closer, err := cfg.NewTracer()
 	if err != nil {
