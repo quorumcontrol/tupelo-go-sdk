@@ -7,6 +7,7 @@ import (
 	"log"
 
 	"github.com/opentracing/opentracing-go"
+	"github.com/uber/jaeger-client-go"
 	jaegercfg "github.com/uber/jaeger-client-go/config"
 	"go.elastic.co/apm/module/apmot"
 )
@@ -32,6 +33,15 @@ func StartJaeger(serviceName string) {
 		// parsing errors might happen here, such as when we get a string where we expect a number
 		log.Printf("Could not parse Jaeger env vars: %s", err.Error())
 		return
+	}
+
+	cfg.Sampler = &jaegercfg.SamplerConfig{
+		Type:  jaeger.SamplerTypeConst,
+		Param: 1,
+	}
+
+	cfg.Reporter = &jaegercfg.ReporterConfig{
+		LogSpans: true,
 	}
 
 	tracer, closer, err := cfg.NewTracer()
