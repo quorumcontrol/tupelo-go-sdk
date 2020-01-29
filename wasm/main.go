@@ -5,8 +5,9 @@ package main
 import (
 	"context"
 	"fmt"
-	logging "github.com/ipfs/go-log"
 	"syscall/js"
+
+	logging "github.com/ipfs/go-log"
 
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jscrypto"
 
@@ -92,7 +93,7 @@ func main() {
 					jsOpts.Get("tip"),
 					jsOpts.Get("tokenName"),
 					jsOpts.Get("sendId"),
-					jsOpts.Get("jsSendTxState"),
+					jsOpts.Get("jsSendTxProof"),
 				)
 			}))
 
@@ -112,17 +113,17 @@ func main() {
 				// // JS gives us a js config and the protobuf bits from a current state
 				// config, err := jsclient.JsConfigToHumanConfig(args[0])
 				// if err != nil {
-				// 	t := then.New()
-				// 	t.Reject(errors.Wrap(err, "error converting config").Error())
-				// 	return t
+				//	t := then.New()
+				//	t.Reject(errors.Wrap(err, "error converting config").Error())
+				//	return t
 				// }
 
 				// state := &signatures.TreeState{}
 				// err = state.Unmarshal(helpers.JsBufferToBytes(args[1]))
 				// if err != nil {
-				// 	t := then.New()
-				// 	t.Reject(errors.Wrap(err, "error converting config").Error())
-				// 	return t
+				//	t := then.New()
+				//	t.Reject(errors.Wrap(err, "error converting config").Error())
+				//	return t
 				// }
 				// return jsclient.VerifyCurrentState(config, state)
 			}))

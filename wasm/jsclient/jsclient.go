@@ -15,8 +15,7 @@ import (
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
 
 	"github.com/quorumcontrol/messages/v2/build/go/config"
-
-	"github.com/quorumcontrol/messages/v2/build/go/signatures"
+	"github.com/quorumcontrol/messages/v2/build/go/gossip"
 
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
@@ -315,7 +314,7 @@ func JsConfigToHumanConfig(jsBits js.Value) (*config.NotaryGroup, error) {
 }
 
 // func TokenPayloadForTransaction(chain *chaintree.ChainTree, tokenName *TokenName, sendTokenTxId string, sendTxState *signatures.TreeState) (*transactions.TokenPayload, error) {
-func TokenPayloadForTransaction(jsBlockService js.Value, jsTip js.Value, tokenName js.Value, sendTokenTxId js.Value, jsSendTxStateBits js.Value) *then.Then {
+func TokenPayloadForTransaction(jsBlockService js.Value, jsTip js.Value, tokenName js.Value, sendTokenTxId js.Value, jsSendTxProofBits js.Value) *then.Then {
 	t := then.New()
 	ctx := context.TODO()
 	go func() {
@@ -337,9 +336,9 @@ func TokenPayloadForTransaction(jsBlockService js.Value, jsTip js.Value, tokenNa
 			return
 		}
 
-		treeStateBits := helpers.JsBufferToBytes(jsSendTxStateBits)
-		currState := &signatures.TreeState{}
-		err = proto.Unmarshal(treeStateBits, currState)
+		proofBits := helpers.JsBufferToBytes(jsSendTxProofBits)
+		proof := &gossip.Proof{}
+		err = proto.Unmarshal(proofBits, proof)
 		if err != nil {
 			t.Reject(err.Error())
 			return
@@ -347,7 +346,7 @@ func TokenPayloadForTransaction(jsBlockService js.Value, jsTip js.Value, tokenNa
 
 		canonicalTokenName := consensus.TokenNameFromString(tokenName.String())
 
-		payload, err := consensus.TokenPayloadForTransaction(tree, &canonicalTokenName, sendTokenTxId.String(), currState)
+		payload, err := consensus.TokenPayloadForTransaction(tree, &canonicalTokenName, sendTokenTxId.String(), proof)
 		if err != nil {
 			t.Reject(err.Error())
 			return
