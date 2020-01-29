@@ -35,6 +35,8 @@ func StartJaeger(serviceName string) {
 		return
 	}
 
+	cfg.ServiceName = serviceName
+
 	cfg.Sampler = &jaegercfg.SamplerConfig{
 		Type:  jaeger.SamplerTypeConst,
 		Param: 1,
