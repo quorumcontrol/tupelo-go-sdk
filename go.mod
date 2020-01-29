@@ -32,8 +32,8 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/quorumcontrol/chaintree v1.0.2-0.20200124091942-25ceb93627b9
 	github.com/quorumcontrol/messages v1.1.1
-	github.com/quorumcontrol/messages/v2 v2.1.3-0.20200123172240-224b207a9631
-	github.com/quorumcontrol/tupelo v0.5.12-0.20200123190536-540022241c70
+	github.com/quorumcontrol/messages/v2 v2.1.3-0.20200129115245-2bfec5177653
+	github.com/quorumcontrol/tupelo v0.5.12-0.20200129144132-3be48615b2ec
 	github.com/spy16/parens v0.0.8
 	github.com/stretchr/testify v1.3.0
 	github.com/uber/jaeger-client-go v2.15.0+incompatible
