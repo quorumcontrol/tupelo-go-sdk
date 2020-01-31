@@ -36,8 +36,8 @@ require (
 	github.com/quorumcontrol/tupelo v0.5.12-0.20200129144132-3be48615b2ec
 	github.com/spy16/parens v0.0.8
 	github.com/stretchr/testify v1.3.0
-	github.com/uber/jaeger-client-go v2.15.0+incompatible
-	github.com/uber/jaeger-lib v1.5.0
+	github.com/uber/jaeger-client-go v2.22.1+incompatible
+	github.com/uber/jaeger-lib v2.2.0+incompatible
 	go.dedis.ch/kyber/v3 v3.0.9
 	go.elastic.co/apm/module/apmot v1.6.0
 	go.uber.org/zap v1.10.0
@@ -57,5 +57,3 @@ replace (
 )
 
 replace github.com/ipfs/go-hamt-ipld => github.com/quorumcontrol/go-hamt-ipld v0.0.2-0.20191226140059-f380a50328f8
-
-
