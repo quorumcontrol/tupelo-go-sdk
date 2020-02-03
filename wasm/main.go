@@ -7,13 +7,12 @@ import (
 	"fmt"
 	"syscall/js"
 
+	cbornode "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
-
+	"github.com/quorumcontrol/messages/v2/build/go/services"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jscrypto"
 
-	"github.com/quorumcontrol/tupelo-go-sdk/wasm/helpers"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jsclient"
-	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jscommunity"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jslibs"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jspubsub"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jsstore"
@@ -25,6 +24,8 @@ var exitChan chan bool
 var clientSingleton *jsclient.JSClient
 
 func init() {
+	cbornode.RegisterCborType(services.AddBlockRequest{})
+
 	exitChan = make(chan bool)
 }
 
@@ -95,15 +96,6 @@ func main() {
 					jsOpts.Get("sendId"),
 					jsOpts.Get("jsSendTxProof"),
 				)
-			}))
-
-			// hashToShard(topicName:string, shardCount:number):number
-			jsObj.Set("hashToShardNumber", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				return jscommunity.HashToShardNumber(args[0].String(), args[1].Int())
-			}))
-
-			jsObj.Set("getSendableEnvelopeBytes", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				return jscommunity.GetSendableBytes(helpers.JsBufferToBytes(args[0]), helpers.JsBufferToBytes(args[1]))
 			}))
 
 			jsObj.Set("verifyCurrentState", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
