@@ -8,6 +8,7 @@ import (
 	hamt "github.com/ipfs/go-hamt-ipld"
 	"github.com/opentracing/opentracing-go"
 	"github.com/quorumcontrol/chaintree/nodestore"
+	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/messages/v2/build/go/gossip"
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/hamtwrapper"
@@ -43,6 +44,8 @@ func Verify(rootCtx context.Context, proof *gossip.Proof, quorumCount uint64, ve
 	sp, ctx := opentracing.StartSpanFromContext(rootCtx, "validateProof")
 	defer sp.Finish()
 
+	sw := safewrap.SafeWrap{}
+
 	validRoundConfirmation, err := verifyRoundConfirmation(ctx, proof.RoundConfirmation, quorumCount, verKeys)
 	if err != nil {
 		return false, fmt.Errorf("error verifying round confirmation: %v", err)
@@ -57,31 +60,25 @@ func Verify(rootCtx context.Context, proof *gossip.Proof, quorumCount uint64, ve
 		Blocks: hamtwrapper.NewStore(underlyingStore),
 	}
 
-	roundCid, err := hamtStore.Put(ctx, proof.Round)
-	if err != nil {
-		return false, fmt.Errorf("error finding round cid: %v", err)
-	}
+	roundCid := sw.WrapObject(proof.Round).Cid()
 
 	roundCidFromConf, err := cid.Cast(proof.RoundConfirmation.RoundCid)
 	if err != nil {
 		return false, fmt.Errorf("error casting round confirmation roundcid: %v", err)
 	}
 
-	if roundCid != roundCidFromConf {
+	if !(roundCid.Equals(roundCidFromConf)) {
 		return false, nil
 	}
 
-	checkpointCid, err := hamtStore.Put(ctx, proof.Checkpoint)
-	if err != nil {
-		return false, fmt.Errorf("error finding checkpoint cid: %v", err)
-	}
+	checkpointCid := sw.WrapObject(proof.Checkpoint).Cid()
 
 	checkpointCidFromRound, err := cid.Cast(proof.Round.CheckpointCid)
 	if err != nil {
 		return false, fmt.Errorf("error casting round checkpoint cid: %v", err)
 	}
 
-	if checkpointCid != checkpointCidFromRound {
+	if !(checkpointCid.Equals(checkpointCidFromRound)) {
 		return false, nil
 	}
 
@@ -117,7 +114,7 @@ func Verify(rootCtx context.Context, proof *gossip.Proof, quorumCount uint64, ve
 		return false, fmt.Errorf("error casting add block request new tip cid: %v", err)
 	}
 
-	if tipCid != tipCidFromAbr {
+	if !(tipCid.Equals(tipCidFromAbr)) {
 		return false, nil
 	}
 
