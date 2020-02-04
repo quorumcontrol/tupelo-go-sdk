@@ -98,26 +98,8 @@ func main() {
 				)
 			}))
 
-			jsObj.Set("verifyCurrentState", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				t := then.New()
-				t.Reject("currently unsupported")
-				return t
-				// // JS gives us a js config and the protobuf bits from a current state
-				// config, err := jsclient.JsConfigToHumanConfig(args[0])
-				// if err != nil {
-				//	t := then.New()
-				//	t.Reject(errors.Wrap(err, "error converting config").Error())
-				//	return t
-				// }
-
-				// state := &signatures.TreeState{}
-				// err = state.Unmarshal(helpers.JsBufferToBytes(args[1]))
-				// if err != nil {
-				//	t := then.New()
-				//	t.Reject(errors.Wrap(err, "error converting config").Error())
-				//	return t
-				// }
-				// return jsclient.VerifyCurrentState(config, state)
+			jsObj.Set("verifyProof", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				return clientSingleton.VerifyProof(args[0])
 			}))
 
 			jsObj.Set("signMessage", js.FuncOf(jscrypto.JSSignMessage))
