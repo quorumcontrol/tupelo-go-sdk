@@ -492,6 +492,7 @@ func TestTokenTransactions(t *testing.T) {
 		require.Nil(t, err)
 
 		sendTxn, err := chaintree.NewSendTokenTransaction(sendTxId, tokenName, sendAmount, receiveTree.MustId())
+		require.Nil(t, err)
 
 		senderTxns := []*transactions.Transaction{establishTxn, mintTxn, sendTxn}
 
