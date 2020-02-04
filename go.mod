@@ -56,4 +56,3 @@ replace (
 	mvdan.cc/unparam => mvdan.cc/unparam v0.0.0-20190209190245-fbb59629db34
 )
 
-replace github.com/ipfs/go-hamt-ipld => github.com/quorumcontrol/go-hamt-ipld v0.0.2-0.20191226140059-f380a50328f8
