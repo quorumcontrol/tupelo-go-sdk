@@ -126,5 +126,9 @@ func Verify(rootCtx context.Context, proof *gossip.Proof, quorumCount uint64, ve
 		return false, nil
 	}
 
+	if sw.Err != nil {
+		return false, fmt.Errorf("error decoding object: %v", sw.Err)
+	}
+
 	return true, nil
 }
