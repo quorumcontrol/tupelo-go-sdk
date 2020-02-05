@@ -10,7 +10,6 @@ import (
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/quorumcontrol/messages/v2/build/go/services"
-	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jscrypto"
 
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jsclient"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jslibs"
@@ -101,9 +100,6 @@ func main() {
 			jsObj.Set("verifyProof", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				return clientSingleton.VerifyProof(args[0])
 			}))
-
-			jsObj.Set("signMessage", js.FuncOf(jscrypto.JSSignMessage))
-			jsObj.Set("verifyMessage", js.FuncOf(jscrypto.JSVerifyMessage))
 
 			jsObj.Set("setLogLevel", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				logging.SetLogLevel(args[0].String(), args[1].String())
