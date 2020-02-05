@@ -107,27 +107,35 @@ func main() {
 			}))
 
 			jsObj.Set("startClient", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				// js passes in:
-				// interface IClientOptions {
-				//     pubsub: IPubSub,
-				//     notaryGroup: Uint8Array // protobuf encoded config.NotaryGroup
-				//     blockService: IBlockService,
-				// }
-				jsOpts := args[0]
+				t := then.New()
+				go func() {
+					// js passes in:
+					// interface IClientOptions {
+					//     pubsub: IPubSub,
+					//     notaryGroup: Uint8Array // protobuf encoded config.NotaryGroup
+					//     blockService: IBlockService,
+					// }
+					jsOpts := args[0]
 
-				config, err := jsclient.JsConfigToHumanConfig(jsOpts.Get("notaryGroup"))
-				if err != nil {
-					t := then.New()
-					t.Reject(fmt.Errorf("error converting config %w", err).Error())
-					return t
-				}
+					config, err := jsclient.JsConfigToHumanConfig(jsOpts.Get("notaryGroup"))
+					if err != nil {
+						t.Reject(fmt.Errorf("error converting config %w", err).Error())
+						return
+					}
 
-				store := jsstore.New(jsOpts.Get("blockService"))
-				bridge := jspubsub.NewPubSubBridge(jsOpts.Get("pubsub"))
-				cli := jsclient.New(bridge, config, store)
-				go cli.Start(ctx)
-				clientSingleton = cli
-				return nil
+					store := jsstore.New(jsOpts.Get("blockService"))
+					bridge := jspubsub.NewPubSubBridge(jsOpts.Get("pubsub"))
+					cli := jsclient.New(bridge, config, store)
+					err = cli.Start(ctx)
+					if err != nil {
+						t.Reject(err.Error())
+						return
+					}
+					clientSingleton = cli
+					t.Resolve(true)
+				}()
+
+				return t
 			}))
 
 			jsObj.Set("playTransactions", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
