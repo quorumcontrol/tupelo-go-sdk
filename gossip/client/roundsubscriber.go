@@ -118,17 +118,32 @@ func (rs *roundSubscriber) start(ctx context.Context) error {
 func (rs *roundSubscriber) subscribe(ctx context.Context, subscriptionCID cid.Cid, ch chan *gossip.Proof) subscription {
 	rs.Lock()
 	defer rs.Unlock()
+	isDone := false
+	doneCh := ctx.Done()
+
 	return rs.stream.Subscribe(func(evt interface{}) {
+		if isDone {
+			return // we're already done and we don't want to block on another channel op below
+		}
+		select {
+		case <-doneCh:
+			isDone = true
+			return // we're already done
+		default:
+			// continue on, people still care
+		}
 		if noty := evt.(*ValidationNotification); noty.AbrCid.Equals(subscriptionCID) {
 			abrNode, err := rs.dagStore.Get(ctx, noty.AbrCid)
 			if err != nil {
-				panic(fmt.Errorf("error fetching add block request from dag store: %v", err))
+				rs.logger.Warningf("error fetching add block request from dag store: %v", err)
+				return
 			}
 
 			abr := &services.AddBlockRequest{}
 			err = cbornode.DecodeInto(abrNode.RawData(), abr)
 			if err != nil {
-				panic(fmt.Errorf("error decoding add block request: %v", err))
+				rs.logger.Warningf("error decoding add block request: %v", err)
+				return
 			}
 
 			p := &gossip.Proof{
