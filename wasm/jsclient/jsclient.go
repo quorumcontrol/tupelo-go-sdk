@@ -8,18 +8,16 @@ import (
 	"fmt"
 	"syscall/js"
 
-	cbornode "github.com/ipfs/go-ipld-cbor"
+	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 
 	"github.com/ipfs/go-cid"
-	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client/pubsubinterfaces"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
+	prooftype "github.com/quorumcontrol/tupelo-go-sdk/proof"
 
 	"github.com/quorumcontrol/messages/v2/build/go/config"
-
-	"github.com/quorumcontrol/messages/v2/build/go/services"
-	"github.com/quorumcontrol/messages/v2/build/go/signatures"
+	"github.com/quorumcontrol/messages/v2/build/go/gossip"
 
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
@@ -37,12 +35,6 @@ import (
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/helpers"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/then"
 )
-
-// TODO: these probably belong elsewhere
-func init() {
-	cbornode.RegisterCborType(client.Proof{})
-	cbornode.RegisterCborType(services.AddBlockRequest{})
-}
 
 // JSClient is a javascript bridging client
 type JSClient struct {
@@ -113,15 +105,13 @@ func (jsc *JSClient) GetTip(jsDid js.Value) interface{} {
 			return
 		}
 
-		sw := &safewrap.SafeWrap{}
-
-		wrapped := sw.WrapObject(proof)
-		if sw.Err != nil {
-			t.Reject(fmt.Errorf("error encoding: %w", sw.Err).Error())
+		bits, err := proof.Marshal()
+		if err != nil {
+			t.Reject(err.Error())
 			return
 		}
 
-		t.Resolve(helpers.SliceToJSArray(wrapped.RawData()))
+		t.Resolve(helpers.SliceToJSArray(bits))
 	}()
 	return t
 }
@@ -153,21 +143,19 @@ func (jsc *JSClient) PlayTransactions(jsKeyBits js.Value, tip js.Value, jsTransa
 			return
 		}
 
-		sw := &safewrap.SafeWrap{}
-		wrapped := sw.WrapObject(proof)
-
-		if sw.Err != nil {
-			t.Reject(sw.Err.Error())
+		bits, err := proof.Marshal()
+		if err != nil {
+			t.Reject(err.Error())
 			return
 		}
 
-		t.Resolve(helpers.SliceToJSArray(wrapped.RawData()))
+		t.Resolve(helpers.SliceToJSArray(bits))
 	}()
 
 	return t
 }
 
-func (jsc *JSClient) playTransactions(treeKey *ecdsa.PrivateKey, tip cid.Cid, transactions []*transactions.Transaction) (*client.Proof, error) {
+func (jsc *JSClient) playTransactions(treeKey *ecdsa.PrivateKey, tip cid.Cid, transactions []*transactions.Transaction) (*gossip.Proof, error) {
 	ctx := context.TODO()
 
 	cTree, err := chaintree.NewChainTree(
@@ -185,30 +173,35 @@ func (jsc *JSClient) playTransactions(treeKey *ecdsa.PrivateKey, tip cid.Cid, tr
 	return jsc.client.PlayTransactions(ctx, tree, treeKey, transactions)
 }
 
-// func VerifyCurrentState(humanConfig *config.NotaryGroup, state *signatures.TreeState) *then.Then {
-// 	t := then.New()
-// 	go func() {
-// 		ngConfig, err := types.HumanConfigToConfig(humanConfig)
-// 		if err != nil {
-// 			panic(errors.Wrap(err, "error decoding human config"))
-// 		}
+func (jsc *JSClient) VerifyProof(proofBits js.Value) interface{} {
+	t := then.New()
+	go func() {
+		proof := &gossip.Proof{}
+		err := proof.Unmarshal(helpers.JsBufferToBytes(proofBits))
+		if err != nil {
+			t.Reject(fmt.Errorf("error unmarshaling: %w", err).Error())
+			return
+		}
+		isVerified, err := jsc.verifyProof(proof)
+		if err != nil {
+			t.Reject(fmt.Errorf("error verifying: %w", err).Error())
+			return
+		}
+		t.Resolve(isVerified)
+	}()
+	return t
+}
 
-// 		ng, err := ngConfig.NotaryGroup(nil)
-// 		if err != nil {
-// 			t.Reject(err.Error())
-// 			return
-// 		}
-// 		valid, err := client.VerifyCurrentState(context.TODO(), ng, state)
-// 		if err != nil {
-// 			t.Reject(err.Error())
-// 			return
-// 		}
-// 		t.Resolve(valid)
-// 		return
-// 	}()
+func (jsc *JSClient) verifyProof(proof *gossip.Proof) (bool, error) {
+	quorumCount := jsc.notaryGroup.QuorumCount()
+	signers := jsc.notaryGroup.AllSigners()
+	verKeys := make([]*bls.VerKey, len(signers))
+	for i, signer := range signers {
+		verKeys[i] = signer.VerKey
+	}
 
-// 	return t
-// }
+	return prooftype.Verify(context.TODO(), proof, quorumCount, verKeys)
+}
 
 func GenerateKey() *then.Then {
 	t := then.New()
@@ -324,7 +317,7 @@ func JsConfigToHumanConfig(jsBits js.Value) (*config.NotaryGroup, error) {
 }
 
 // func TokenPayloadForTransaction(chain *chaintree.ChainTree, tokenName *TokenName, sendTokenTxId string, sendTxState *signatures.TreeState) (*transactions.TokenPayload, error) {
-func TokenPayloadForTransaction(jsBlockService js.Value, jsTip js.Value, tokenName js.Value, sendTokenTxId js.Value, jsSendTxStateBits js.Value) *then.Then {
+func TokenPayloadForTransaction(jsBlockService js.Value, jsTip js.Value, tokenName js.Value, sendTokenTxId js.Value, jsSendTxProofBits js.Value) *then.Then {
 	t := then.New()
 	ctx := context.TODO()
 	go func() {
@@ -346,9 +339,9 @@ func TokenPayloadForTransaction(jsBlockService js.Value, jsTip js.Value, tokenNa
 			return
 		}
 
-		treeStateBits := helpers.JsBufferToBytes(jsSendTxStateBits)
-		currState := &signatures.TreeState{}
-		err = proto.Unmarshal(treeStateBits, currState)
+		proofBits := helpers.JsBufferToBytes(jsSendTxProofBits)
+		proof := &gossip.Proof{}
+		err = proof.Unmarshal(proofBits)
 		if err != nil {
 			t.Reject(err.Error())
 			return
@@ -356,7 +349,7 @@ func TokenPayloadForTransaction(jsBlockService js.Value, jsTip js.Value, tokenNa
 
 		canonicalTokenName := consensus.TokenNameFromString(tokenName.String())
 
-		payload, err := consensus.TokenPayloadForTransaction(tree, &canonicalTokenName, sendTokenTxId.String(), currState)
+		payload, err := consensus.TokenPayloadForTransaction(tree, &canonicalTokenName, sendTokenTxId.String(), proof)
 		if err != nil {
 			t.Reject(err.Error())
 			return

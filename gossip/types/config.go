@@ -97,7 +97,7 @@ func WrapStatelessValidator(fn chaintree.BlockValidatorFunc) ValidatorGenerator 
 }
 
 // DefaultConfig returns what we (as of this commit) use for our block validators
-// GenerateIsValidSignature is ommitted in this first round because it is a higher-order
+// GenerateHasValidProof is ommitted in this first round because it is a higher-order
 // function that needs information from a closure not known to the notary group.
 // it will be special cased over in tupelo and then migrated to this format.
 func DefaultConfig() *Config {

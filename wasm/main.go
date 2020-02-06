@@ -5,14 +5,13 @@ package main
 import (
 	"context"
 	"fmt"
-	logging "github.com/ipfs/go-log"
 	"syscall/js"
 
-	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jscrypto"
+	cbornode "github.com/ipfs/go-ipld-cbor"
+	logging "github.com/ipfs/go-log"
+	"github.com/quorumcontrol/messages/v2/build/go/services"
 
-	"github.com/quorumcontrol/tupelo-go-sdk/wasm/helpers"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jsclient"
-	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jscommunity"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jslibs"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jspubsub"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jsstore"
@@ -24,6 +23,8 @@ var exitChan chan bool
 var clientSingleton *jsclient.JSClient
 
 func init() {
+	cbornode.RegisterCborType(services.AddBlockRequest{})
+
 	exitChan = make(chan bool)
 }
 
@@ -92,43 +93,13 @@ func main() {
 					jsOpts.Get("tip"),
 					jsOpts.Get("tokenName"),
 					jsOpts.Get("sendId"),
-					jsOpts.Get("jsSendTxState"),
+					jsOpts.Get("jsSendTxProof"),
 				)
 			}))
 
-			// hashToShard(topicName:string, shardCount:number):number
-			jsObj.Set("hashToShardNumber", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				return jscommunity.HashToShardNumber(args[0].String(), args[1].Int())
+			jsObj.Set("verifyProof", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				return clientSingleton.VerifyProof(args[0])
 			}))
-
-			jsObj.Set("getSendableEnvelopeBytes", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				return jscommunity.GetSendableBytes(helpers.JsBufferToBytes(args[0]), helpers.JsBufferToBytes(args[1]))
-			}))
-
-			jsObj.Set("verifyCurrentState", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				t := then.New()
-				t.Reject("currently unsupported")
-				return t
-				// // JS gives us a js config and the protobuf bits from a current state
-				// config, err := jsclient.JsConfigToHumanConfig(args[0])
-				// if err != nil {
-				// 	t := then.New()
-				// 	t.Reject(errors.Wrap(err, "error converting config").Error())
-				// 	return t
-				// }
-
-				// state := &signatures.TreeState{}
-				// err = state.Unmarshal(helpers.JsBufferToBytes(args[1]))
-				// if err != nil {
-				// 	t := then.New()
-				// 	t.Reject(errors.Wrap(err, "error converting config").Error())
-				// 	return t
-				// }
-				// return jsclient.VerifyCurrentState(config, state)
-			}))
-
-			jsObj.Set("signMessage", js.FuncOf(jscrypto.JSSignMessage))
-			jsObj.Set("verifyMessage", js.FuncOf(jscrypto.JSVerifyMessage))
 
 			jsObj.Set("setLogLevel", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				logging.SetLogLevel(args[0].String(), args[1].String())
@@ -136,27 +107,35 @@ func main() {
 			}))
 
 			jsObj.Set("startClient", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				// js passes in:
-				// interface IClientOptions {
-				//     pubsub: IPubSub,
-				//     notaryGroup: Uint8Array // protobuf encoded config.NotaryGroup
-				//     blockService: IBlockService,
-				// }
-				jsOpts := args[0]
+				t := then.New()
+				go func() {
+					// js passes in:
+					// interface IClientOptions {
+					//     pubsub: IPubSub,
+					//     notaryGroup: Uint8Array // protobuf encoded config.NotaryGroup
+					//     blockService: IBlockService,
+					// }
+					jsOpts := args[0]
 
-				config, err := jsclient.JsConfigToHumanConfig(jsOpts.Get("notaryGroup"))
-				if err != nil {
-					t := then.New()
-					t.Reject(fmt.Errorf("error converting config %w", err).Error())
-					return t
-				}
+					config, err := jsclient.JsConfigToHumanConfig(jsOpts.Get("notaryGroup"))
+					if err != nil {
+						t.Reject(fmt.Errorf("error converting config %w", err).Error())
+						return
+					}
 
-				store := jsstore.New(jsOpts.Get("blockService"))
-				bridge := jspubsub.NewPubSubBridge(jsOpts.Get("pubsub"))
-				cli := jsclient.New(bridge, config, store)
-				go cli.Start(ctx)
-				clientSingleton = cli
-				return nil
+					store := jsstore.New(jsOpts.Get("blockService"))
+					bridge := jspubsub.NewPubSubBridge(jsOpts.Get("pubsub"))
+					cli := jsclient.New(bridge, config, store)
+					err = cli.Start(ctx)
+					if err != nil {
+						t.Reject(err.Error())
+						return
+					}
+					clientSingleton = cli
+					t.Resolve(true)
+				}()
+
+				return t
 			}))
 
 			jsObj.Set("playTransactions", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
