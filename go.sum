@@ -312,6 +312,8 @@ github.com/ipfs/go-ds-measure v0.0.1/go.mod h1:wiH6bepKsgyNKpz3nyb4erwhhIVpIxnZb
 github.com/ipfs/go-ds-measure v0.1.0/go.mod h1:1nDiFrhLlwArTME1Ees2XaBOl49OoCgd2A3f8EchMSY=
 github.com/ipfs/go-ds-s3 v0.4.0/go.mod h1:rQq9mxpZSysuS+1QVWvwmCMzsTizoUWORzfZXtkwJj4=
 github.com/ipfs/go-fs-lock v0.0.1/go.mod h1:DNBekbboPKcxs1aukPSaOtFA3QfSdi5C855v0i9XJ8Y=
+github.com/ipfs/go-hamt-ipld v0.0.13 h1:Jbt5ALTYnrzbcOBka11kAkgn3auvkQBGkKWjGRsQrio=
+github.com/ipfs/go-hamt-ipld v0.0.13/go.mod h1:oVAOWGetjaaAPloFDCudyhxofsSG/WijXMJLTA0kRhM=
 github.com/ipfs/go-ipfs v0.4.22/go.mod h1:vgIn+MMrMEN2Yd6AWxAZVP/+YGI8dSGSgwiTEU6R2kw=
 github.com/ipfs/go-ipfs-addr v0.0.1/go.mod h1:uKTDljHT3Q3SUWzDLp3aYUi8MrY32fgNgogsIa0npjg=
 github.com/ipfs/go-ipfs-blockstore v0.0.1 h1:O9n3PbmTYZoNhkgkEyrXTznbmktIXif62xLX+8dPHzc=
