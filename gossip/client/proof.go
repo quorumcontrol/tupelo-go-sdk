@@ -5,14 +5,11 @@ import (
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
 )
 
-type Proof struct {
-	RoundConfirmation types.RoundConfirmation
+type ValidationNotification struct {
 	AbrCid            cid.Cid
 	ObjectId          string
 	Tip               cid.Cid
-
-	completedRound types.CompletedRound
-	checkpoint     types.Checkpoint
-
-	// dag store and hamt?
+	Checkpoint        *types.CheckpointWrapper
+	RoundConfirmation *types.RoundConfirmationWrapper
+	CompletedRound    *types.RoundWrapper
 }

@@ -34,7 +34,8 @@ type Traceable interface {
 	StopTrace()
 	Started() bool
 	NewSpan(name string) opentracing.Span
-	LogKV(key string, value interface{})
+	LogKV(key string, value interface{}) // deprecated: Use SetTag instead
+	SetTag(key string, value interface{})
 	SerializedContext() (map[string]string, error)
 	RehydrateSerialized(serialized map[string]string, childName string) (opentracing.Span, error)
 }
@@ -74,10 +75,15 @@ func (ch *ContextHolder) NewSpan(name string) opentracing.Span {
 	return sp
 }
 
-// LogKV logs a key/value pair to the current span
+// Deprecated: Use SetTag instead
 func (ch *ContextHolder) LogKV(key string, value interface{}) {
+	ch.SetTag(key, value)
+}
+
+// SetTag sets a tag on the span
+func (ch *ContextHolder) SetTag(key string, value interface{}) {
 	sp := opentracing.SpanFromContext(ch.context)
-	sp.LogKV(key, value)
+	sp.SetTag(key, value)
 }
 
 // SetContext overrides the current context of the ContextHolder

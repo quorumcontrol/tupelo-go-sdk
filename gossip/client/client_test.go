@@ -15,6 +15,7 @@ import (
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
+	"github.com/quorumcontrol/messages/v2/build/go/gossip"
 	"github.com/quorumcontrol/messages/v2/build/go/services"
 	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
@@ -23,13 +24,15 @@ import (
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
 	"github.com/quorumcontrol/tupelo-go-sdk/testnotarygroup"
-	"github.com/quorumcontrol/tupelo/gossip"
+	tupelogossip "github.com/quorumcontrol/tupelo/gossip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func newTupeloSystem(ctx context.Context, testSet *testnotarygroup.TestSet) (*types.NotaryGroup, []*gossip.Node, error) {
-	nodes := make([]*gossip.Node, len(testSet.SignKeys))
+const groupMembers = 3
+
+func newTupeloSystem(ctx context.Context, testSet *testnotarygroup.TestSet) (*types.NotaryGroup, []*tupelogossip.Node, error) {
+	nodes := make([]*tupelogossip.Node, len(testSet.SignKeys))
 
 	ng := types.NewNotaryGroup("testnotary")
 	for i, signKey := range testSet.SignKeys {
@@ -44,7 +47,7 @@ func newTupeloSystem(ctx context.Context, testSet *testnotarygroup.TestSet) (*ty
 			return nil, nil, fmt.Errorf("error making node: %v", err)
 		}
 
-		n, err := gossip.NewNode(ctx, &gossip.NewNodeOptions{
+		n, err := tupelogossip.NewNode(ctx, &tupelogossip.NewNodeOptions{
 			P2PNode:     p2pNode,
 			SignKey:     testSet.SignKeys[i],
 			NotaryGroup: ng,
@@ -67,7 +70,7 @@ func newTupeloSystem(ctx context.Context, testSet *testnotarygroup.TestSet) (*ty
 	return ng, nodes, nil
 }
 
-func startNodes(t *testing.T, ctx context.Context, nodes []*gossip.Node, bootAddrs []string) {
+func startNodes(t *testing.T, ctx context.Context, nodes []*tupelogossip.Node, bootAddrs []string) {
 	for _, node := range nodes {
 		err := node.Bootstrap(ctx, bootAddrs)
 		require.Nil(t, err)
@@ -94,6 +97,11 @@ func newClient(ctx context.Context, group *types.NotaryGroup, bootAddrs []string
 
 	cli := New(group, pubsubwrapper.WrapLibp2p(cliHost.GetPubSub()), peer)
 
+	err = logging.SetLogLevel("g4-client", "debug")
+	if err != nil {
+		return nil, err
+	}
+
 	err = cli.Start(ctx)
 	if err != nil {
 		return nil, err
@@ -105,11 +113,10 @@ func TestClientSendTransactions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	numMembers := 3
-	ts := testnotarygroup.NewTestSet(t, numMembers)
+	ts := testnotarygroup.NewTestSet(t, groupMembers)
 	group, nodes, err := newTupeloSystem(ctx, ts)
 	require.Nil(t, err)
-	require.Len(t, nodes, numMembers)
+	require.Len(t, nodes, groupMembers)
 
 	booter, err := p2p.NewHostFromOptions(ctx)
 	require.Nil(t, err)
@@ -138,7 +145,7 @@ func TestClientSendTransactions(t *testing.T) {
 
 		proof, err := cli.PlayTransactions(ctx, tree, treeKey, []*transactions.Transaction{txn})
 		require.Nil(t, err)
-		assert.Equal(t, proof.Tip.Bytes(), tree.Tip().Bytes())
+		assert.Equal(t, proof.Tip, tree.Tip().Bytes())
 	})
 
 	t.Run("test 3 subsequent transactions", func(t *testing.T) {
@@ -158,21 +165,21 @@ func TestClientSendTransactions(t *testing.T) {
 
 		proof, err := cli.PlayTransactions(ctx, tree, treeKey, []*transactions.Transaction{txn})
 		require.Nil(t, err)
-		assert.Equal(t, proof.Tip.Bytes(), tree.Tip().Bytes())
+		assert.Equal(t, proof.Tip, tree.Tip().Bytes())
 
 		txn2, err := chaintree.NewSetDataTransaction("down/in/the/thing", "some other2")
 		require.Nil(t, err)
 
 		proof2, err := cli.PlayTransactions(ctx, tree, treeKey, []*transactions.Transaction{txn2})
 		require.Nil(t, err)
-		assert.Equal(t, proof2.Tip.Bytes(), tree.Tip().Bytes())
+		assert.Equal(t, proof2.Tip, tree.Tip().Bytes())
 
 		txn3, err := chaintree.NewSetDataTransaction("down/in/the/thing", "some other3")
 		require.Nil(t, err)
 
 		proof3, err := cli.PlayTransactions(ctx, tree, treeKey, []*transactions.Transaction{txn3})
 		require.Nil(t, err)
-		assert.Equal(t, proof3.Tip.Bytes(), tree.Tip().Bytes())
+		assert.Equal(t, proof3.Tip, tree.Tip().Bytes())
 
 	})
 
@@ -194,12 +201,12 @@ func TestClientSendTransactions(t *testing.T) {
 
 		basisNodes0 := testhelpers.DagToByteNodes(t, testTree.ChainTree.Dag)
 
-		blockWithHeaders0 := transactLocal(t, testTree, treeKey, 0, "down/in/the/tree", "atestvalue")
+		blockWithHeaders0 := transactLocal(ctx, t, testTree, treeKey, 0, "down/in/the/tree", "atestvalue")
 		tip0 := testTree.Tip()
 
 		basisNodes1 := testhelpers.DagToByteNodes(t, testTree.ChainTree.Dag)
 
-		blockWithHeaders1 := transactLocal(t, testTree, treeKey, 1, "other/thing", "sometestvalue")
+		blockWithHeaders1 := transactLocal(ctx, t, testTree, treeKey, 1, "other/thing", "sometestvalue")
 		tip1 := testTree.Tip()
 
 		respCh1, sub1 := transactRemote(ctx, t, cli, testTree.MustId(), blockWithHeaders1, tip1, basisNodes1, emptyTip)
@@ -210,11 +217,12 @@ func TestClientSendTransactions(t *testing.T) {
 		defer cli.UnsubscribeFromAbr(sub0)
 		defer close(respCh0)
 
-		resp0 := <-respCh1
-		require.IsType(t, &Proof{}, resp0)
+		resp0 := <-respCh0
+		require.IsType(t, &gossip.Proof{}, resp0)
 
-		resp1 := <-respCh0
-		require.IsType(t, &Proof{}, resp1)
+		resp1 := <-respCh1
+		require.IsType(t, &gossip.Proof{}, resp1)
+
 	})
 
 	t.Run("invalid previous tip fails", func(t *testing.T) {
@@ -235,7 +243,7 @@ func TestClientSendTransactions(t *testing.T) {
 		require.Nil(t, err)
 
 		// establish different first valid transactions on 2 different local chaintrees
-		transactLocal(t, testTreeA, treeKey, 0, "down/in/the/treeA", "atestvalue")
+		transactLocal(ctx, t, testTreeA, treeKey, 0, "down/in/the/treeA", "atestvalue")
 		basisNodesA1 := testhelpers.DagToByteNodes(t, testTreeA.ChainTree.Dag)
 
 		testTreeB, err := consensus.NewSignedChainTree(ctx, treeKey.PublicKey, nodeStoreB)
@@ -243,11 +251,11 @@ func TestClientSendTransactions(t *testing.T) {
 		emptyTip := testTreeB.Tip()
 
 		basisNodesB0 := testhelpers.DagToByteNodes(t, testTreeB.ChainTree.Dag)
-		blockWithHeadersB0 := transactLocal(t, testTreeB, treeKey, 0, "down/in/the/treeB", "btestvalue")
+		blockWithHeadersB0 := transactLocal(ctx, t, testTreeB, treeKey, 0, "down/in/the/treeB", "btestvalue")
 		tipB0 := testTreeB.Tip()
 
 		// run a second transaction on the first local chaintree
-		blockWithHeadersA1 := transactLocal(t, testTreeA, treeKey, 1, "other/thing", "sometestvalue")
+		blockWithHeadersA1 := transactLocal(ctx, t, testTreeA, treeKey, 1, "other/thing", "sometestvalue")
 		tipA1 := testTreeA.Tip()
 
 		/* Now send tx at height 1 from chaintree A followed by
@@ -268,7 +276,7 @@ func TestClientSendTransactions(t *testing.T) {
 		defer close(respCh0)
 
 		resp0 := <-respCh0
-		require.IsType(t, &Proof{}, resp0)
+		require.IsType(t, &gossip.Proof{}, resp0)
 
 		// TODO: this is now a timeout error.
 		// we can probably figure out a more elegant way to test this - like maybe sending in a successful 3rd transaction
@@ -309,8 +317,7 @@ func TestClientSendTransactions(t *testing.T) {
 
 }
 
-func transactLocal(t testing.TB, tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, height uint64, path, value string) *chaintree.BlockWithHeaders {
-	ctx := context.TODO()
+func transactLocal(ctx context.Context, t testing.TB, tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, height uint64, path, value string) *chaintree.BlockWithHeaders {
 	var pt *cid.Cid
 	if !tree.IsGenesis() {
 		tip := tree.Tip()
@@ -336,7 +343,7 @@ func transactLocal(t testing.TB, tree *consensus.SignedChainTree, treeKey *ecdsa
 	return blockWithHeaders
 }
 
-func transactRemote(ctx context.Context, t testing.TB, client *Client, treeID string, blockWithHeaders *chaintree.BlockWithHeaders, newTip cid.Cid, stateNodes [][]byte, emptyTip cid.Cid) (chan *Proof, subscription) {
+func transactRemote(ctx context.Context, t testing.TB, client *Client, treeID string, blockWithHeaders *chaintree.BlockWithHeaders, newTip cid.Cid, stateNodes [][]byte, emptyTip cid.Cid) (chan *gossip.Proof, subscription) {
 	sw := safewrap.SafeWrap{}
 
 	var previousTipBytes []byte
@@ -357,7 +364,7 @@ func transactRemote(ctx context.Context, t testing.TB, client *Client, treeID st
 
 	t.Logf("sending remote transaction id: %s height: %d", base64.StdEncoding.EncodeToString(consensus.RequestID(transMsg)), transMsg.Height)
 
-	resp := make(chan *Proof, 1)
+	resp := make(chan *gossip.Proof, 1)
 	sub, err := client.SubscribeToAbr(ctx, transMsg, resp)
 	require.Nil(t, err)
 
@@ -371,11 +378,10 @@ func TestClientGetTip(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	numMembers := 3
-	ts := testnotarygroup.NewTestSet(t, numMembers)
+	ts := testnotarygroup.NewTestSet(t, groupMembers)
 	group, nodes, err := newTupeloSystem(ctx, ts)
 	require.Nil(t, err)
-	require.Len(t, nodes, numMembers)
+	require.Len(t, nodes, groupMembers)
 
 	booter, err := p2p.NewHostFromOptions(ctx)
 	require.Nil(t, err)
@@ -404,12 +410,12 @@ func TestClientGetTip(t *testing.T) {
 
 		sendProof, err := cli.PlayTransactions(ctx, tree, treeKey, []*transactions.Transaction{txn})
 		require.Nil(t, err)
-		assert.Equal(t, sendProof.Tip.Bytes(), tree.Tip().Bytes())
+		assert.Equal(t, sendProof.Tip, tree.Tip().Bytes())
 
 		proof, err := cli.GetTip(ctx, tree.MustId())
 		require.Nil(t, err)
 
-		require.Equal(t, sendProof.Tip.Bytes(), proof.Tip.Bytes())
+		require.Equal(t, sendProof.Tip, proof.Tip)
 	})
 
 	t.Run("get non existant tip", func(t *testing.T) {
@@ -428,9 +434,92 @@ func TestClientGetTip(t *testing.T) {
 
 		sendProof, err := cli.PlayTransactions(ctx, tree, treeKey, []*transactions.Transaction{txn})
 		require.Nil(t, err)
-		assert.Equal(t, sendProof.Tip.Bytes(), tree.Tip().Bytes())
+		assert.Equal(t, sendProof.Tip, tree.Tip().Bytes())
 
 		_, err = cli.GetTip(ctx, "did:tupelo:doesnotexist")
 		require.Equal(t, ErrNotFound, err)
+	})
+}
+
+func TestTokenTransactions(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ts := testnotarygroup.NewTestSet(t, groupMembers)
+	group, nodes, err := newTupeloSystem(ctx, ts)
+	require.Nil(t, err)
+	require.Len(t, nodes, groupMembers)
+
+	booter, err := p2p.NewHostFromOptions(ctx)
+	require.Nil(t, err)
+
+	bootAddrs := make([]string, len(booter.Addresses()))
+	for i, addr := range booter.Addresses() {
+		bootAddrs[i] = addr.String()
+	}
+
+	startNodes(t, ctx, nodes, bootAddrs)
+
+	sendKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+
+	receiveKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+
+	t.Run("valid transaction", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		sendCli, err := newClient(ctx, group, bootAddrs)
+		require.Nil(t, err)
+
+		sendTree, err := consensus.NewSignedChainTree(ctx, sendKey.PublicKey, nodestore.MustMemoryStore(ctx))
+		require.Nil(t, err)
+
+		receiveTree, err := consensus.NewSignedChainTree(ctx, receiveKey.PublicKey, nodestore.MustMemoryStore(ctx))
+		require.Nil(t, err)
+
+		tokenName := "test-token"
+		tokenMax := uint64(50)
+		mintAmount := uint64(25)
+		sendTxId := "send-test-transaction"
+		sendAmount := uint64(10)
+
+		establishTxn, err := chaintree.NewEstablishTokenTransaction(tokenName, tokenMax)
+		require.Nil(t, err)
+
+		mintTxn, err := chaintree.NewMintTokenTransaction(tokenName, mintAmount)
+		require.Nil(t, err)
+
+		sendTxn, err := chaintree.NewSendTokenTransaction(sendTxId, tokenName, sendAmount, receiveTree.MustId())
+		require.Nil(t, err)
+
+		senderTxns := []*transactions.Transaction{establishTxn, mintTxn, sendTxn}
+
+		sendProof, err := sendCli.PlayTransactions(ctx, sendTree, sendKey, senderTxns)
+		require.Nil(t, err)
+		assert.Equal(t, sendProof.Tip, sendTree.Tip().Bytes())
+
+		fmt.Printf("round height: %d, checkpoint cid: %s, state_cid: %s\n", sendProof.Round.Height, sendProof.Round.CheckpointCid, sendProof.Round.StateCid)
+		fmt.Printf("round confirmation: %v\n\n\n", sendProof.RoundConfirmation)
+
+		fullTokenName := &consensus.TokenName{ChainTreeDID: sendTree.MustId(), LocalName: tokenName}
+		tokenPayload, err := consensus.TokenPayloadForTransaction(sendTree.ChainTree, fullTokenName, sendTxId, sendProof)
+		require.Nil(t, err)
+		assert.Equal(t, tokenPayload.Tip, sendTree.Tip().String())
+
+		receiveCli, err := newClient(ctx, group, bootAddrs)
+		require.Nil(t, err)
+
+		tipCid, err := cid.Decode(tokenPayload.Tip)
+		require.Nil(t, err)
+
+		receiveTxn, err := chaintree.NewReceiveTokenTransaction(sendTxId, tipCid.Bytes(), tokenPayload.Proof, tokenPayload.Leaves)
+		require.Nil(t, err)
+
+		receiverTxn := []*transactions.Transaction{receiveTxn}
+
+		_, err = receiveCli.PlayTransactions(ctx, receiveTree, receiveKey, receiverTxn)
+		require.Nil(t, err)
 	})
 }

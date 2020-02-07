@@ -5,6 +5,8 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	cbornode "github.com/ipfs/go-ipld-cbor"
@@ -12,13 +14,13 @@ import (
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/nodestore"
+	"github.com/quorumcontrol/messages/v2/build/go/gossip"
 	"github.com/quorumcontrol/messages/v2/build/go/services"
 	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client/pubsubinterfaces"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/hamtwrapper"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
-	"time"
 )
 
 var ErrTimeout = errors.New("error timeout")
@@ -59,7 +61,7 @@ func (c *Client) Start(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) PlayTransactions(ctx context.Context, tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, transactions []*transactions.Transaction) (*Proof, error) {
+func (c *Client) PlayTransactions(ctx context.Context, tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, transactions []*transactions.Transaction) (*gossip.Proof, error) {
 	abr, err := c.NewAddBlockRequest(ctx, tree, treeKey, transactions)
 	if err != nil {
 		return nil, fmt.Errorf("error creating NewAddBlockRequest: %w", err)
@@ -69,7 +71,11 @@ func (c *Client) PlayTransactions(ctx context.Context, tree *consensus.SignedCha
 		return nil, fmt.Errorf("error sending tx: %w", err)
 	}
 
-	newChainTree, err := chaintree.NewChainTree(ctx, dag.NewDag(ctx, proof.Tip, tree.ChainTree.Dag.Store), tree.ChainTree.BlockValidators, tree.ChainTree.Transactors)
+	tipCid, err := cid.Cast(proof.Tip)
+	if err != nil {
+		return nil, fmt.Errorf("error casting tip cid: %v", err)
+	}
+	newChainTree, err := chaintree.NewChainTree(ctx, dag.NewDag(ctx, tipCid, tree.ChainTree.Dag.Store), tree.ChainTree.BlockValidators, tree.ChainTree.Transactors)
 	if err != nil {
 		return nil, fmt.Errorf("error creating new tree: %w", err)
 	}
@@ -77,7 +83,7 @@ func (c *Client) PlayTransactions(ctx context.Context, tree *consensus.SignedCha
 	return proof, nil
 }
 
-func (c *Client) GetTip(ctx context.Context, did string) (*Proof, error) {
+func (c *Client) GetTip(ctx context.Context, did string) (*gossip.Proof, error) {
 	confirmation := c.subscriber.Current()
 	currentRound, err := confirmation.FetchCompletedRound(ctx)
 	if err != nil {
@@ -107,26 +113,16 @@ func (c *Client) GetTip(ctx context.Context, did string) (*Proof, error) {
 		return nil, fmt.Errorf("error decoding ABR: %w", err)
 	}
 
-	id, err := cid.Cast(abr.NewTip)
-	if err != nil {
-		return nil, fmt.Errorf("error casting tip: %w", err)
-	}
-
-	return &Proof{
-		ObjectId:          did,
-		RoundConfirmation: *confirmation,
-		Tip:               id,
-		AbrCid:            *txCID,
+	return &gossip.Proof{
+		ObjectId:          []byte(did),
+		RoundConfirmation: confirmation.Value(),
+		Tip:               abr.NewTip,
+		AddBlockRequest:   abr,
 	}, nil
 }
 
-func (c *Client) Send(ctx context.Context, abr *services.AddBlockRequest, timeout time.Duration) (*Proof, error) {
-	tip, err := cid.Cast(abr.NewTip)
-	if err != nil {
-		return nil, fmt.Errorf("error casting new tip: %w", err)
-	}
-
-	resp := make(chan *Proof)
+func (c *Client) Send(ctx context.Context, abr *services.AddBlockRequest, timeout time.Duration) (*gossip.Proof, error) {
+	resp := make(chan *gossip.Proof)
 	defer close(resp)
 
 	sub, err := c.SubscribeToAbr(ctx, abr, resp)
@@ -144,8 +140,8 @@ func (c *Client) Send(ctx context.Context, abr *services.AddBlockRequest, timeou
 
 	select {
 	case proof := <-resp:
-		proof.Tip = tip
-		proof.ObjectId = string(abr.ObjectId)
+		proof.Tip = abr.NewTip
+		proof.ObjectId = abr.ObjectId
 		return proof, nil
 	case <-ticker.C:
 		return nil, ErrTimeout
@@ -166,14 +162,14 @@ func (c *Client) SendWithoutWait(ctx context.Context, abr *services.AddBlockRequ
 	return nil
 }
 
-func (c *Client) SubscribeToAbr(ctx context.Context, abr *services.AddBlockRequest, ch chan *Proof) (subscription, error) {
+func (c *Client) SubscribeToAbr(ctx context.Context, abr *services.AddBlockRequest, ch chan *gossip.Proof) (subscription, error) {
 	id, err := abrToHamtCID(ctx, abr)
 	if err != nil {
 		return nil, fmt.Errorf("error getting CID: %w", err)
 	}
 	c.logger.Debugf("subscribing: %s", id.String())
 
-	return c.subscriber.subscribe(id, ch), nil
+	return c.subscriber.subscribe(ctx, id, ch), nil
 }
 
 func (c *Client) UnsubscribeFromAbr(s subscription) {
