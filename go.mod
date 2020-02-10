@@ -37,13 +37,15 @@ require (
 	github.com/spy16/parens v0.0.8
 	github.com/stretchr/testify v1.3.0
 	github.com/uber/jaeger-client-go v2.22.1+incompatible
-	github.com/uber/jaeger-lib v2.2.0+incompatible
+	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
 	go.dedis.ch/kyber/v3 v3.0.9
 	go.elastic.co/apm/module/apmot v1.6.0
 	go.uber.org/zap v1.10.0
 	golang.org/x/crypto v0.0.0-20191111213947-16651526fdb4
 	golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7
 )
+
+replace go.opencensus.io => github.com/quorumcontrol/opencensus-go v0.21.1-0.20200117203331-36d95539b227
 
 replace (
 	github.com/go-critic/go-critic => github.com/go-critic/go-critic v0.4.0
