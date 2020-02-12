@@ -18,6 +18,7 @@ import (
 	"github.com/quorumcontrol/messages/v2/build/go/services"
 	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip/blocks"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client/pubsubinterfaces"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/hamtwrapper"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
@@ -61,8 +62,9 @@ func (c *Client) Start(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) PlayTransactions(ctx context.Context, tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, transactions []*transactions.Transaction) (*gossip.Proof, error) {
-	abr, err := c.NewAddBlockRequest(ctx, tree, treeKey, transactions)
+func (c *Client) PlayTransactions(ctx context.Context, tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, transactions []*transactions.Transaction, opts ...blocks.Option) (*gossip.Proof, error) {
+	opts = append(opts, blocks.WithKey(treeKey), blocks.WithTransactions(transactions))
+	abr, err := c.NewAddBlockRequest(ctx, tree, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating NewAddBlockRequest: %w", err)
 	}

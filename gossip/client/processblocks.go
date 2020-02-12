@@ -2,44 +2,22 @@ package client
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"fmt"
 
-	"github.com/ipfs/go-cid"
-	cbornode "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/messages/v2/build/go/services"
-	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip/blocks"
 )
 
-func (c *Client) NewAddBlockRequest(ctx context.Context, tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, transactions []*transactions.Transaction) (*services.AddBlockRequest, error) {
-	height, err := getHeight(ctx, tree)
+// NewAddBlockRequest creates an add block request for sending in the client
+func (c *Client) NewAddBlockRequest(ctx context.Context, tree *consensus.SignedChainTree, opts ...blocks.Option) (*services.AddBlockRequest, error) {
+	blockWithHeaders, err := blocks.NewBlockWithHeaders(ctx, tree, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("error getting tree height: %v", err)
-	}
-
-	treeTip := tree.Tip()
-
-	var blockTip *cid.Cid
-	if !tree.IsGenesis() {
-		blockTip = &treeTip
-	}
-
-	unsignedBlock := &chaintree.BlockWithHeaders{
-		Block: chaintree.Block{
-			Height:       height,
-			PreviousTip:  blockTip,
-			Transactions: transactions,
-		},
-	}
-
-	blockWithHeaders, err := consensus.SignBlock(ctx, unsignedBlock, treeKey)
-	if err != nil {
-		return nil, fmt.Errorf("error signing block: %w", err)
+		return nil, fmt.Errorf("error creating block: %w", err)
 	}
 
 	if len(tree.ChainTree.BlockValidators) == 0 {
@@ -74,7 +52,7 @@ func (c *Client) NewAddBlockRequest(ctx context.Context, tree *consensus.SignedC
 	}
 
 	expectedTip := trackedTree.Dag.Tip
-	chainId, err := tree.Id()
+	chainID, err := tree.Id()
 	if err != nil {
 		return nil, err
 	}
@@ -83,11 +61,11 @@ func (c *Client) NewAddBlockRequest(ctx context.Context, tree *consensus.SignedC
 	payload := sw.WrapObject(blockWithHeaders).RawData()
 
 	return &services.AddBlockRequest{
-		PreviousTip: treeTip.Bytes(),
+		PreviousTip: tree.Tip().Bytes(),
 		Height:      blockWithHeaders.Height,
 		Payload:     payload,
 		NewTip:      expectedTip.Bytes(),
-		ObjectId:    []byte(chainId),
+		ObjectId:    []byte(chainID),
 		State:       state,
 	}, nil
 }
@@ -101,31 +79,6 @@ func refTrackingChainTree(ctx context.Context, untrackedTree *chaintree.ChainTre
 	trackedTree, err := chaintree.NewChainTree(ctx, dag.NewDag(ctx, untrackedTree.Dag.Tip, tracker), untrackedTree.BlockValidators, untrackedTree.Transactors)
 
 	return trackedTree, tracker, err
-}
-
-func getHeight(ctx context.Context, tree *consensus.SignedChainTree) (uint64, error) {
-	ct := tree.ChainTree
-
-	unmarshaledRoot, err := ct.Dag.Get(ctx, ct.Dag.Tip)
-	if unmarshaledRoot == nil || err != nil {
-		return 0, fmt.Errorf("error, missing root: %v", err)
-	}
-
-	root := &chaintree.RootNode{}
-
-	err = cbornode.DecodeInto(unmarshaledRoot.RawData(), root)
-	if err != nil {
-		return 0, fmt.Errorf("error decoding root: %v", err)
-	}
-
-	var height uint64
-	if tree.IsGenesis() {
-		height = 0
-	} else {
-		height = root.Height + 1
-	}
-
-	return height, nil
 }
 
 func nodesToBytes(nodes []format.Node) [][]byte {
