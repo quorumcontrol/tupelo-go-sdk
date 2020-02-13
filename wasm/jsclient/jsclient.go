@@ -11,6 +11,7 @@ import (
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 
 	"github.com/ipfs/go-cid"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip/blocks"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client/pubsubinterfaces"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
@@ -118,7 +119,7 @@ func (jsc *JSClient) GetTip(jsDid js.Value) interface{} {
 	return t
 }
 
-func (jsc *JSClient) PlayTransactions(jsKeyBits js.Value, tip js.Value, jsTransactions js.Value) interface{} {
+func (jsc *JSClient) PlayTransactions(jsKeyBits js.Value, tip js.Value, jsTransactions js.Value, jsOptions js.Value) interface{} {
 	t := then.New()
 	go func() {
 		trans, err := jsTransactionsToTransactions(jsTransactions)
@@ -139,7 +140,9 @@ func (jsc *JSClient) PlayTransactions(jsKeyBits js.Value, tip js.Value, jsTransa
 			return
 		}
 
-		proof, err := jsc.playTransactions(key, tip, trans)
+		options := jsOptionsToOptions(jsOptions)
+
+		proof, err := jsc.playTransactions(key, tip, trans, options)
 		if err != nil {
 			t.Reject(err.Error())
 			return
@@ -157,7 +160,35 @@ func (jsc *JSClient) PlayTransactions(jsKeyBits js.Value, tip js.Value, jsTransa
 	return t
 }
 
-func (jsc *JSClient) playTransactions(treeKey *ecdsa.PrivateKey, tip cid.Cid, transactions []*transactions.Transaction) (*gossip.Proof, error) {
+func jsOptionsToOptions(jsOptions js.Value) []blocks.Option {
+	if !jsOptions.Truthy() {
+		return nil
+	}
+	var opts []blocks.Option
+
+	const conditions = "conditions"
+	const preImage = "preImage"
+
+	// TODO: it would be nice to do this without hard coding it, but I think the complexity of reflection
+	// in this case would be higher than just manually adding options
+	supportedOptions := []string{conditions, preImage}
+
+	for _, optionName := range supportedOptions {
+		switch optionName {
+		case conditions:
+			opts = append(opts, blocks.WithConditions(jsOptions.Get(conditions).String()))
+			break
+		case preImage:
+			opts = append(opts, blocks.WithConditions(jsOptions.Get(preImage).String()))
+		default:
+			panic(fmt.Errorf("unkown option: %s used", optionName))
+		}
+	}
+
+	return opts
+}
+
+func (jsc *JSClient) playTransactions(treeKey *ecdsa.PrivateKey, tip cid.Cid, transactions []*transactions.Transaction, options []blocks.Option) (*gossip.Proof, error) {
 	ctx := context.TODO()
 
 	cTree, err := chaintree.NewChainTree(
@@ -172,7 +203,7 @@ func (jsc *JSClient) playTransactions(treeKey *ecdsa.PrivateKey, tip cid.Cid, tr
 
 	tree := consensus.NewSignedChainTreeFromChainTree(cTree)
 
-	return jsc.client.PlayTransactions(ctx, tree, treeKey, transactions)
+	return jsc.client.PlayTransactions(ctx, tree, treeKey, transactions, options...)
 }
 
 func (jsc *JSClient) VerifyProof(proofBits js.Value) interface{} {

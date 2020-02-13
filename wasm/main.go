@@ -137,9 +137,14 @@ func main() {
 			jsObj.Set("playTransactions", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				// js passes in:
 				// interface IPlayTransactionOptions {
-				//     privateKey: Uint8Array,
-				//     tip: CID,
-				//     transactions: Uint8Array[], // protobuf encoded array of transactions.Transaction
+				// 	privateKey: Uint8Array,
+				// 	tip: CID,
+				// 	transactions: Uint8Array[],
+				// 	options?: IBlockOptions,
+				// }
+				// interface IBlockOptions {
+				// 	conditions?:string
+				// 	preImage?: string
 				// }
 				jsOpts := args[0]
 
@@ -149,7 +154,7 @@ func main() {
 					return t
 				}
 
-				return clientSingleton.PlayTransactions(jsOpts.Get("privateKey"), jsOpts.Get("tip"), jsOpts.Get("transactions"))
+				return clientSingleton.PlayTransactions(jsOpts.Get("privateKey"), jsOpts.Get("tip"), jsOpts.Get("transactions"), jsOpts.Get("options"))
 			}))
 
 			return jsObj
