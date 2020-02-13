@@ -100,7 +100,7 @@ func TestNewBlockWithHeaders(t *testing.T) {
 			newSignedTree,
 			WithKey(treeKey),
 			WithTransactions([]*transactions.Transaction{setDataTxn}),
-			WithPreimage(preImage),
+			WithPreImage(preImage),
 			WithConditions(conditions),
 		)
 

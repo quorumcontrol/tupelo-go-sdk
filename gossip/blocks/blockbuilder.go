@@ -49,7 +49,7 @@ func WithConditions(conditions string) Option {
 	}
 }
 
-func WithPreimage(preImage string) Option {
+func WithPreImage(preImage string) Option {
 	return func(blueprint *blockBluePrint) error {
 		blueprint.preImage = preImage
 		return nil

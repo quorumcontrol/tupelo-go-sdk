@@ -17,12 +17,15 @@ import (
 	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/messages/v2/build/go/gossip"
 	"github.com/quorumcontrol/messages/v2/build/go/services"
+	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
+	"github.com/quorumcontrol/tupelo-go-sdk/gossip/blocks"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client/pubsubinterfaces/pubsubwrapper"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/testhelpers"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
+	sigfuncs "github.com/quorumcontrol/tupelo-go-sdk/signatures"
 	"github.com/quorumcontrol/tupelo-go-sdk/testnotarygroup"
 	tupelogossip "github.com/quorumcontrol/tupelo/gossip"
 	"github.com/stretchr/testify/assert"
@@ -312,6 +315,57 @@ func TestClientSendTransactions(t *testing.T) {
 		require.Nil(t, err)
 
 		_, err = cli.PlayTransactions(ctx, chain, treeKey2, []*transactions.Transaction{txn})
+		require.NotNil(t, err)
+	})
+
+	t.Run("with conditions succeeds", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		nodeStore := nodestore.MustMemoryStore(ctx)
+
+		cli, err := newClient(ctx, group, bootAddrs)
+		require.Nil(t, err)
+
+		treeKey, err := crypto.GenerateKey()
+		require.Nil(t, err)
+		chain, err := consensus.NewSignedChainTree(ctx, treeKey.PublicKey, nodeStore)
+		require.Nil(t, err)
+
+		preImage := "secrets!"
+		hsh := crypto.Keccak256Hash([]byte(preImage)).String()
+
+		conditions := fmt.Sprintf(`(== (hashed-preimage) "%s")`, hsh)
+
+		ownership := &signatures.Ownership{
+			PublicKey: &signatures.PublicKey{
+				Type:      signatures.PublicKey_KeyTypeSecp256k1,
+				PublicKey: crypto.FromECDSAPub(&treeKey.PublicKey),
+			},
+			Conditions: conditions,
+		}
+
+		addr, err := sigfuncs.Address(ownership)
+		require.Nil(t, err)
+
+		ownershipTxn, err := chaintree.NewSetOwnershipTransaction([]string{addr.String()})
+		require.Nil(t, err)
+
+		_, err = cli.PlayTransactions(ctx, chain, treeKey, []*transactions.Transaction{ownershipTxn})
+		require.Nil(t, err)
+
+		// now it should succeed with the preimage
+		txn, err := chaintree.NewSetDataTransaction("down/in/the/thing", "sometestvalue")
+		require.Nil(t, err)
+
+		_, err = cli.PlayTransactions(ctx, chain, treeKey, []*transactions.Transaction{txn}, blocks.WithPreImage(preImage), blocks.WithConditions(ownership.Conditions))
+		require.Nil(t, err)
+
+		// and without conditions fails
+		_, err = cli.PlayTransactions(ctx, chain, treeKey, []*transactions.Transaction{txn}, blocks.WithPreImage(preImage))
+		require.NotNil(t, err)
+
+		// and fails without PreImage
+		_, err = cli.PlayTransactions(ctx, chain, treeKey, []*transactions.Transaction{txn}, blocks.WithConditions(ownership.Conditions))
 		require.NotNil(t, err)
 	})
 
