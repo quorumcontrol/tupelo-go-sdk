@@ -5,12 +5,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto"
 	"syscall/js"
 
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/quorumcontrol/messages/v2/build/go/services"
 
+	"github.com/quorumcontrol/tupelo-go-sdk/wasm/helpers"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jsclient"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jslibs"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jspubsub"
@@ -132,6 +134,12 @@ func main() {
 				}()
 
 				return t
+			}))
+
+			jsObj.Set("hash", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				bits := helpers.JsBufferToBytes(args[0])
+				hash := crypto.Keccak256Hash(bits)
+				return helpers.SliceToJSBuffer(hash.Bytes())
 			}))
 
 			jsObj.Set("playTransactions", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
