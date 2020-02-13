@@ -67,26 +67,28 @@ func init() {
 
 var nullAddr = common.BytesToAddress([]byte{})
 
-func Address(o *signatures.Ownership) (common.Address, error) {
-	// in the case of conditions, all signatures are treated similarly to produce an address
-	// and we just take the hash of the public key and the conditions and produce an address
-	if o.Conditions != "" {
-		pubKeyWithConditions := append(o.PublicKey.PublicKey, []byte(o.Conditions)...)
-		return bytesToAddress(pubKeyWithConditions), nil
-	}
+func AddressWithConditions(addr common.Address, conditions string) common.Address {
+	return bytesToAddress(append(addr.Bytes(), []byte(conditions)...))
+}
 
+func Address(o *signatures.Ownership) (common.Address, error) {
+	var addr common.Address
 	switch o.PublicKey.Type {
 	case signatures.PublicKey_KeyTypeSecp256k1:
 		key, err := crypto.UnmarshalPubkey(o.PublicKey.PublicKey)
 		if err != nil {
-			return nullAddr, xerrors.Errorf("error unmarshaling public key: %w", err)
+			return nullAddr, fmt.Errorf("error unmarshaling public key: %w", err)
 		}
-		return crypto.PubkeyToAddress(*key), nil
+		addr = crypto.PubkeyToAddress(*key)
 	case signatures.PublicKey_KeyTypeBLSGroupSig:
-		return bytesToAddress(o.PublicKey.PublicKey), nil
+		addr = bytesToAddress(o.PublicKey.PublicKey)
 	default:
-		return nullAddr, xerrors.Errorf("unknown keytype: %s", o.PublicKey.Type)
+		return nullAddr, fmt.Errorf("unknown keytype: %s", o.PublicKey.Type)
 	}
+	if o.Conditions != "" {
+		addr = AddressWithConditions(addr, o.Conditions)
+	}
+	return addr, nil
 }
 
 func bytesToAddress(bits []byte) common.Address {

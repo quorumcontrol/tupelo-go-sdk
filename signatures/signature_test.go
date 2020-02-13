@@ -42,6 +42,27 @@ func TestEcdsaAddress(t *testing.T) {
 	assert.Len(t, conditionalAddr2, 20)
 }
 
+func TestAddressWithConditions(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	require.Nil(t, err)
+
+	// With no conditions it's the same as a normal key
+	o := &signatures.Ownership{
+		PublicKey: &signatures.PublicKey{
+			Type:      signatures.PublicKey_KeyTypeSecp256k1,
+			PublicKey: crypto.FromECDSAPub(&key.PublicKey),
+		},
+	}
+	addr, err := Address(o)
+	require.Nil(t, err)
+
+	conditions := "(false)"
+
+	newAddr := AddressWithConditions(addr, conditions)
+	assert.NotEqual(t, addr.String(), newAddr.String())
+	assert.Len(t, newAddr, 20)
+}
+
 func TestBLSAddr(t *testing.T) {
 	key := bls.MustNewSignKey()
 
