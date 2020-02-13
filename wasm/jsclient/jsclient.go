@@ -15,9 +15,11 @@ import (
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client/pubsubinterfaces"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
 	prooftype "github.com/quorumcontrol/tupelo-go-sdk/proof"
+	sigfuncs "github.com/quorumcontrol/tupelo-go-sdk/signatures"
 
 	"github.com/quorumcontrol/messages/v2/build/go/config"
 	"github.com/quorumcontrol/messages/v2/build/go/gossip"
+	"github.com/quorumcontrol/messages/v2/build/go/signatures"
 
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
@@ -253,37 +255,22 @@ func PassPhraseKey(jsPhrase, jsSalt js.Value) *then.Then {
 	return t
 }
 
-func jsToPubKey(jsPubKeyBits js.Value) (*ecdsa.PublicKey, error) {
-	pubbits := helpers.JsBufferToBytes(jsPubKeyBits)
-	pubKey, err := crypto.UnmarshalPubkey(pubbits)
-	if err != nil {
-		return nil, errors.Wrap(err, "error unmarshaling public key")
-	}
-	return pubKey, nil
-}
-
-func EcdsaPubkeyToDid(jsPubKeyBits js.Value) *then.Then {
+func OwnershipToAddress(jsOwnershipBits js.Value) *then.Then {
 	t := then.New()
 	go func() {
-		pubKey, err := jsToPubKey(jsPubKeyBits)
+		ownership := &signatures.Ownership{}
+		ownershipBits := helpers.JsBufferToBytes(jsOwnershipBits)
+		err := ownership.Unmarshal(ownershipBits)
 		if err != nil {
-			t.Reject(err.Error())
+			t.Reject(fmt.Errorf("error unmarshaling public key: %w", err).Error())
 			return
 		}
-		t.Resolve(consensus.EcdsaPubkeyToDid(*pubKey))
-	}()
-	return t
-}
-
-func EcdsaPubkeyToAddress(jsPubKeyBits js.Value) *then.Then {
-	t := then.New()
-	go func() {
-		pubKey, err := jsToPubKey(jsPubKeyBits)
+		addr, err := sigfuncs.Address(ownership)
 		if err != nil {
-			t.Reject(err.Error())
+			t.Reject(fmt.Errorf("error getting address: %w", err).Error())
 			return
 		}
-		t.Resolve(crypto.PubkeyToAddress(*pubKey).String())
+		t.Resolve(addr.String())
 	}()
 	return t
 }

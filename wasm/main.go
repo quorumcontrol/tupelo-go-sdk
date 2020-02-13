@@ -70,12 +70,8 @@ func main() {
 				return jsclient.KeyFromPrivateBytes(args[0])
 			}))
 
-			jsObj.Set("ecdsaPubkeyToDid", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				return jsclient.EcdsaPubkeyToDid(args[0])
-			}))
-
-			jsObj.Set("ecdsaPubkeyToAddress", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				return jsclient.EcdsaPubkeyToAddress(args[0])
+			jsObj.Set("ownershipToAddress", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				return jsclient.OwnershipToAddress(args[0])
 			}))
 
 			jsObj.Set("newEmptyTree", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
