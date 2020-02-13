@@ -179,7 +179,7 @@ func jsOptionsToOptions(jsOptions js.Value) []blocks.Option {
 			opts = append(opts, blocks.WithConditions(jsOptions.Get(conditions).String()))
 			break
 		case preImage:
-			opts = append(opts, blocks.WithConditions(jsOptions.Get(preImage).String()))
+			opts = append(opts, blocks.WithPreImage(jsOptions.Get(preImage).String()))
 		default:
 			panic(fmt.Errorf("unkown option: %s used", optionName))
 		}
