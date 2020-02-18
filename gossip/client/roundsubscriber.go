@@ -115,11 +115,18 @@ func (rs *roundSubscriber) start(ctx context.Context) error {
 	return nil
 }
 
-func (rs *roundSubscriber) subscribe(ctx context.Context, subscriptionCID cid.Cid, ch chan *gossip.Proof) subscription {
+func (rs *roundSubscriber) subscribe(ctx context.Context, abr *services.AddBlockRequest, ch chan *gossip.Proof) (subscription, error) {
 	rs.Lock()
 	defer rs.Unlock()
 	isDone := false
 	doneCh := ctx.Done()
+
+	abrCid, err := abrToHamtCID(ctx, abr)
+	if err != nil {
+		rs.logger.Errorf("error decoding add block request: %v", err)
+		return nil, fmt.Errorf("error decoding add block request: %v", err)
+	}
+	rs.logger.Debugf("subscribing: %s", abrCid.String())
 
 	return rs.stream.Subscribe(func(evt interface{}) {
 		if isDone {
@@ -132,20 +139,7 @@ func (rs *roundSubscriber) subscribe(ctx context.Context, subscriptionCID cid.Ci
 		default:
 			// continue on, people still care
 		}
-		if noty := evt.(*ValidationNotification); noty.AbrCid.Equals(subscriptionCID) {
-			abrNode, err := rs.dagStore.Get(ctx, noty.AbrCid)
-			if err != nil {
-				rs.logger.Warningf("error fetching add block request from dag store: %v", err)
-				return
-			}
-
-			abr := &services.AddBlockRequest{}
-			err = cbornode.DecodeInto(abrNode.RawData(), abr)
-			if err != nil {
-				rs.logger.Warningf("error decoding add block request: %v", err)
-				return
-			}
-
+		if noty := evt.(*ValidationNotification); noty.AbrCid.Equals(abrCid) {
 			p := &gossip.Proof{
 				ObjectId:          []byte(noty.ObjectId),
 				Tip:               noty.Tip.Bytes(),
@@ -156,7 +150,7 @@ func (rs *roundSubscriber) subscribe(ctx context.Context, subscriptionCID cid.Ci
 			}
 			ch <- p
 		}
-	})
+	}), nil
 }
 
 func (rs *roundSubscriber) unsubscribe(sub subscription) {
@@ -285,4 +279,12 @@ func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.R
 		})
 	}
 	return nil
+}
+
+func abrToHamtCID(ctx context.Context, abr *services.AddBlockRequest) (cid.Cid, error) {
+	underlyingStore := nodestore.MustMemoryStore(ctx)
+	hamtStore := hamt.CborIpldStore{
+		Blocks: hamtwrapper.NewStore(underlyingStore),
+	}
+	return hamtStore.Put(ctx, abr)
 }

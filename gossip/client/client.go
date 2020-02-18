@@ -19,7 +19,6 @@ import (
 	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client/pubsubinterfaces"
-	"github.com/quorumcontrol/tupelo-go-sdk/gossip/hamtwrapper"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
 )
 
@@ -163,23 +162,9 @@ func (c *Client) SendWithoutWait(ctx context.Context, abr *services.AddBlockRequ
 }
 
 func (c *Client) SubscribeToAbr(ctx context.Context, abr *services.AddBlockRequest, ch chan *gossip.Proof) (subscription, error) {
-	id, err := abrToHamtCID(ctx, abr)
-	if err != nil {
-		return nil, fmt.Errorf("error getting CID: %w", err)
-	}
-	c.logger.Debugf("subscribing: %s", id.String())
-
-	return c.subscriber.subscribe(ctx, id, ch), nil
+	return c.subscriber.subscribe(ctx, abr, ch)
 }
 
 func (c *Client) UnsubscribeFromAbr(s subscription) {
 	c.subscriber.unsubscribe(s)
-}
-
-func abrToHamtCID(ctx context.Context, abr *services.AddBlockRequest) (cid.Cid, error) {
-	underlyingStore := nodestore.MustMemoryStore(ctx)
-	hamtStore := hamt.CborIpldStore{
-		Blocks: hamtwrapper.NewStore(underlyingStore),
-	}
-	return hamtStore.Put(ctx, abr)
 }
