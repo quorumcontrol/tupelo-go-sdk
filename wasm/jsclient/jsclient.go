@@ -101,13 +101,13 @@ func (jsc *JSClient) GetTip(jsDid js.Value) interface{} {
 		ctx := context.TODO()
 		proof, err := jsc.client.GetTip(ctx, did)
 		if err != nil {
-			t.Reject(fmt.Errorf("error getting tip: %w", err).Error())
+			t.Reject(fmt.Errorf("error getting tip: %w", err))
 			return
 		}
 
 		bits, err := proof.Marshal()
 		if err != nil {
-			t.Reject(err.Error())
+			t.Reject(err)
 			return
 		}
 
@@ -121,31 +121,31 @@ func (jsc *JSClient) PlayTransactions(jsKeyBits js.Value, tip js.Value, jsTransa
 	go func() {
 		trans, err := jsTransactionsToTransactions(jsTransactions)
 		if err != nil {
-			t.Reject(err.Error())
+			t.Reject(err)
 			return
 		}
 
 		key, err := jsKeyBitsToPrivateKey(jsKeyBits)
 		if err != nil {
-			t.Reject(err.Error())
+			t.Reject(err)
 			return
 		}
 
 		tip, err := helpers.JsCidToCid(tip)
 		if err != nil {
-			t.Reject(err.Error())
+			t.Reject(err)
 			return
 		}
 
 		proof, err := jsc.playTransactions(key, tip, trans)
 		if err != nil {
-			t.Reject(err.Error())
+			t.Reject(err)
 			return
 		}
 
 		bits, err := proof.Marshal()
 		if err != nil {
-			t.Reject(err.Error())
+			t.Reject(err)
 			return
 		}
 
@@ -179,12 +179,12 @@ func (jsc *JSClient) VerifyProof(proofBits js.Value) interface{} {
 		proof := &gossip.Proof{}
 		err := proof.Unmarshal(helpers.JsBufferToBytes(proofBits))
 		if err != nil {
-			t.Reject(fmt.Errorf("error unmarshaling: %w", err).Error())
+			t.Reject(fmt.Errorf("error unmarshaling: %w", err))
 			return
 		}
 		isVerified, err := jsc.verifyProof(proof)
 		if err != nil {
-			t.Reject(fmt.Errorf("error verifying: %w", err).Error())
+			t.Reject(fmt.Errorf("error verifying: %w", err))
 			return
 		}
 		t.Resolve(isVerified)
@@ -208,7 +208,7 @@ func GenerateKey() *then.Then {
 	go func() {
 		key, err := crypto.GenerateKey()
 		if err != nil {
-			t.Reject(err.Error())
+			t.Reject(err)
 			return
 		}
 		privateBits := helpers.SliceToJSArray(crypto.FromECDSA(key))
@@ -224,7 +224,7 @@ func KeyFromPrivateBytes(jsBits js.Value) *then.Then {
 	go func() {
 		key, err := jsKeyBitsToPrivateKey(jsBits)
 		if err != nil {
-			t.Reject(err.Error())
+			t.Reject(err)
 			return
 		}
 		privateBits := helpers.SliceToJSArray(crypto.FromECDSA(key))
@@ -242,7 +242,7 @@ func PassPhraseKey(jsPhrase, jsSalt js.Value) *then.Then {
 		salt := helpers.JsBufferToBytes(jsSalt)
 		key, err := consensus.PassPhraseKey(phrase, salt)
 		if err != nil {
-			t.Reject(err.Error())
+			t.Reject(err)
 			return
 		}
 		privateBits := helpers.SliceToJSArray(crypto.FromECDSA(key))
@@ -267,7 +267,7 @@ func EcdsaPubkeyToDid(jsPubKeyBits js.Value) *then.Then {
 	go func() {
 		pubKey, err := jsToPubKey(jsPubKeyBits)
 		if err != nil {
-			t.Reject(err.Error())
+			t.Reject(err)
 			return
 		}
 		t.Resolve(consensus.EcdsaPubkeyToDid(*pubKey))
@@ -280,7 +280,7 @@ func EcdsaPubkeyToAddress(jsPubKeyBits js.Value) *then.Then {
 	go func() {
 		pubKey, err := jsToPubKey(jsPubKeyBits)
 		if err != nil {
-			t.Reject(err.Error())
+			t.Reject(err)
 			return
 		}
 		t.Resolve(crypto.PubkeyToAddress(*pubKey).String())
@@ -299,7 +299,7 @@ func NewEmptyTree(jsBlockService js.Value, jsPublicKeyBits js.Value) *then.Then 
 		store := jsstore.New(jsBlockService)
 		treeKey, err := crypto.UnmarshalPubkey(helpers.JsBufferToBytes(jsPublicKeyBits))
 		if err != nil {
-			t.Reject(err.Error())
+			t.Reject(err)
 			return
 		}
 		did := consensus.EcdsaPubkeyToDid(*treeKey)
@@ -324,7 +324,7 @@ func TokenPayloadForTransaction(jsBlockService js.Value, jsTip js.Value, tokenNa
 		wrappedStore := jsstore.New(jsBlockService)
 		tip, err := helpers.JsCidToCid(jsTip)
 		if err != nil {
-			t.Reject(err.Error())
+			t.Reject(err)
 			return
 		}
 
@@ -335,7 +335,7 @@ func TokenPayloadForTransaction(jsBlockService js.Value, jsTip js.Value, tokenNa
 			consensus.DefaultTransactors,
 		)
 		if err != nil {
-			t.Reject(err.Error())
+			t.Reject(err)
 			return
 		}
 
@@ -343,7 +343,7 @@ func TokenPayloadForTransaction(jsBlockService js.Value, jsTip js.Value, tokenNa
 		proof := &gossip.Proof{}
 		err = proof.Unmarshal(proofBits)
 		if err != nil {
-			t.Reject(err.Error())
+			t.Reject(err)
 			return
 		}
 
@@ -351,13 +351,13 @@ func TokenPayloadForTransaction(jsBlockService js.Value, jsTip js.Value, tokenNa
 
 		payload, err := consensus.TokenPayloadForTransaction(tree, &canonicalTokenName, sendTokenTxId.String(), proof)
 		if err != nil {
-			t.Reject(err.Error())
+			t.Reject(err)
 			return
 		}
 
 		bits, err := proto.Marshal(payload)
 		if err != nil {
-			t.Reject(err.Error())
+			t.Reject(err)
 			return
 		}
 		t.Resolve(helpers.SliceToJSArray(bits))

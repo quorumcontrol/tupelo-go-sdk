@@ -18,6 +18,29 @@ type Then struct {
 	wrappedJsObj js.Value
 }
 
+type JSFunc struct {
+	Value js.Value
+}
+
+// SafeInvoke is like Invoke but handles errors in the args (which js.ValueOf
+// chokes on).
+// Feel encouraged to add other types that js.ValueOf doesn't handle and that
+// you'd like to handle more gracefully than panicking.
+func (jsf JSFunc) SafeInvoke(args ...interface{}) js.Value {
+	newArgs := make([]interface{}, len(args))
+
+	for i, a := range args {
+		switch ta := a.(type) {
+		case error:
+			newArgs[i] = js.Global().Get("Error").New(ta.Error())
+		default:
+			newArgs[i] = js.ValueOf(ta)
+		}
+	}
+
+	return jsf.Value.Invoke(newArgs...)
+}
+
 func New() *Then {
 	t := new(Then)
 	jsObj := map[string]interface{}{
@@ -47,7 +70,7 @@ func (t *Then) handleJSThenCall(resolve js.Value, reject js.Value) error {
 
 	if t.err != nil {
 		if reject.Truthy() {
-			go reject.Invoke(js.ValueOf(t.err))
+			go JSFunc{Value: reject}.SafeInvoke(t.err)
 		}
 		return nil
 	}
@@ -73,7 +96,7 @@ func (t *Then) Reject(err interface{}) {
 	t.err = err
 	for _, cb := range t.errorCbs {
 		go func(cb js.Value) {
-			cb.Invoke(js.ValueOf(err))
+			JSFunc{Value: cb}.SafeInvoke(err)
 		}(cb)
 	}
 	t.errorCbs = nil
