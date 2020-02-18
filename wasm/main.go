@@ -50,7 +50,7 @@ func main() {
 			ipfsBlock := helperLibs.Get("ipfs-block")
 			if !cids.Truthy() || !ipfsBlock.Truthy() {
 				err := fmt.Errorf("error, must supply a library object containing cids and ipfs-block")
-				go fmt.Println(err.Error())
+				go fmt.Println(err)
 				panic(err)
 			}
 			jslibs.Cids = cids
@@ -119,7 +119,7 @@ func main() {
 
 					config, err := jsclient.JsConfigToHumanConfig(jsOpts.Get("notaryGroup"))
 					if err != nil {
-						t.Reject(fmt.Errorf("error converting config %w", err).Error())
+						t.Reject(fmt.Errorf("error converting config %w", err))
 						return
 					}
 
@@ -128,7 +128,7 @@ func main() {
 					cli := jsclient.New(bridge, config, store)
 					err = cli.Start(ctx)
 					if err != nil {
-						t.Reject(err.Error())
+						t.Reject(err)
 						return
 					}
 					clientSingleton = cli
