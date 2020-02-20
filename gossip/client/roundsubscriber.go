@@ -26,7 +26,7 @@ type subscription *eventstream.Subscription
 type roundConflictSet map[cid.Cid]*gossip.RoundConfirmation
 
 func isQuorum(group *types.NotaryGroup, sig *signatures.Signature) bool {
-	return uint64(sigfuncs.SignerCount(sig)) > group.QuorumCount()
+	return uint64(sigfuncs.SignerCount(sig)) >= group.QuorumCount()
 }
 
 func (rcs roundConflictSet) add(group *types.NotaryGroup, confirmation *gossip.RoundConfirmation) (makesQuorum bool, updated *gossip.RoundConfirmation, err error) {
