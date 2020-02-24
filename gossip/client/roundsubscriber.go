@@ -137,7 +137,7 @@ func (rs *roundSubscriber) subscribe(ctx context.Context, abr *services.AddBlock
 	isDone := false
 	doneCh := ctx.Done()
 
-	abrCid, err := abrToHamtCID(ctx, abr)
+	abrCid, err := rs.hamtStore.Put(ctx, abr)
 	if err != nil {
 		rs.logger.Errorf("error decoding add block request: %v", err)
 		return nil, fmt.Errorf("error decoding add block request: %v", err)
@@ -298,12 +298,4 @@ func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.R
 	})
 
 	return nil
-}
-
-func abrToHamtCID(ctx context.Context, abr *services.AddBlockRequest) (cid.Cid, error) {
-	underlyingStore := nodestore.MustMemoryStore(ctx)
-	hamtStore := hamt.CborIpldStore{
-		Blocks: hamtwrapper.NewStore(underlyingStore),
-	}
-	return hamtStore.Put(ctx, abr)
 }
