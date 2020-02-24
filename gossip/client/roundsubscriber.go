@@ -21,6 +21,22 @@ import (
 	sigfuncs "github.com/quorumcontrol/tupelo-go-sdk/signatures"
 )
 
+type validationNotification struct {
+	Accepted          []cid.Cid
+	Checkpoint        *types.CheckpointWrapper
+	RoundConfirmation *types.RoundConfirmationWrapper
+	CompletedRound    *types.RoundWrapper
+}
+
+func (vn *validationNotification) includes(id cid.Cid) bool {
+	for _, abrCid := range vn.Accepted {
+		if abrCid.Equals(id) {
+			return true
+		}
+	}
+	return false
+}
+
 type subscription *eventstream.Subscription
 
 type roundConflictSet map[cid.Cid]*gossip.RoundConfirmation
@@ -130,7 +146,7 @@ func (rs *roundSubscriber) subscribe(ctx context.Context, abr *services.AddBlock
 
 	return rs.stream.Subscribe(func(evt interface{}) {
 		if isDone {
-			return // we're already done and we don't want to block on another channel op below
+			return // we're already done and we don't want to do another channel op below
 		}
 		select {
 		case <-doneCh:
@@ -139,10 +155,10 @@ func (rs *roundSubscriber) subscribe(ctx context.Context, abr *services.AddBlock
 		default:
 			// continue on, people still care
 		}
-		if noty := evt.(*ValidationNotification); noty.AbrCid.Equals(abrCid) {
+		if noty := evt.(*validationNotification); noty.includes(abrCid) {
 			p := &gossip.Proof{
-				ObjectId:          []byte(noty.ObjectId),
-				Tip:               noty.Tip.Bytes(),
+				ObjectId:          abr.ObjectId,
+				Tip:               abr.NewTip,
 				AddBlockRequest:   abr,
 				Checkpoint:        noty.Checkpoint.Value(),
 				Round:             noty.CompletedRound.Value(),
@@ -264,20 +280,23 @@ func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.R
 	}
 	rs.logger.Debugf("checkpoint: %v", wrappedCheckpoint.Value())
 
-	for _, cidBytes := range wrappedCheckpoint.AddBlockRequests() {
+	cidBytes := wrappedCheckpoint.AddBlockRequests()
+	accepted := make([]cid.Cid, len(cidBytes))
+	for i, cidBytes := range wrappedCheckpoint.AddBlockRequests() {
 		abrCid, err := cid.Cast(cidBytes)
 		if err != nil {
 			return fmt.Errorf("error casting cid: %v", err)
 		}
-		rs.logger.Debugf("publishing: %s", abrCid.String())
-		rs.stream.Publish(&ValidationNotification{
-			RoundConfirmation: confirmation,
-			AbrCid:            abrCid,
-
-			Checkpoint:     wrappedCheckpoint,
-			CompletedRound: completedRound,
-		})
+		accepted[i] = abrCid
 	}
+
+	rs.stream.Publish(&validationNotification{
+		RoundConfirmation: confirmation,
+		Accepted:          accepted,
+		Checkpoint:        wrappedCheckpoint,
+		CompletedRound:    completedRound,
+	})
+
 	return nil
 }
 
