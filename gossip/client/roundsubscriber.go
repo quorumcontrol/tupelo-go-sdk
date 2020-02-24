@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/AsynkronIT/protoactor-go/eventstream"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	cbornode "github.com/ipfs/go-ipld-cbor"
@@ -144,6 +145,8 @@ func (rs *roundSubscriber) subscribe(ctx context.Context, abr *services.AddBlock
 	}
 	rs.logger.Debugf("subscribing: %s", abrCid.String())
 
+	existingId := cid.Undef
+
 	return rs.stream.Subscribe(func(evt interface{}) {
 		if isDone {
 			return // we're already done and we don't want to do another channel op below
@@ -155,17 +158,91 @@ func (rs *roundSubscriber) subscribe(ctx context.Context, abr *services.AddBlock
 		default:
 			// continue on, people still care
 		}
-		if noty := evt.(*validationNotification); noty.includes(abrCid) {
+		noti := evt.(*validationNotification)
+
+		if noti.includes(abrCid) {
 			p := &gossip.Proof{
 				ObjectId:          abr.ObjectId,
 				Tip:               abr.NewTip,
 				AddBlockRequest:   abr,
-				Checkpoint:        noty.Checkpoint.Value(),
-				Round:             noty.CompletedRound.Value(),
-				RoundConfirmation: noty.RoundConfirmation.Value(),
+				Checkpoint:        noti.Checkpoint.Value(),
+				Round:             noti.CompletedRound.Value(),
+				RoundConfirmation: noti.RoundConfirmation.Value(),
 			}
+			isDone = true
+			ch <- p
+			return
+		}
+
+		rs.logger.Debugf("abr %s not in accepted, falling back to hamt lookup", abrCid.String())
+
+		// if not, then we should check to see if the object was changed underneath us
+		state, err := noti.CompletedRound.FetchHamt(ctx)
+		if err != nil {
+			rs.logger.Errorf("error getting hamt: %v", err)
+			return
+		}
+
+		newID := &cid.Cid{}
+
+		err = state.Find(ctx, string(abr.ObjectId), newID)
+		if err != nil {
+			if err == hamt.ErrNotFound {
+				rs.logger.Debugf("abr %s not found", abrCid.String())
+				return
+			}
+			rs.logger.Errorf("error getting id: %v", err)
+			return
+		}
+
+		// maybe we just missed a round, if so then send our proof
+		if newID.Equals(abrCid) {
+			rs.logger.Debug("abr %s is in the hamt, returning proof", abrCid.String())
+			p := &gossip.Proof{
+				ObjectId:          abr.ObjectId,
+				Tip:               abr.NewTip,
+				AddBlockRequest:   abr,
+				Checkpoint:        noti.Checkpoint.Value(),
+				Round:             noti.CompletedRound.Value(),
+				RoundConfirmation: noti.RoundConfirmation.Value(),
+			}
+			isDone = true
+			ch <- p
+			return
+		}
+
+		// if we've already looked at this ID we can just ignore the rest
+		if existingId.Equals(*newID) {
+			rs.logger.Debugf("hamt has same ID as last time we checked")
+			return // we already checked this one and can just move on
+		}
+
+		// now we're here and we have a new CID we haven't seen before - we should get the ABR and send back a proof if
+		// it's higher or equal to the one we sent
+
+		newAbr := &services.AddBlockRequest{}
+		err = rs.hamtStore.Get(ctx, *newID, newAbr)
+		if err != nil {
+			rs.logger.Errorf("error getting abr: %v", err)
+			return
+		}
+
+		if newAbr.Height >= abr.Height {
+			rs.logger.Warningf("abr in hamt is newer than your subscription for %s abrTip: %s, newTip: %s", abrCid.String(), hexutil.Encode(abr.NewTip), hexutil.Encode(newAbr.NewTip))
+			// the hamt changed underneath us and we need to catch up
+
+			p := &gossip.Proof{
+				ObjectId:          newAbr.ObjectId,
+				Tip:               newAbr.NewTip,
+				AddBlockRequest:   newAbr,
+				Checkpoint:        noti.Checkpoint.Value(),
+				Round:             noti.CompletedRound.Value(),
+				RoundConfirmation: noti.RoundConfirmation.Value(),
+			}
+			isDone = true
 			ch <- p
 		}
+
 	}), nil
 }
 
@@ -220,7 +297,7 @@ func (rs *roundSubscriber) handleMessage(ctx context.Context, msg pubsubinterfac
 	if !ok {
 		conflictSet = make(roundConflictSet)
 	}
-	rs.logger.Debugf("checking quorum: %v", confirmation)
+	rs.logger.Debugf("checking quorum: %d", confirmation.Height)
 
 	madeQuorum, updated, err := conflictSet.add(rs.group, confirmation)
 	if err != nil {
@@ -239,7 +316,7 @@ func (rs *roundSubscriber) handleMessage(ctx context.Context, msg pubsubinterfac
 func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *gossip.RoundConfirmation) error {
 	// handleQuorum expects that it's already in a lock on the roundSubscriber
 
-	rs.logger.Debugf("hande Quorum: %v", confirmation)
+	rs.logger.Debugf("handle Quorum: %d", confirmation.Height)
 
 	wrappedConfirmation := types.WrapRoundConfirmation(confirmation)
 	wrappedConfirmation.SetStore(rs.dagStore)
@@ -290,6 +367,7 @@ func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.R
 		accepted[i] = abrCid
 	}
 
+	rs.logger.Debugf("validationNotification publish %d", confirmation.Height())
 	rs.stream.Publish(&validationNotification{
 		RoundConfirmation: confirmation,
 		Accepted:          accepted,
