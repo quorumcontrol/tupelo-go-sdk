@@ -169,6 +169,16 @@ func (c *Client) SendWithoutWait(ctx context.Context, abr *services.AddBlockRequ
 	return nil
 }
 
+func (c *Client) SubscribeToRounds(ctx context.Context, ch chan *types.RoundWrapper) (subscription, error) {
+	return c.subscriber.stream.Subscribe(func(evt interface{}) {
+		ch <- evt.(*validationNotification).CompletedRound
+	}), nil
+}
+
+func (c *Client) UnsubscribeFromRounds(s subscription) {
+	c.subscriber.unsubscribe(s)
+}
+
 func (c *Client) SubscribeToAbr(ctx context.Context, abr *services.AddBlockRequest, ch chan *gossip.Proof) (subscription, error) {
 	return c.subscriber.subscribe(ctx, abr, ch)
 }

@@ -184,6 +184,48 @@ func TestClientSendTransactions(t *testing.T) {
 
 	})
 
+	t.Run("can subscribe to all rounds", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		cli, err := newClient(ctx, group, bootAddrs)
+		require.Nil(t, err)
+
+		treeKey, err := crypto.GenerateKey()
+		require.Nil(t, err)
+		nodeStore := nodestore.MustMemoryStore(ctx)
+
+		testTree, err := consensus.NewSignedChainTree(ctx, treeKey.PublicKey, nodeStore)
+		require.Nil(t, err)
+
+		emptyTip := testTree.Tip()
+
+		basisNodes0 := testhelpers.DagToByteNodes(t, testTree.ChainTree.Dag)
+		blockWithHeaders0 := transactLocal(ctx, t, testTree, treeKey, 0, "down/in/the/tree", "atestvalue")
+		tip0 := testTree.Tip()
+
+		roundCh := make(chan *types.RoundWrapper, 10)
+		roundSubscription, err := cli.SubscribeToRounds(ctx, roundCh)
+		require.Nil(t, err)
+		defer cli.UnsubscribeFromRounds(roundSubscription)
+
+		respCh0, sub0 := transactRemote(ctx, t, cli, testTree.MustId(), blockWithHeaders0, tip0, basisNodes0, emptyTip)
+		defer cli.UnsubscribeFromAbr(sub0)
+		defer close(respCh0)
+		<-respCh0
+
+		basisNodes1 := testhelpers.DagToByteNodes(t, testTree.ChainTree.Dag)
+		blockWithHeaders1 := transactLocal(ctx, t, testTree, treeKey, 1, "other/thing", "sometestvalue")
+		tip1 := testTree.Tip()
+
+		respCh1, sub1 := transactRemote(ctx, t, cli, testTree.MustId(), blockWithHeaders1, tip1, basisNodes1, emptyTip)
+		defer cli.UnsubscribeFromAbr(sub1)
+		defer close(respCh1)
+		<-respCh1
+
+		require.Len(t, roundCh, 2)
+	})
+
 	t.Run("transactions played out of order succeed", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
