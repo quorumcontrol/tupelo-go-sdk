@@ -369,11 +369,11 @@ func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *gossi
 		return err
 	}
 
-	// go func() {
-	if err := rs.publishTxs(ctx, wrappedConfirmation); err != nil {
-		rs.logger.Errorf("error publishing Txs: %v", err)
-	}
-	// }()
+	go func() {
+		if err := rs.publishTxs(ctx, wrappedConfirmation); err != nil {
+			rs.logger.Errorf("error publishing Txs: %v", err)
+		}
+	}()
 
 	return nil
 }
