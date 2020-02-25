@@ -12,6 +12,7 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
+	"github.com/opentracing/opentracing-go"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/nodestore"
@@ -63,7 +64,10 @@ func (c *Client) Start(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) PlayTransactions(ctx context.Context, tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, transactions []*transactions.Transaction) (*gossip.Proof, error) {
+func (c *Client) PlayTransactions(parentCtx context.Context, tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, transactions []*transactions.Transaction) (*gossip.Proof, error) {
+	sp, ctx := opentracing.StartSpanFromContext(parentCtx, "client.PlayTransactions")
+	defer sp.Finish()
+
 	abr, err := c.NewAddBlockRequest(ctx, tree, treeKey, transactions)
 	if err != nil {
 		return nil, fmt.Errorf("error creating NewAddBlockRequest: %w", err)
@@ -92,7 +96,10 @@ func (c *Client) PlayTransactions(ctx context.Context, tree *consensus.SignedCha
 	return proof, nil
 }
 
-func (c *Client) GetTip(ctx context.Context, did string) (*gossip.Proof, error) {
+func (c *Client) GetTip(parentCtx context.Context, did string) (*gossip.Proof, error) {
+	sp, ctx := opentracing.StartSpanFromContext(parentCtx, "client.GetTip")
+	defer sp.Finish()
+
 	confirmation := c.subscriber.Current()
 	currentRound, err := confirmation.FetchCompletedRound(ctx)
 	if err != nil {
@@ -130,7 +137,10 @@ func (c *Client) GetTip(ctx context.Context, did string) (*gossip.Proof, error) 
 	}, nil
 }
 
-func (c *Client) Send(ctx context.Context, abr *services.AddBlockRequest, timeout time.Duration) (*gossip.Proof, error) {
+func (c *Client) Send(parentCtx context.Context, abr *services.AddBlockRequest, timeout time.Duration) (*gossip.Proof, error) {
+	sp, ctx := opentracing.StartSpanFromContext(parentCtx, "client.Send")
+	defer sp.Finish()
+
 	resp := make(chan *gossip.Proof)
 	defer close(resp)
 
@@ -155,7 +165,10 @@ func (c *Client) Send(ctx context.Context, abr *services.AddBlockRequest, timeou
 	}
 }
 
-func (c *Client) SendWithoutWait(ctx context.Context, abr *services.AddBlockRequest) error {
+func (c *Client) SendWithoutWait(parentCtx context.Context, abr *services.AddBlockRequest) error {
+	sp, _ := opentracing.StartSpanFromContext(parentCtx, "client.SendWithoutWait")
+	defer sp.Finish()
+
 	bits, err := abr.Marshal()
 	if err != nil {
 		return fmt.Errorf("error marshaling: %w", err)

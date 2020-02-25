@@ -11,6 +11,7 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
+	"github.com/opentracing/opentracing-go"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/messages/v2/build/go/gossip"
 	"github.com/quorumcontrol/messages/v2/build/go/services"
@@ -46,8 +47,9 @@ func isQuorum(group *types.NotaryGroup, sig *signatures.Signature) bool {
 	return uint64(sigfuncs.SignerCount(sig)) >= group.QuorumCount()
 }
 
-func (rcs roundConflictSet) add(group *types.NotaryGroup, confirmation *gossip.RoundConfirmation) (makesQuorum bool, updated *gossip.RoundConfirmation, err error) {
-	ctx := context.TODO()
+func (rcs roundConflictSet) add(parentCtx context.Context, group *types.NotaryGroup, confirmation *gossip.RoundConfirmation) (makesQuorum bool, updated *gossip.RoundConfirmation, err error) {
+	sp, ctx := opentracing.StartSpanFromContext(parentCtx, "client.rs.roundConflictSet.add")
+	defer sp.Finish()
 
 	cid, err := cid.Cast(confirmation.RoundCid)
 	if err != nil {
@@ -132,7 +134,9 @@ func (rs *roundSubscriber) start(ctx context.Context) error {
 	return nil
 }
 
-func (rs *roundSubscriber) subscribe(ctx context.Context, abr *services.AddBlockRequest, ch chan *gossip.Proof) (subscription, error) {
+func (rs *roundSubscriber) subscribe(parentCtx context.Context, abr *services.AddBlockRequest, ch chan *gossip.Proof) (subscription, error) {
+	sp, ctx := opentracing.StartSpanFromContext(parentCtx, "client.rs.subscribe")
+
 	rs.Lock()
 	defer rs.Unlock()
 	isDone := false
@@ -151,6 +155,8 @@ func (rs *roundSubscriber) subscribe(ctx context.Context, abr *services.AddBlock
 		if isDone {
 			return // we're already done and we don't want to do another channel op below
 		}
+		defer sp.Finish()
+
 		select {
 		case <-doneCh:
 			isDone = true
@@ -253,6 +259,9 @@ func (rs *roundSubscriber) unsubscribe(sub subscription) {
 }
 
 func (rs *roundSubscriber) pubsubMessageToRoundConfirmation(ctx context.Context, msg pubsubinterfaces.Message) (*gossip.RoundConfirmation, error) {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "client.rs.pubsubMessageToRoundConfirmation")
+	defer sp.Finish()
+
 	bits := msg.GetData()
 	confirmation := &gossip.RoundConfirmation{}
 	err := cbornode.DecodeInto(bits, confirmation)
@@ -268,8 +277,9 @@ func (rs *roundSubscriber) verKeys() []*bls.VerKey {
 	return keys
 }
 
-func (rs *roundSubscriber) handleMessage(ctx context.Context, msg pubsubinterfaces.Message) error {
-	rs.logger.Debugf("handling message")
+func (rs *roundSubscriber) handleMessage(parentCtx context.Context, msg pubsubinterfaces.Message) error {
+	sp, ctx := opentracing.StartSpanFromContext(parentCtx, "client.rs.handleMessage")
+	defer sp.Finish()
 
 	confirmation, err := rs.pubsubMessageToRoundConfirmation(ctx, msg)
 	if err != nil {
@@ -299,7 +309,7 @@ func (rs *roundSubscriber) handleMessage(ctx context.Context, msg pubsubinterfac
 	}
 	rs.logger.Debugf("checking quorum: %d", confirmation.Height)
 
-	madeQuorum, updated, err := conflictSet.add(rs.group, confirmation)
+	madeQuorum, updated, err := conflictSet.add(ctx, rs.group, confirmation)
 	if err != nil {
 		return fmt.Errorf("error adding to conflictset: %w", err)
 	}
@@ -314,6 +324,9 @@ func (rs *roundSubscriber) handleMessage(ctx context.Context, msg pubsubinterfac
 }
 
 func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *gossip.RoundConfirmation) error {
+	sp := opentracing.StartSpan("client.rs.handleQuorum")
+	defer sp.Finish()
+
 	// handleQuorum expects that it's already in a lock on the roundSubscriber
 
 	rs.logger.Debugf("handle Quorum: %d", confirmation.Height)
@@ -343,6 +356,8 @@ func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *gossi
 }
 
 func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.RoundConfirmationWrapper) error {
+	sp := opentracing.StartSpan("client.rs.publishTxs")
+	defer sp.Finish()
 	rs.logger.Debugf("publishingTxs")
 
 	completedRound, err := confirmation.FetchCompletedRound(ctx)

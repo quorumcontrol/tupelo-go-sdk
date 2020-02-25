@@ -8,6 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
+	"github.com/opentracing/opentracing-go"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/safewrap"
@@ -16,7 +17,10 @@ import (
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 )
 
-func (c *Client) NewAddBlockRequest(ctx context.Context, tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, transactions []*transactions.Transaction) (*services.AddBlockRequest, error) {
+func (c *Client) NewAddBlockRequest(parentCtx context.Context, tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, transactions []*transactions.Transaction) (*services.AddBlockRequest, error) {
+	sp, ctx := opentracing.StartSpanFromContext(parentCtx, "client.NewAddBlockRequest")
+	defer sp.Finish()
+
 	height, err := getHeight(ctx, tree)
 	if err != nil {
 		return nil, fmt.Errorf("error getting tree height: %v", err)
