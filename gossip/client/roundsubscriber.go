@@ -198,7 +198,7 @@ func (rs *roundSubscriber) subscribe(parentCtx context.Context, abr *services.Ad
 
 		// rs.RUnlock()
 
-		rs.logger.Debugf("abr %s not in accepted, falling back to hamt lookup", abrCid.String())
+		rs.logger.Debugf("abr %s not in accepted, was submitted @ %d and height is %d falling back to hamt lookup", abrCid.String(), submittedAt, rs.height)
 
 		// if not, then we should check to see if the object was changed underneath us
 		state, err := noti.CompletedRound.FetchHamt(ctx)
