@@ -352,7 +352,13 @@ func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *gossi
 		return err
 	}
 
-	return rs.publishTxs(ctx, wrappedConfirmation)
+	go func() {
+		if err := rs.publishTxs(ctx, wrappedConfirmation); err != nil {
+			rs.logger.Errorf("error publishing Txs: %v", err)
+		}
+	}()
+
+	return nil
 }
 
 func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.RoundConfirmationWrapper) error {
@@ -370,7 +376,7 @@ func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.R
 	if err != nil {
 		return fmt.Errorf("error fetching checkpoint: %w", err)
 	}
-	rs.logger.Debugf("checkpoint: %v", wrappedCheckpoint.Value())
+	rs.logger.Debugf("checkpoint: %s", wrappedCheckpoint.CID().String())
 
 	cidBytes := wrappedCheckpoint.AddBlockRequests()
 	accepted := make([]cid.Cid, len(cidBytes))
