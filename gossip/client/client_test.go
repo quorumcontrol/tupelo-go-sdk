@@ -462,6 +462,20 @@ func TestTransactionAlreadyProcessed(t *testing.T) {
 
 	startNodes(t, parentCtx, nodes, bootAddrs)
 
+	// submits dummy transactions to make rounds go by
+	makeRoundsHappen := func(ctx context.Context, cli *Client, times int) {
+		dummyKey, err := crypto.GenerateKey()
+		require.Nil(t, err)
+		dummyTree, err := consensus.NewSignedChainTree(ctx, dummyKey.PublicKey, nodestore.MustMemoryStore(ctx))
+		require.Nil(t, err)
+		txn, err := chaintree.NewSetDataTransaction("/dummy/something", true)
+		require.Nil(t, err)
+		for i := 0; i < times; i++ {
+			_, err = cli.PlayTransactions(ctx, dummyTree, dummyKey, []*transactions.Transaction{txn})
+			require.Nil(t, err)
+		}
+	}
+
 	t.Run("missed round still succeeds", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(parentCtx)
 		defer cancel()
@@ -501,12 +515,7 @@ func TestTransactionAlreadyProcessed(t *testing.T) {
 		// we have to do a dummy transaction in test to make sure round2 actually completes
 		// we send this in a go routine since PlayTransactions is blocking
 		go func() {
-			dummyKey, err := crypto.GenerateKey()
-			require.Nil(t, err)
-			dummyTree, err := consensus.NewSignedChainTree(ctx, dummyKey.PublicKey, nodestore.MustMemoryStore(ctx))
-			require.Nil(t, err)
-			_, err = cli2.PlayTransactions(ctx, dummyTree, dummyKey, []*transactions.Transaction{txn})
-			require.Nil(t, err)
+			makeRoundsHappen(ctx, cli2, 3)
 		}()
 
 		proof2, err := cli2.PlayTransactions(ctx, blankTree2, treeKey, []*transactions.Transaction{txn})
@@ -555,13 +564,7 @@ func TestTransactionAlreadyProcessed(t *testing.T) {
 		// we have to do a dummy transaction in test to make sure round2 actually completes
 		// we send this in a go routine since PlayTransactions is blocking
 		go func() {
-			dummyKey, err := crypto.GenerateKey()
-			require.Nil(t, err)
-			dummyTree, err := consensus.NewSignedChainTree(ctx, dummyKey.PublicKey, nodestore.MustMemoryStore(ctx))
-			require.Nil(t, err)
-			cli2.logger.Debugf("submitting dummy transaction")
-			_, err = cli2.PlayTransactions(ctx, dummyTree, dummyKey, []*transactions.Transaction{txn})
-			require.Nil(t, err)
+			makeRoundsHappen(ctx, cli2, 3)
 		}()
 
 		cli1.logger.Debugf("cli2 playing transaction", hexutil.Encode(proof.Tip))

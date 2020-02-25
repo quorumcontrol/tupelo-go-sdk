@@ -27,6 +27,7 @@ import (
 var ErrTimeout = errors.New("error timeout")
 var ErrNotFound = hamt.ErrNotFound
 
+var ErrNoRound = errors.New("no current round")
 var ErrTransactionNotAccepted = errors.New("transaction not accepted")
 
 var DefaultTimeout = 30 * time.Second
@@ -101,6 +102,9 @@ func (c *Client) GetTip(parentCtx context.Context, did string) (*gossip.Proof, e
 	defer sp.Finish()
 
 	confirmation := c.subscriber.Current()
+	if confirmation == nil {
+		return nil, ErrNoRound
+	}
 	currentRound, err := confirmation.FetchCompletedRound(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching round: %w", err)

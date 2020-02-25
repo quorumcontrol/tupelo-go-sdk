@@ -89,6 +89,7 @@ type roundSubscriber struct {
 
 	inflight conflictSetHolder
 	current  *types.RoundConfirmationWrapper
+	height   uint64
 
 	stream *eventstream.EventStream
 }
@@ -137,8 +138,8 @@ func (rs *roundSubscriber) start(ctx context.Context) error {
 func (rs *roundSubscriber) subscribe(parentCtx context.Context, abr *services.AddBlockRequest, ch chan *gossip.Proof) (subscription, error) {
 	sp, ctx := opentracing.StartSpanFromContext(parentCtx, "client.rs.subscribe")
 
-	rs.Lock()
-	defer rs.Unlock()
+	rs.RLock()
+	defer rs.RUnlock()
 	isDone := false
 	doneCh := ctx.Done()
 
@@ -150,6 +151,7 @@ func (rs *roundSubscriber) subscribe(parentCtx context.Context, abr *services.Ad
 	rs.logger.Debugf("subscribing: %s", abrCid.String())
 
 	existingId := cid.Undef
+	submittedAt := rs.height
 
 	return rs.stream.Subscribe(func(evt interface{}) {
 		if isDone {
@@ -179,6 +181,22 @@ func (rs *roundSubscriber) subscribe(parentCtx context.Context, abr *services.Ad
 			ch <- p
 			return
 		}
+
+		// before falling back to hamt lookup, we want to make sure we've waited 2 rounds
+		rs.RLock()
+		// if we submitted before having a current, we'll just set the current to this round
+		if submittedAt == 0 {
+			submittedAt = rs.height
+			rs.RUnlock()
+			return
+		}
+		// if the submittedAt is less than 2 rounds ago, then we can just return and get called again
+		if submittedAt+2 <= rs.height {
+			rs.RUnlock()
+			return
+		}
+
+		rs.RUnlock()
 
 		rs.logger.Debugf("abr %s not in accepted, falling back to hamt lookup", abrCid.String())
 
@@ -286,9 +304,12 @@ func (rs *roundSubscriber) handleMessage(parentCtx context.Context, msg pubsubin
 		return fmt.Errorf("error unmarshaling: %w", err)
 	}
 
+	rs.RLock()
 	if rs.current != nil && confirmation.Height <= rs.current.Height() {
+		rs.RUnlock()
 		return fmt.Errorf("confirmation of height %d is less than current %d", confirmation.Height, rs.current.Height())
 	}
+	rs.RUnlock()
 
 	err = sigfuncs.RestoreBLSPublicKey(ctx, confirmation.Signature, rs.verKeys())
 	if err != nil {
@@ -335,6 +356,8 @@ func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *gossi
 	wrappedConfirmation.SetStore(rs.dagStore)
 
 	rs.current = wrappedConfirmation
+	rs.height = wrappedConfirmation.Height()
+
 	for key := range rs.inflight {
 		if key <= confirmation.Height {
 			delete(rs.inflight, key)
