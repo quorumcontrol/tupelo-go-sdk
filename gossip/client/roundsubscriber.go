@@ -192,7 +192,7 @@ func (rs *roundSubscriber) subscribe(parentCtx context.Context, abr *services.Ad
 			return
 		}
 		// if the submittedAt is less than 2 rounds ago, then we can just return and get called again
-		if submittedAt+2 <= rs.height {
+		if submittedAt+2 >= rs.height {
 			// rs.RUnlock()
 			return
 		}
