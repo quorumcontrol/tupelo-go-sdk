@@ -1,7 +1,6 @@
 package client
 
 import (
-	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"errors"
@@ -25,8 +24,6 @@ import (
 
 var ErrTimeout = errors.New("error timeout")
 var ErrNotFound = hamt.ErrNotFound
-
-var ErrTransactionNotAccepted = errors.New("transaction not accepted")
 
 var DefaultTimeout = 30 * time.Second
 
@@ -68,22 +65,15 @@ func (c *Client) PlayTransactions(ctx context.Context, tree *consensus.SignedCha
 	if err != nil {
 		return nil, fmt.Errorf("error creating NewAddBlockRequest: %w", err)
 	}
-	c.logger.Debugf("play transactions on %s", string(abr.ObjectId))
-
 	proof, err := c.Send(ctx, abr, DefaultTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("error sending tx: %w", err)
-	}
-
-	if !bytes.Equal(proof.Tip, abr.NewTip) {
-		return proof, ErrTransactionNotAccepted
 	}
 
 	tipCid, err := cid.Cast(proof.Tip)
 	if err != nil {
 		return nil, fmt.Errorf("error casting tip cid: %v", err)
 	}
-
 	newChainTree, err := chaintree.NewChainTree(ctx, dag.NewDag(ctx, tipCid, tree.ChainTree.Dag.Store), tree.ChainTree.BlockValidators, tree.ChainTree.Transactors)
 	if err != nil {
 		return nil, fmt.Errorf("error creating new tree: %w", err)
@@ -149,6 +139,8 @@ func (c *Client) Send(ctx context.Context, abr *services.AddBlockRequest, timeou
 
 	select {
 	case proof := <-resp:
+		proof.Tip = abr.NewTip
+		proof.ObjectId = abr.ObjectId
 		return proof, nil
 	case <-ticker.C:
 		return nil, ErrTimeout

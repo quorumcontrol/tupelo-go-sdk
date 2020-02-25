@@ -33,14 +33,15 @@ require (
 	github.com/quorumcontrol/chaintree v1.0.2-0.20200124091942-25ceb93627b9
 	github.com/quorumcontrol/messages v1.1.1
 	github.com/quorumcontrol/messages/v2 v2.1.3-0.20200129115245-2bfec5177653
-	github.com/quorumcontrol/tupelo v0.5.12-0.20200221201325-8ab78c654b0d
+	github.com/quorumcontrol/tupelo v0.5.12-0.20200129144132-3be48615b2ec
 	github.com/spy16/parens v0.0.8
 	github.com/stretchr/testify v1.3.0
 	github.com/uber/jaeger-client-go v2.22.1+incompatible
+	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
 	go.dedis.ch/kyber/v3 v3.0.9
 	go.elastic.co/apm/module/apmot v1.6.0
 	go.uber.org/zap v1.10.0
-	golang.org/x/crypto v0.0.0-20200204104054-c9f3fb736b72
+	golang.org/x/crypto v0.0.0-20191111213947-16651526fdb4
 	golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7
 )
 
