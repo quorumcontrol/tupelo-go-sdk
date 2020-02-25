@@ -183,20 +183,20 @@ func (rs *roundSubscriber) subscribe(parentCtx context.Context, abr *services.Ad
 		}
 
 		// before falling back to hamt lookup, we want to make sure we've waited 2 rounds
-		rs.RLock()
+		// rs.RLock()
 		// if we submitted before having a current, we'll just set the current to this round
 		if submittedAt == 0 {
 			submittedAt = rs.height
-			rs.RUnlock()
+			// rs.RUnlock()
 			return
 		}
 		// if the submittedAt is less than 2 rounds ago, then we can just return and get called again
 		if submittedAt+2 <= rs.height {
-			rs.RUnlock()
+			// rs.RUnlock()
 			return
 		}
 
-		rs.RUnlock()
+		// rs.RUnlock()
 
 		rs.logger.Debugf("abr %s not in accepted, falling back to hamt lookup", abrCid.String())
 
@@ -375,11 +375,11 @@ func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *gossi
 		return err
 	}
 
-	go func() {
-		if err := rs.publishTxs(ctx, wrappedConfirmation); err != nil {
-			rs.logger.Errorf("error publishing Txs: %v", err)
-		}
-	}()
+	// go func() {
+	if err := rs.publishTxs(ctx, wrappedConfirmation); err != nil {
+		rs.logger.Errorf("error publishing Txs: %v", err)
+	}
+	// }()
 
 	return nil
 }

@@ -105,6 +105,7 @@ func (c *Client) GetTip(parentCtx context.Context, did string) (*gossip.Proof, e
 	if confirmation == nil {
 		return nil, ErrNoRound
 	}
+
 	currentRound, err := confirmation.FetchCompletedRound(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching round: %w", err)
