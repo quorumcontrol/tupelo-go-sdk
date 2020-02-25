@@ -24,6 +24,7 @@ import (
 
 var ErrTimeout = errors.New("error timeout")
 var ErrNotFound = hamt.ErrNotFound
+var ErrNoRound = errors.New("no current round yet")
 
 var DefaultTimeout = 30 * time.Second
 
@@ -84,6 +85,9 @@ func (c *Client) PlayTransactions(ctx context.Context, tree *consensus.SignedCha
 
 func (c *Client) GetTip(ctx context.Context, did string) (*gossip.Proof, error) {
 	confirmation := c.subscriber.Current()
+	if confirmation == nil {
+		return nil, ErrNoRound
+	}
 	currentRound, err := confirmation.FetchCompletedRound(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching round: %w", err)
