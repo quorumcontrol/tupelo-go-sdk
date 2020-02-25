@@ -28,6 +28,7 @@ type validationNotification struct {
 	Checkpoint        *types.CheckpointWrapper
 	RoundConfirmation *types.RoundConfirmationWrapper
 	CompletedRound    *types.RoundWrapper
+	State             *hamt.Node
 }
 
 func (vn *validationNotification) includes(id cid.Cid) bool {
@@ -200,16 +201,9 @@ func (rs *roundSubscriber) subscribe(parentCtx context.Context, abr *services.Ad
 
 		rs.logger.Debugf("abr %s not in accepted, was submitted @ %d and height is %d falling back to hamt lookup", abrCid.String(), submittedAt, rs.height)
 
-		// if not, then we should check to see if the object was changed underneath us
-		state, err := noti.CompletedRound.FetchHamt(ctx)
-		if err != nil {
-			rs.logger.Errorf("error getting hamt: %v", err)
-			return
-		}
-
 		newID := &cid.Cid{}
 
-		err = state.Find(ctx, string(abr.ObjectId), newID)
+		err = noti.State.Find(ctx, string(abr.ObjectId), newID)
 		if err != nil {
 			if err == hamt.ErrNotFound {
 				rs.logger.Debugf("abr %s not found", abrCid.String())
@@ -411,12 +405,19 @@ func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.R
 		accepted[i] = abrCid
 	}
 
+	// if not, then we should check to see if the object was changed underneath us
+	state, err := completedRound.FetchHamt(ctx)
+	if err != nil {
+		return fmt.Errorf("error getting hamt: %w", err)
+	}
+
 	rs.logger.Debugf("validationNotification publish %d", confirmation.Height())
 	rs.stream.Publish(&validationNotification{
 		RoundConfirmation: confirmation,
 		Accepted:          accepted,
 		Checkpoint:        wrappedCheckpoint,
 		CompletedRound:    completedRound,
+		State:             state,
 	})
 
 	return nil
