@@ -483,6 +483,30 @@ func TestClientGetTip(t *testing.T) {
 	})
 }
 
+func TestGetTipAppropriatelyErrors(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ts := testnotarygroup.NewTestSet(t, groupMembers)
+	group, nodes, err := newTupeloSystem(ctx, ts)
+	require.Nil(t, err)
+	require.Len(t, nodes, groupMembers)
+	booter, err := p2p.NewHostFromOptions(ctx)
+	require.Nil(t, err)
+
+	bootAddrs := make([]string, len(booter.Addresses()))
+	for i, addr := range booter.Addresses() {
+		bootAddrs[i] = addr.String()
+	}
+
+	startNodes(t, ctx, nodes, bootAddrs)
+
+	cli, err := newClient(ctx, group, bootAddrs)
+	require.Nil(t, err)
+	_, err = cli.GetTip(ctx, "did:doesntmatter")
+	require.Equal(t, err, ErrNoRound)
+}
+
 func TestTokenTransactions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
