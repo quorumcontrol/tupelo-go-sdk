@@ -155,6 +155,25 @@ func (jsc *JSClient) PlayTransactions(jsKeyBits js.Value, tip js.Value, jsTransa
 	return t
 }
 
+func (jsc *JSClient) WaitForRound() *then.Then {
+	t := then.New()
+	go func() {
+		ch := make(chan *types.RoundWrapper, 1)
+
+		sub, err := jsc.client.SubscribeToRounds(context.TODO(), ch)
+		if err != nil {
+			t.Reject(err)
+			return
+		}
+		<-ch
+		jsc.client.UnsubscribeFromRounds(sub)
+		close(ch)
+		t.Resolve(nil)
+	}()
+
+	return t
+}
+
 func (jsc *JSClient) playTransactions(treeKey *ecdsa.PrivateKey, tip cid.Cid, transactions []*transactions.Transaction) (*gossip.Proof, error) {
 	ctx := context.TODO()
 

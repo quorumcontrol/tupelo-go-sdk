@@ -138,6 +138,10 @@ func main() {
 				return t
 			}))
 
+			jsObj.Set("waitForRound", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				return clientSingleton.WaitForRound()
+			}))
+
 			jsObj.Set("playTransactions", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				// js passes in:
 				// interface IPlayTransactionOptions {
