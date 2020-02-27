@@ -66,12 +66,20 @@ func (c *Client) NewAddBlockRequest(ctx context.Context, tree *consensus.SignedC
 	// only need state after the first Tx
 	if blockWithHeaders.Height > 0 {
 		// Grab the nodes that were actually used:
-		nodes, err := tracker.touchedNodes(ctx)
+		touchedNodes, err := tracker.touchedNodes(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("error getting node: %v", err)
 		}
-		state = nodesToBytes(nodes)
+		state = append(nodesToBytes(touchedNodes))
 	}
+
+	// TODO: this is an expedient way to make sure the signers bitswap our new state for us
+	// but it will cost more in transaction fees and so should be rexamined in the future.
+	newNodes, err := tracker.newNodes(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error getting node: %v", err)
+	}
+	state = append(state, nodesToBytes(newNodes)...)
 
 	expectedTip := trackedTree.Dag.Tip
 	chainId, err := tree.Id()
