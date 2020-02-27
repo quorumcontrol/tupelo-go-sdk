@@ -10,16 +10,21 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	cbornode "github.com/ipfs/go-ipld-cbor"
+	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
+	"github.com/opentracing/opentracing-go"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/dag"
 	"github.com/quorumcontrol/chaintree/nodestore"
+	"github.com/quorumcontrol/chaintree/safewrap"
 	"github.com/quorumcontrol/messages/v2/build/go/gossip"
 	"github.com/quorumcontrol/messages/v2/build/go/services"
 	"github.com/quorumcontrol/messages/v2/build/go/transactions"
+	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client/pubsubinterfaces"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
+	"github.com/quorumcontrol/tupelo-go-sdk/proof"
 )
 
 var ErrTimeout = errors.New("error timeout")
@@ -36,6 +41,9 @@ type Client struct {
 	subscriber *roundSubscriber
 	pubsub     pubsubinterfaces.Pubsubber
 	store      nodestore.DagStore
+
+	validators  []chaintree.BlockValidatorFunc
+	transactors map[transactions.Transaction_Type]chaintree.TransactorFunc
 }
 
 // New instantiates a Client specific to a ChainTree/NotaryGroup. The store should probably be a bitswap peer.
@@ -43,12 +51,23 @@ type Client struct {
 func New(group *types.NotaryGroup, pubsub pubsubinterfaces.Pubsubber, store nodestore.DagStore) *Client {
 	logger := logging.Logger("g4-client")
 	subscriber := newRoundSubscriber(logger, group, pubsub, store)
+
+	validators, err := blockValidators(context.TODO(), group)
+	if err != nil {
+		panic(fmt.Errorf("error in client create that should never happen: %w", err))
+	}
+
+	transactors := group.Config().Transactions
+
 	return &Client{
 		Group:      group,
 		logger:     logger,
 		subscriber: subscriber,
 		pubsub:     pubsub,
 		store:      store,
+
+		validators:  validators,
+		transactors: transactors,
 	}
 }
 
@@ -80,7 +99,123 @@ func (c *Client) PlayTransactions(ctx context.Context, tree *consensus.SignedCha
 		return nil, fmt.Errorf("error creating new tree: %w", err)
 	}
 	tree.ChainTree = newChainTree
+	tree.Proof = proof
 	return proof, nil
+}
+
+func (c *Client) GetLatest(parentCtx context.Context, did string) (*consensus.SignedChainTree, error) {
+	sp, ctx := opentracing.StartSpanFromContext(parentCtx, "client.GetLatest")
+	defer sp.Finish()
+
+	sw := &safewrap.SafeWrap{}
+
+	c.logger.Debugf("getting tip for latest")
+
+	proof, err := c.GetTip(ctx, did)
+	if err != nil {
+		return nil, fmt.Errorf("error getting tip: %w", err)
+	}
+
+	abr := proof.AddBlockRequest
+
+	// cast the new and previous tips from the ABR
+
+	newTip, err := cid.Cast(abr.NewTip)
+	if err != nil {
+		return nil, fmt.Errorf("error casting newTip: %w", err)
+	}
+
+	previousTip, err := cid.Cast(abr.PreviousTip)
+	if err != nil {
+		return nil, fmt.Errorf("error casting previousTip: %w", err)
+	}
+
+	// now we save all the state blocks into the store
+
+	cborNodes := make([]format.Node, len(abr.State))
+	for i, node := range abr.State {
+		cborNodes[i] = sw.Decode(node)
+	}
+	if sw.Err != nil {
+		return nil, fmt.Errorf("error decoding nodes: %w", sw.Err)
+	}
+
+	err = c.store.AddMany(ctx, cborNodes)
+	if err != nil {
+		return nil, fmt.Errorf("error adding nodes: %w", err)
+	}
+
+	// and get the block with headers
+
+	blockWithHeaders := &chaintree.BlockWithHeaders{}
+	err = cbornode.DecodeInto(abr.Payload, blockWithHeaders)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding payload; %w", err)
+	}
+
+	// first we're going to create a chaintree at the *previous* tip and then we're going to play the new
+	// BlockWithHeaders on there so that the *new* state blocks get added to the local store
+
+	var treeDag *dag.Dag
+	if abr.Height > 0 {
+		treeDag = dag.NewDag(ctx, previousTip, c.store)
+	} else {
+		treeDag = consensus.NewEmptyTree(ctx, string(abr.ObjectId), c.store)
+	}
+
+	tree, err := chaintree.NewChainTree(ctx, treeDag, c.validators, c.transactors)
+	if err != nil {
+		return nil, fmt.Errorf("error creating new tree: %w", err)
+	}
+
+	c.logger.Debugf("process block immutable")
+
+	newTree, valid, err := tree.ProcessBlockImmutable(ctx, blockWithHeaders)
+	if !valid || err != nil {
+		return nil, fmt.Errorf("error processing block: %w", err)
+	}
+
+	// sanity check the new tip
+	if !newTree.Dag.Tip.Equals(newTip) {
+		return nil, fmt.Errorf("error, tips did not match %s != %s", newTree.Dag.Tip.String(), newTip.String())
+	}
+
+	// return our signed chaintree with all the new blocks already in the client store
+	return &consensus.SignedChainTree{
+		ChainTree: newTree,
+		Proof:     proof,
+	}, nil
+}
+
+func (c *Client) WaitForFirstRound(ctx context.Context, timeout time.Duration) error {
+	current := c.subscriber.Current()
+	if current != nil {
+		return nil
+	}
+
+	ch := make(chan *types.RoundWrapper, 1)
+	defer close(ch)
+
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+
+	sub, err := c.SubscribeToRounds(context.TODO(), ch)
+	if err != nil {
+		return fmt.Errorf("error subscribing: %w", err)
+	}
+	defer c.UnsubscribeFromRounds(sub)
+
+	doneCh := ctx.Done()
+
+	select {
+	case <-ch:
+		return nil
+	case <-timer.C:
+		return fmt.Errorf("timeout")
+	case <-doneCh:
+		c.logger.Warning("ctx closed before WaitForFirstRound")
+		return nil
+	}
 }
 
 func (c *Client) GetTip(ctx context.Context, did string) (*gossip.Proof, error) {
@@ -179,4 +314,23 @@ func (c *Client) SubscribeToAbr(ctx context.Context, abr *services.AddBlockReque
 
 func (c *Client) UnsubscribeFromAbr(s subscription) {
 	c.subscriber.unsubscribe(s)
+}
+
+func blockValidators(ctx context.Context, group *types.NotaryGroup) ([]chaintree.BlockValidatorFunc, error) {
+	quorumCount := group.QuorumCount()
+	signers := group.AllSigners()
+	verKeys := make([]*bls.VerKey, len(signers))
+	for i, signer := range signers {
+		verKeys[i] = signer.VerKey
+	}
+
+	proofVerifier := types.GenerateHasValidProof(func(prf *gossip.Proof) (bool, error) {
+		return proof.Verify(ctx, prf, quorumCount, verKeys)
+	})
+
+	blockValidators, err := group.BlockValidators(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error getting block validators: %v", err)
+	}
+	return append(blockValidators, proofVerifier), nil
 }
