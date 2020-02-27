@@ -9,7 +9,6 @@ import (
 
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
-	"github.com/quorumcontrol/messages/v2/build/go/services"
 
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jsclient"
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jslibs"
@@ -23,8 +22,6 @@ var exitChan chan bool
 var clientSingleton *jsclient.JSClient
 
 func init() {
-	cbornode.RegisterCborType(services.AddBlockRequest{})
-
 	exitChan = make(chan bool)
 }
 
