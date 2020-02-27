@@ -91,7 +91,7 @@ func newClient(ctx context.Context, group *types.NotaryGroup, bootAddrs []string
 		return nil, err
 	}
 
-	err = cliHost.WaitForBootstrap(len(group.AllSigners()), 5*time.Second)
+	err = cliHost.WaitForBootstrap(len(group.AllSigners()), 30*time.Second)
 	if err != nil {
 		return nil, err
 	}
