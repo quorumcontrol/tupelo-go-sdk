@@ -204,7 +204,7 @@ func TestClientSendTransactions(t *testing.T) {
 		blockWithHeaders0 := transactLocal(ctx, t, testTree, treeKey, 0, "down/in/the/tree", "atestvalue")
 		tip0 := testTree.Tip()
 
-		roundCh := make(chan *types.RoundWrapper, 10)
+		roundCh := make(chan *types.RoundConfirmationWrapper, 10)
 		roundSubscription, err := cli.SubscribeToRounds(ctx, roundCh)
 		require.Nil(t, err)
 		defer cli.UnsubscribeFromRounds(roundSubscription)
