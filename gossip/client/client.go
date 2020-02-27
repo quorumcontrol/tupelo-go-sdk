@@ -193,7 +193,7 @@ func (c *Client) WaitForFirstRound(ctx context.Context, timeout time.Duration) e
 		return nil
 	}
 
-	ch := make(chan *types.RoundWrapper, 1)
+	ch := make(chan *types.RoundConfirmationWrapper, 1)
 	defer close(ch)
 
 	timer := time.NewTimer(timeout)
@@ -298,9 +298,9 @@ func (c *Client) SendWithoutWait(ctx context.Context, abr *services.AddBlockRequ
 	return nil
 }
 
-func (c *Client) SubscribeToRounds(ctx context.Context, ch chan *types.RoundWrapper) (subscription, error) {
+func (c *Client) SubscribeToRounds(ctx context.Context, ch chan *types.RoundConfirmationWrapper) (subscription, error) {
 	return c.subscriber.stream.Subscribe(func(evt interface{}) {
-		ch <- evt.(*ValidationNotification).CompletedRound
+		ch <- evt.(*ValidationNotification).RoundConfirmation
 	}), nil
 }
 
