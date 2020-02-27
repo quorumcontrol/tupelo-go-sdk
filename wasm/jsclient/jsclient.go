@@ -7,6 +7,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"syscall/js"
+	"time"
 
 	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 
@@ -158,16 +159,12 @@ func (jsc *JSClient) PlayTransactions(jsKeyBits js.Value, tip js.Value, jsTransa
 func (jsc *JSClient) WaitForRound() *then.Then {
 	t := then.New()
 	go func() {
-		ch := make(chan *types.RoundWrapper, 1)
-
-		sub, err := jsc.client.SubscribeToRounds(context.TODO(), ch)
+		err := jsc.client.WaitForFirstRound(context.TODO(), 30*time.Second)
 		if err != nil {
 			t.Reject(err)
 			return
 		}
-		<-ch
-		jsc.client.UnsubscribeFromRounds(sub)
-		close(ch)
+
 		t.Resolve(nil)
 	}()
 
