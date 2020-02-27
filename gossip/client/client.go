@@ -188,6 +188,11 @@ func (c *Client) GetLatest(parentCtx context.Context, did string) (*consensus.Si
 }
 
 func (c *Client) WaitForFirstRound(ctx context.Context, timeout time.Duration) error {
+	current := c.subscriber.Current()
+	if current != nil {
+		return nil
+	}
+
 	ch := make(chan *types.RoundWrapper, 1)
 	defer close(ch)
 
