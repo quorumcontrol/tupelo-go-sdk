@@ -73,7 +73,7 @@ func (c *Client) NewAddBlockRequest(ctx context.Context, tree *consensus.SignedC
 		state = append(nodesToBytes(touchedNodes))
 	}
 
-	// TODO: this is an expedient way to make sure the signers bitswap our new state for us
+	// TODO: sending in the *new* nodes is an expedient way to make sure the signers bitswap our new state for us
 	// but it will cost more in transaction fees and so should be rexamined in the future.
 	newNodes, err := tracker.newNodes(ctx)
 	if err != nil {
