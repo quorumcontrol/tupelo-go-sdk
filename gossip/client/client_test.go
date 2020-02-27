@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/base64"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -356,7 +357,112 @@ func TestClientSendTransactions(t *testing.T) {
 		_, err = cli.PlayTransactions(ctx, chain, treeKey2, []*transactions.Transaction{txn})
 		require.NotNil(t, err)
 	})
+}
 
+func TestGetLatest(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ts := testnotarygroup.NewTestSet(t, groupMembers)
+	group, nodes, err := newTupeloSystem(ctx, ts)
+	require.Nil(t, err)
+	require.Len(t, nodes, groupMembers)
+
+	booter, err := p2p.NewHostFromOptions(ctx)
+	require.Nil(t, err)
+
+	bootAddrs := make([]string, len(booter.Addresses()))
+	for i, addr := range booter.Addresses() {
+		bootAddrs[i] = addr.String()
+	}
+
+	startNodes(t, ctx, nodes, bootAddrs)
+
+	t.Run("test basic setup", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		// first play a transaction from one client to the notary group
+
+		path := "down/in/the/thing"
+		value := "sometestvalue"
+
+		cli1, err := newClient(ctx, group, bootAddrs)
+		require.Nil(t, err)
+
+		treeKey, err := crypto.GenerateKey()
+		require.Nil(t, err)
+		tree, err := consensus.NewSignedChainTree(ctx, treeKey.PublicKey, nodestore.MustMemoryStore(ctx))
+		require.Nil(t, err)
+
+		txn, err := chaintree.NewSetDataTransaction(path, value)
+		require.Nil(t, err)
+
+		proof, err := cli1.PlayTransactions(ctx, tree, treeKey, []*transactions.Transaction{txn})
+		require.Nil(t, err)
+		assert.Equal(t, proof.Tip, tree.Tip().Bytes())
+
+		// now create a new client (with a fresh store)
+
+		cli2, err := newClient(ctx, group, bootAddrs)
+		require.Nil(t, err)
+
+		err = cli2.WaitForFirstRound(ctx, 2*time.Second)
+		require.Nil(t, err)
+
+		// get the tree using cli2 and make sure you can resolve the data
+		cli2Tree, err := cli2.GetLatest(ctx, tree.MustId())
+		require.Nil(t, err)
+		resp, remain, err := cli2Tree.ChainTree.Dag.Resolve(ctx, strings.Split("tree/data/"+path, "/"))
+		t.Logf("remain: %v", remain)
+		require.Nil(t, err)
+		require.Equal(t, value, resp)
+	})
+
+	t.Run("test do a setData then another then resolve first", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		// first play a transaction from one client to the notary group
+
+		cli1, err := newClient(ctx, group, bootAddrs)
+		require.Nil(t, err)
+
+		treeKey, err := crypto.GenerateKey()
+		require.Nil(t, err)
+		tree, err := consensus.NewSignedChainTree(ctx, treeKey.PublicKey, nodestore.MustMemoryStore(ctx))
+		require.Nil(t, err)
+
+		txn, err := chaintree.NewSetDataTransaction("first/path/is/deeper", true)
+		require.Nil(t, err)
+
+		proof, err := cli1.PlayTransactions(ctx, tree, treeKey, []*transactions.Transaction{txn})
+		require.Nil(t, err)
+		assert.Equal(t, proof.Tip, tree.Tip().Bytes())
+
+		txn2, err := chaintree.NewSetDataTransaction("second/path", true)
+		require.Nil(t, err)
+
+		proof2, err := cli1.PlayTransactions(ctx, tree, treeKey, []*transactions.Transaction{txn2})
+		require.Nil(t, err)
+		assert.Equal(t, proof2.Tip, tree.Tip().Bytes())
+
+		// now create a new client (with a fresh store)
+
+		cli2, err := newClient(ctx, group, bootAddrs)
+		require.Nil(t, err)
+
+		err = cli2.WaitForFirstRound(ctx, 2*time.Second)
+		require.Nil(t, err)
+
+		// get the tree using cli2 and make sure you can resolve the data
+		cli2Tree, err := cli2.GetLatest(ctx, tree.MustId())
+		require.Nil(t, err)
+		resp, remain, err := cli2Tree.ChainTree.Dag.Resolve(ctx, strings.Split("tree/data/first/path/is/deeper", "/"))
+		t.Logf("remain: %v", remain)
+		require.Nil(t, err)
+		require.Equal(t, true, resp)
+	})
 }
 
 func transactLocal(ctx context.Context, t testing.TB, tree *consensus.SignedChainTree, treeKey *ecdsa.PrivateKey, height uint64, path, value string) *chaintree.BlockWithHeaders {

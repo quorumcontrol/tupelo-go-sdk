@@ -26,8 +26,6 @@ import (
 func init() {
 	typecaster.AddType(StandardHeaders{})
 	cbornode.RegisterCborType(StandardHeaders{})
-	typecaster.AddType(signatures.TreeState{})
-	cbornode.RegisterCborType(signatures.TreeState{})
 }
 
 type SignatureMap map[string]*signatures.Signature

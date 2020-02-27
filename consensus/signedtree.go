@@ -11,6 +11,7 @@ import (
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/typecaster"
+	"github.com/quorumcontrol/messages/v2/build/go/gossip"
 	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 )
 
@@ -25,8 +26,8 @@ var DefaultTransactors = map[transactions.Transaction_Type]chaintree.TransactorF
 }
 
 type SignedChainTree struct {
-	ChainTree  *chaintree.ChainTree
-	Signatures SignatureMap
+	ChainTree *chaintree.ChainTree
+	Proof     *gossip.Proof
 }
 
 func (sct *SignedChainTree) Id() (string, error) {
@@ -73,8 +74,7 @@ func (sct *SignedChainTree) Authentications() ([]string, error) {
 
 func NewSignedChainTreeFromChainTree(tree *chaintree.ChainTree) *SignedChainTree {
 	return &SignedChainTree{
-		ChainTree:  tree,
-		Signatures: make(SignatureMap),
+		ChainTree: tree,
 	}
 }
 
@@ -93,7 +93,6 @@ func NewSignedChainTree(ctx context.Context, key ecdsa.PublicKey, nodeStore node
 	}
 
 	return &SignedChainTree{
-		ChainTree:  tree,
-		Signatures: make(SignatureMap),
+		ChainTree: tree,
 	}, nil
 }
