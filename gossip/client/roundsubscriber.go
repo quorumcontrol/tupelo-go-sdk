@@ -21,6 +21,22 @@ import (
 	sigfuncs "github.com/quorumcontrol/tupelo-go-sdk/signatures"
 )
 
+type ValidationNotification struct {
+	Accepted          []cid.Cid
+	Checkpoint        *types.CheckpointWrapper
+	RoundConfirmation *types.RoundConfirmationWrapper
+	CompletedRound    *types.RoundWrapper
+}
+
+func (vn *ValidationNotification) includes(id cid.Cid) bool {
+	for _, abrCid := range vn.Accepted {
+		if abrCid.Equals(id) {
+			return true
+		}
+	}
+	return false
+}
+
 type subscription *eventstream.Subscription
 
 type roundConflictSet map[cid.Cid]*gossip.RoundConfirmation
@@ -34,7 +50,7 @@ func (rcs roundConflictSet) add(group *types.NotaryGroup, confirmation *gossip.R
 
 	cid, err := cid.Cast(confirmation.RoundCid)
 	if err != nil {
-		return false, nil, fmt.Errorf("error casting round cid: %v", err)
+		return false, nil, fmt.Errorf("error casting round cid: %w", err)
 	}
 
 	existing, ok := rcs[cid]
@@ -97,7 +113,7 @@ func (rs *roundSubscriber) Current() *types.RoundConfirmationWrapper {
 func (rs *roundSubscriber) start(ctx context.Context) error {
 	sub, err := rs.pubsub.Subscribe(rs.group.ID)
 	if err != nil {
-		return fmt.Errorf("error subscribing %v", err)
+		return fmt.Errorf("error subscribing %w", err)
 	}
 
 	go func() {
@@ -121,16 +137,17 @@ func (rs *roundSubscriber) subscribe(ctx context.Context, abr *services.AddBlock
 	isDone := false
 	doneCh := ctx.Done()
 
-	abrCid, err := abrToHamtCID(ctx, abr)
+	// put the abr into the hamtstore because if we're subscribing, we'll probably want that later
+	abrCid, err := rs.hamtStore.Put(ctx, abr)
 	if err != nil {
 		rs.logger.Errorf("error decoding add block request: %v", err)
-		return nil, fmt.Errorf("error decoding add block request: %v", err)
+		return nil, fmt.Errorf("error decoding add block request: %w", err)
 	}
 	rs.logger.Debugf("subscribing: %s", abrCid.String())
 
 	return rs.stream.Subscribe(func(evt interface{}) {
 		if isDone {
-			return // we're already done and we don't want to block on another channel op below
+			return // we're already done and we don't want to do another channel op below
 		}
 		select {
 		case <-doneCh:
@@ -139,16 +156,19 @@ func (rs *roundSubscriber) subscribe(ctx context.Context, abr *services.AddBlock
 		default:
 			// continue on, people still care
 		}
-		if noty := evt.(*ValidationNotification); noty.AbrCid.Equals(abrCid) {
-			p := &gossip.Proof{
-				ObjectId:          []byte(noty.ObjectId),
-				Tip:               noty.Tip.Bytes(),
+
+		if noti := evt.(*ValidationNotification); noti.includes(abrCid) {
+			proof := &gossip.Proof{
+				ObjectId:          abr.ObjectId,
+				Tip:               abr.NewTip,
 				AddBlockRequest:   abr,
-				Checkpoint:        noty.Checkpoint.Value(),
-				Round:             noty.CompletedRound.Value(),
-				RoundConfirmation: noty.RoundConfirmation.Value(),
+				Checkpoint:        noti.Checkpoint.Value(),
+				Round:             noti.CompletedRound.Value(),
+				RoundConfirmation: noti.RoundConfirmation.Value(),
 			}
-			ch <- p
+			isDone = true
+			ch <- proof
+			return
 		}
 	}), nil
 }
@@ -194,7 +214,7 @@ func (rs *roundSubscriber) handleMessage(ctx context.Context, msg pubsubinterfac
 
 	verified, err := sigfuncs.Valid(ctx, confirmation.Signature, confirmation.RoundCid, nil)
 	if !verified || err != nil {
-		return fmt.Errorf("signature invalid with error: %v", err)
+		return fmt.Errorf("signature invalid with error: %w", err)
 	}
 
 	rs.Lock()
@@ -262,29 +282,24 @@ func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.R
 	if err != nil {
 		return fmt.Errorf("error fetching checkpoint: %w", err)
 	}
-	rs.logger.Debugf("checkpoint: %v", wrappedCheckpoint.Value())
 
-	for _, cidBytes := range wrappedCheckpoint.AddBlockRequests() {
+	cidsAsBytes := wrappedCheckpoint.AddBlockRequests()
+	accepted := make([]cid.Cid, len(cidsAsBytes))
+	for i, cidBytes := range cidsAsBytes {
 		abrCid, err := cid.Cast(cidBytes)
 		if err != nil {
-			return fmt.Errorf("error casting cid: %v", err)
+			return fmt.Errorf("error casting cid: %w", err)
 		}
-		rs.logger.Debugf("publishing: %s", abrCid.String())
-		rs.stream.Publish(&ValidationNotification{
-			RoundConfirmation: confirmation,
-			AbrCid:            abrCid,
-
-			Checkpoint:     wrappedCheckpoint,
-			CompletedRound: completedRound,
-		})
+		accepted[i] = abrCid
 	}
+
+	rs.logger.Debugf("validationNotification publish %d", confirmation.Height())
+	rs.stream.Publish(&ValidationNotification{
+		Accepted:          accepted,
+		Checkpoint:        wrappedCheckpoint,
+		RoundConfirmation: confirmation,
+		CompletedRound:    completedRound,
+	})
+
 	return nil
-}
-
-func abrToHamtCID(ctx context.Context, abr *services.AddBlockRequest) (cid.Cid, error) {
-	underlyingStore := nodestore.MustMemoryStore(ctx)
-	hamtStore := hamt.CborIpldStore{
-		Blocks: hamtwrapper.NewStore(underlyingStore),
-	}
-	return hamtStore.Put(ctx, abr)
 }

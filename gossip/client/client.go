@@ -143,8 +143,6 @@ func (c *Client) Send(ctx context.Context, abr *services.AddBlockRequest, timeou
 
 	select {
 	case proof := <-resp:
-		proof.Tip = abr.NewTip
-		proof.ObjectId = abr.ObjectId
 		return proof, nil
 	case <-ticker.C:
 		return nil, ErrTimeout
