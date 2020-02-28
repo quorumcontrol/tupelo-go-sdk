@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/AsynkronIT/protoactor-go/eventstream"
 	"github.com/ipfs/go-cid"
@@ -255,30 +256,17 @@ func (rs *roundSubscriber) handleQuorum(ctx context.Context, confirmation *gossi
 		}
 	}
 
-	// fetch the completed round and confirmation here as no ops so that they are cached
-	wrappedCompletedRound, err := wrappedConfirmation.FetchCompletedRound(ctx)
-	if err != nil {
-		return err
-	}
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
 
-	_, err = wrappedCompletedRound.FetchCheckpoint(ctx)
-	if err != nil {
-		return err
-	}
-
-	return rs.publishTxs(ctx, wrappedConfirmation)
-}
-
-func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.RoundConfirmationWrapper) error {
-	rs.logger.Debugf("publishingTxs")
-
-	completedRound, err := confirmation.FetchCompletedRound(ctx)
+	rs.logger.Debugf("getting completed round")
+	completedRound, err := wrappedConfirmation.FetchCompletedRound(ctxWithTimeout)
 	if err != nil {
 		return fmt.Errorf("error fetching completed round: %w", err)
 	}
 
 	rs.logger.Debugf("getting checkpoint")
-	wrappedCheckpoint, err := completedRound.FetchCheckpoint(ctx)
+	wrappedCheckpoint, err := completedRound.FetchCheckpoint(ctxWithTimeout)
 	if err != nil {
 		return fmt.Errorf("error fetching checkpoint: %w", err)
 	}
@@ -293,11 +281,11 @@ func (rs *roundSubscriber) publishTxs(ctx context.Context, confirmation *types.R
 		accepted[i] = abrCid
 	}
 
-	rs.logger.Debugf("validationNotification publish %d", confirmation.Height())
+	rs.logger.Debugf("validationNotification publish %d", wrappedConfirmation.Height())
 	rs.stream.Publish(&ValidationNotification{
 		Accepted:          accepted,
 		Checkpoint:        wrappedCheckpoint,
-		RoundConfirmation: confirmation,
+		RoundConfirmation: wrappedConfirmation,
 		CompletedRound:    completedRound,
 	})
 
