@@ -33,7 +33,7 @@ require (
 	github.com/quorumcontrol/chaintree v1.0.2-0.20200124091942-25ceb93627b9
 	github.com/quorumcontrol/messages v1.1.1
 	github.com/quorumcontrol/messages/v2 v2.1.3-0.20200129115245-2bfec5177653
-	github.com/quorumcontrol/tupelo v0.5.12-0.20200226160350-8bc73f1e0652
+	github.com/quorumcontrol/tupelo v0.5.12-0.20200228085742-a503ff3ef25f
 	github.com/spy16/parens v0.0.8
 	github.com/stretchr/testify v1.3.0
 	github.com/uber/jaeger-client-go v2.22.1+incompatible
