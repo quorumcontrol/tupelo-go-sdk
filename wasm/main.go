@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"syscall/js"
 
-	cbornode "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 
 	"github.com/quorumcontrol/tupelo-go-sdk/wasm/jsclient"
@@ -81,6 +80,10 @@ func main() {
 
 			jsObj.Set("getTip", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				return clientSingleton.GetTip(args[0])
+			}))
+
+			jsObj.Set("getLatest", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				return clientSingleton.GetLatest(args[0])
 			}))
 
 			jsObj.Set("tokenPayloadForTransaction", js.FuncOf(func(this js.Value, args []js.Value) interface{} {

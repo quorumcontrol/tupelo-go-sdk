@@ -117,6 +117,33 @@ func (jsc *JSClient) GetTip(jsDid js.Value) interface{} {
 	return t
 }
 
+// in the js client both GetLatest and GetTip return a proof
+// but this one will also play the transactions... see client.Client#GetLatest
+// in order to make the new blocks available
+func (jsc *JSClient) GetLatest(jsDid js.Value) interface{} {
+	did := jsDid.String()
+	t := then.New()
+	go func() {
+		ctx := context.TODO()
+		tree, err := jsc.client.GetLatest(ctx, did)
+		if err != nil {
+			t.Reject(fmt.Errorf("error getting tip: %w", err))
+			return
+		}
+
+		proof := tree.Proof
+
+		bits, err := proof.Marshal()
+		if err != nil {
+			t.Reject(err)
+			return
+		}
+
+		t.Resolve(helpers.SliceToJSArray(bits))
+	}()
+	return t
+}
+
 func (jsc *JSClient) PlayTransactions(jsKeyBits js.Value, tip js.Value, jsTransactions js.Value) interface{} {
 	t := then.New()
 	go func() {
