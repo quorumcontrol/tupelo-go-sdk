@@ -32,6 +32,11 @@ import (
 
 const groupMembers = 3
 
+func init() {
+	// round heartbeat should be fast in tests with no latency
+	DefaultRoundWaitTimeout = 1 * time.Second
+}
+
 func newTupeloSystem(ctx context.Context, testSet *testnotarygroup.TestSet) (*types.NotaryGroup, []*tupelogossip.Node, error) {
 	nodes := make([]*tupelogossip.Node, len(testSet.SignKeys))
 
