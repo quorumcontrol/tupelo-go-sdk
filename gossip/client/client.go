@@ -29,9 +29,10 @@ import (
 
 var ErrTimeout = errors.New("error timeout")
 var ErrNotFound = hamt.ErrNotFound
-var ErrNoRound = errors.New("no current round yet")
+var ErrNoRound = errors.New("no current round found")
 
 var DefaultTimeout = 30 * time.Second
+var DefaultRoundWaitTimeout = 5 * time.Second
 
 // Client represents a Tupelo client for interacting with and
 // listening to ChainTree events
@@ -211,7 +212,7 @@ func (c *Client) WaitForFirstRound(ctx context.Context, timeout time.Duration) e
 	case <-ch:
 		return nil
 	case <-timer.C:
-		return fmt.Errorf("timeout")
+		return ErrNoRound
 	case <-doneCh:
 		c.logger.Warning("ctx closed before WaitForFirstRound")
 		return nil
@@ -219,6 +220,10 @@ func (c *Client) WaitForFirstRound(ctx context.Context, timeout time.Duration) e
 }
 
 func (c *Client) GetTip(ctx context.Context, did string) (*gossip.Proof, error) {
+	err := c.WaitForFirstRound(ctx, DefaultRoundWaitTimeout)
+	if err != nil {
+		return nil, err
+	}
 	confirmation := c.subscriber.Current()
 	if confirmation == nil {
 		return nil, ErrNoRound
