@@ -80,6 +80,26 @@ func startNodes(t *testing.T, ctx context.Context, nodes []*tupelogossip.Node, b
 	}
 }
 
+func startRounds(t *testing.T, parentCtx context.Context, group *types.NotaryGroup, bootAddrs []string) {
+	ctx, cancel := context.WithCancel(parentCtx)
+	defer cancel()
+
+	cli, err := newClient(ctx, group, bootAddrs)
+	require.Nil(t, err)
+
+	treeKey, err := crypto.GenerateKey()
+	require.Nil(t, err)
+	tree, err := consensus.NewSignedChainTree(ctx, treeKey.PublicKey, nodestore.MustMemoryStore(ctx))
+	require.Nil(t, err)
+
+	txn, err := chaintree.NewSetDataTransaction("just-a-round-igniter", "success")
+	require.Nil(t, err)
+
+	proof, err := cli.PlayTransactions(ctx, tree, treeKey, []*transactions.Transaction{txn})
+	require.Nil(t, err)
+	assert.Equal(t, proof.Tip, tree.Tip().Bytes())
+}
+
 func newClient(ctx context.Context, group *types.NotaryGroup, bootAddrs []string) (*Client, error) {
 	cliHost, peer, err := p2p.NewHostAndBitSwapPeer(ctx)
 	if err != nil {
@@ -462,6 +482,27 @@ func TestGetLatest(t *testing.T) {
 		t.Logf("remain: %v", remain)
 		require.Nil(t, err)
 		require.Equal(t, true, resp)
+	})
+
+	t.Run("test known Err propogation", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		cli1, err := newClient(ctx, group, bootAddrs)
+		require.Nil(t, err)
+
+		treeKey, err := crypto.GenerateKey()
+		require.Nil(t, err)
+
+		tree, err := cli1.GetLatest(ctx, consensus.EcdsaPubkeyToDid(treeKey.PublicKey))
+		require.Nil(t, tree)
+		require.Equal(t, err, ErrNoRound)
+
+		startRounds(t, ctx, group, bootAddrs)
+
+		tree, err = cli1.GetLatest(ctx, consensus.EcdsaPubkeyToDid(treeKey.PublicKey))
+		require.Nil(t, tree)
+		require.Equal(t, err, ErrNotFound)
 	})
 }
 
