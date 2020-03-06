@@ -113,6 +113,12 @@ func (c *Client) GetLatest(parentCtx context.Context, did string) (*consensus.Si
 	c.logger.Debugf("getting tip for latest")
 
 	proof, err := c.GetTip(ctx, did)
+	if err == ErrNotFound {
+		return nil, ErrNotFound
+	}
+	if err == ErrNoRound {
+		return nil, ErrNoRound
+	}
 	if err != nil {
 		return nil, fmt.Errorf("error getting tip: %w", err)
 	}
