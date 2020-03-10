@@ -403,6 +403,28 @@ func TestGetLatest(t *testing.T) {
 
 	startNodes(t, ctx, nodes, bootAddrs)
 
+	// This must remain the first Run in this test block
+	t.Run("test known Err propogation", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		cli1, err := newClient(ctx, group, bootAddrs)
+		require.Nil(t, err)
+
+		treeKey, err := crypto.GenerateKey()
+		require.Nil(t, err)
+
+		tree, err := cli1.GetLatest(ctx, consensus.EcdsaPubkeyToDid(treeKey.PublicKey))
+		require.Nil(t, tree)
+		require.Equal(t, err, ErrNoRound)
+
+		startRounds(t, ctx, group, bootAddrs)
+
+		tree, err = cli1.GetLatest(ctx, consensus.EcdsaPubkeyToDid(treeKey.PublicKey))
+		require.Nil(t, tree)
+		require.Equal(t, err, ErrNotFound)
+	})
+
 	t.Run("test basic setup", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
@@ -487,27 +509,6 @@ func TestGetLatest(t *testing.T) {
 		t.Logf("remain: %v", remain)
 		require.Nil(t, err)
 		require.Equal(t, true, resp)
-	})
-
-	t.Run("test known Err propogation", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
-
-		cli1, err := newClient(ctx, group, bootAddrs)
-		require.Nil(t, err)
-
-		treeKey, err := crypto.GenerateKey()
-		require.Nil(t, err)
-
-		tree, err := cli1.GetLatest(ctx, consensus.EcdsaPubkeyToDid(treeKey.PublicKey))
-		require.Nil(t, tree)
-		require.Equal(t, err, ErrNoRound)
-
-		startRounds(t, ctx, group, bootAddrs)
-
-		tree, err = cli1.GetLatest(ctx, consensus.EcdsaPubkeyToDid(treeKey.PublicKey))
-		require.Nil(t, tree)
-		require.Equal(t, err, ErrNotFound)
 	})
 }
 
