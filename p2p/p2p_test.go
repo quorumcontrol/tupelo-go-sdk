@@ -14,6 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p"
 	circuit "github.com/libp2p/go-libp2p-circuit"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
+	"github.com/libp2p/go-tcp-transport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -70,6 +71,15 @@ func TestWithExternalAddrs(t *testing.T) {
 		"/ip4/2.2.2.2/tcp/53",
 		"/ip4/2.2.2.2/tcp/80/ws",
 	})
+}
+
+func TestWithTransports(t *testing.T) {
+	c := &Config{}
+	transport := libp2p.Transport(tcp.NewTCPTransport)
+	err := applyOptions(c, WithTransports(transport))
+	require.Nil(t, err)
+	require.Len(t, c.Transports, 1)
+	// for some reason equality assertion doesn't work.
 }
 
 func TestNewRelayLibP2PHost(t *testing.T) {

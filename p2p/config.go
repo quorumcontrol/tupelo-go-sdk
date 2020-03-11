@@ -41,6 +41,7 @@ type Config struct {
 	ListenIP             string
 	DiscoveryNamespaces  []string
 	AdditionalP2POptions []libp2p.Option
+	Transports           []libp2p.Option // these should only be libp2p.Transport options, but can't detect that with type
 	DataStore            ds.Batching
 	Blockstore           blockstore.Blockstore
 	BandwidthReporter    metrics.Reporter
@@ -277,7 +278,7 @@ func WithClientOnlyDHT(isClientOnly bool) Option {
 	}
 }
 
-// With Libp2pOptions allows for additional libp2p options to be passed in
+// WithLibp2pOptions allows for additional libp2p options to be passed in
 func WithLibp2pOptions(opts ...libp2p.Option) Option {
 	return func(c *Config) error {
 		c.AdditionalP2POptions = opts
@@ -288,6 +289,15 @@ func WithLibp2pOptions(opts ...libp2p.Option) Option {
 func WithBitswapOptions(opts ...bitswap.Option) Option {
 	return func(c *Config) error {
 		c.BitswapOptions = opts
+		return nil
+	}
+}
+
+// WithTransports should only be used with a libp2p.Transport option
+// but cannot detect that using typing
+func WithTransports(transports ...libp2p.Option) Option {
+	return func(c *Config) error {
+		c.Transports = transports
 		return nil
 	}
 }
