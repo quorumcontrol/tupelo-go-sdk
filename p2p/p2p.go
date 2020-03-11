@@ -166,10 +166,17 @@ func newLibP2PHostFromConfig(ctx context.Context, c *Config) (*LibP2PHost, error
 		c.ListenAddrs = append(c.ListenAddrs, fmt.Sprintf("/ip4/%s/tcp/%d/ws", ip, c.WebsocketPort))
 	}
 
+	var transports libp2p.Option
+	if len(c.Transports) == 0 {
+		transports = libp2p.DefaultTransports
+	} else {
+		transports = libp2p.ChainOptions(c.Transports...)
+	}
+
 	opts := []libp2p.Option{
 		libp2p.ListenAddrStrings(c.ListenAddrs...),
 		libp2p.Identity(priv),
-		libp2p.DefaultTransports,
+		transports,
 		libp2p.DefaultMuxers,
 		libp2p.DefaultSecurity,
 		libp2p.BandwidthReporter(c.BandwidthReporter),
