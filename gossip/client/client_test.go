@@ -249,6 +249,11 @@ func TestClientSendTransactions(t *testing.T) {
 		<-respCh1
 
 		require.Len(t, roundCh, 2)
+
+		round1 := <-roundCh
+		require.NotEqual(t, round1, cli.CurrentRound())
+		round2 := <-roundCh
+		require.Equal(t, round2, cli.CurrentRound())
 	})
 
 	t.Run("transactions played out of order succeed", func(t *testing.T) {

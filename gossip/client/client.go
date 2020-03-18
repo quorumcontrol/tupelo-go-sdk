@@ -191,6 +191,10 @@ func (c *Client) GetLatest(parentCtx context.Context, did string) (*consensus.Si
 	}, nil
 }
 
+func (c *Client) CurrentRound() *types.RoundConfirmationWrapper {
+	return c.subscriber.Current()
+}
+
 func (c *Client) WaitForFirstRound(ctx context.Context, timeout time.Duration) error {
 	current := c.subscriber.Current()
 	if current != nil {
