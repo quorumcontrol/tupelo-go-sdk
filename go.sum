@@ -850,6 +850,7 @@ github.com/quorumcontrol/tupelo v0.5.12-0.20200226160350-8bc73f1e0652 h1:YpEZC6m
 github.com/quorumcontrol/tupelo v0.5.12-0.20200226160350-8bc73f1e0652/go.mod h1:3+5xLTaAH0ldclLgxAVCkIMFRWqJH6AKKfbsY3NegTQ=
 github.com/quorumcontrol/tupelo v0.5.12-0.20200228085742-a503ff3ef25f h1:hVcZJZEgdTJTjkCkGSXbm9bfb/mBPkmPa5q1nDToj0A=
 github.com/quorumcontrol/tupelo v0.5.12-0.20200228085742-a503ff3ef25f/go.mod h1:oMcb9mVNuttvYUE/enVBrdAYKZ9uV+vxTSRoVrDewFg=
+github.com/quorumcontrol/tupelo v0.5.12-0.20200319204603-8f85f79d1837/go.mod h1:vT7XcSpVTCbBWmqv0efVMuqTWOoQmEICcrwrX11viOE=
 github.com/quorumcontrol/tupelo-go-sdk v0.6.0-beta1/go.mod h1:wA31G/DE4bI+8rsWKGRlxOgtKjrk0nJjd1qgRTpiN0Q=
 github.com/quorumcontrol/tupelo-go-sdk v0.6.0-beta1.0.20200107015105-2d3804ccc20c/go.mod h1:+WlZ8i77PW1SQ1oEZ700ooGuC3JOcxPiA5ij8PkKCqk=
 github.com/quorumcontrol/tupelo-go-sdk v0.6.0-beta1.0.20200109062614-43239ffb9335/go.mod h1:fzYef+fz7cbeMKU6pg+NkEX/7BhZfWD33/MaHS76qs8=
@@ -859,6 +860,7 @@ github.com/quorumcontrol/tupelo-go-sdk v0.6.0-beta1.0.20200123190352-82ad6dc34f4
 github.com/quorumcontrol/tupelo-go-sdk v0.6.0-beta1.0.20200129114839-0d0c6bc84fd3/go.mod h1:gix9XW6TZ1G9KieMw1aat2G9rAjBEtsaYb0pC818rFU=
 github.com/quorumcontrol/tupelo-go-sdk v0.6.0-beta1.0.20200226084025-d1ef23ea82c2/go.mod h1:FacTufzYlDnWnhChtBvOi2yix8bbYOs37/0m53zKuN0=
 github.com/quorumcontrol/tupelo-go-sdk v0.6.0-beta1.0.20200227184332-a1d02e8ba5f0/go.mod h1:0fDHOrkzj1T5VDMjh4K3Y1btiRRevBl/zMPuDAf3ZDg=
+github.com/quorumcontrol/tupelo-go-sdk v0.6.0/go.mod h1:q5zktXYXHK7wOvDDxiJQ20L5+0GOGUKY+cqWBp3hJhg=
 github.com/rogpeppe/go-internal v1.1.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rogpeppe/go-internal v1.3.0 h1:RR9dF3JtopPvtkroDZuVD7qquD0bnHlKSqaQhgwt8yk=
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
@@ -1195,6 +1197,7 @@ gopkg.in/yaml.v2 v2.2.1 h1:mUhvW9EsL+naU5Q3cakzfE91YhliOondGd6ZrsDBHQE=
 gopkg.in/yaml.v2 v2.2.1/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
 gopkg.in/yaml.v2 v2.2.2 h1:ZCJp+EgiOT7lHqUV2J862kp8Qj64Jo6az82+3Td9dZw=
 gopkg.in/yaml.v2 v2.2.2/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
+gopkg.in/yaml.v2 v2.2.8/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
 gotest.tools v2.1.0+incompatible/go.mod h1:DsYFclhRJ6vuDpmuTbkuFWG+y2sxOXAzmJt81HFBacw=
 gotest.tools/gotestsum v0.3.4/go.mod h1:Mnf3e5FUzXbkCfynWBGOwLssY7gTQgCHObK9tMpAriY=
 honnef.co/go/tools v0.0.0-20180728063816-88497007e858/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
