@@ -30,7 +30,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/quorumcontrol/chaintree/cachedblockstore"
-	"github.com/quorumcontrol/tupelo-go-sdk/gossip3/middleware"
 	"golang.org/x/xerrors"
 )
 
@@ -126,7 +125,7 @@ func NewHostFromOptions(ctx context.Context, userOpts ...Option) (*LibP2PHost, e
 }
 
 func NewRelayLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port int) (*LibP2PHost, error) {
-	middleware.Log.Debugw("constructing new relay libp2p host")
+	log.Debug("constructing new relay libp2p host")
 	cfg, err := backwardsCompatibleConfig(privateKey, port, true)
 	if err != nil {
 		return nil, fmt.Errorf("error generating config: %v", err)
@@ -135,7 +134,7 @@ func NewRelayLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port 
 }
 
 func NewLibP2PHost(ctx context.Context, privateKey *ecdsa.PrivateKey, port int) (*LibP2PHost, error) {
-	middleware.Log.Debugw("constructing new libp2p host")
+	log.Debug("constructing new libp2p host")
 	cfg, err := backwardsCompatibleConfig(privateKey, port, false)
 	if err != nil {
 		return nil, fmt.Errorf("error generating config: %v", err)
