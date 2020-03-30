@@ -13,6 +13,8 @@ import (
 	logging "github.com/ipfs/go-log"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	ds "github.com/ipfs/go-datastore"
+	dsync "github.com/ipfs/go-datastore/sync"
 	"github.com/quorumcontrol/chaintree/chaintree"
 	"github.com/quorumcontrol/chaintree/nodestore"
 	"github.com/quorumcontrol/chaintree/safewrap"
@@ -57,6 +59,7 @@ func newTupeloSystem(ctx context.Context, testSet *testnotarygroup.TestSet) (*ty
 			P2PNode:     p2pNode,
 			SignKey:     testSet.SignKeys[i],
 			NotaryGroup: ng,
+			Datastore:   dsync.MutexWrap(ds.NewMapDatastore()),
 			DagStore:    peer,
 		})
 		if err != nil {
@@ -116,7 +119,7 @@ func newClient(ctx context.Context, group *types.NotaryGroup, bootAddrs []string
 		return nil, err
 	}
 
-	err = cliHost.WaitForBootstrap(len(group.AllSigners()), 30*time.Second)
+	err = cliHost.WaitForBootstrap(len(group.AllSigners()), 45*time.Second)
 	if err != nil {
 		return nil, err
 	}
