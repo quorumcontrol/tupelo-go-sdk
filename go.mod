@@ -1,6 +1,6 @@
 module github.com/quorumcontrol/tupelo-go-sdk
 
-go 1.13
+go 1.14
 
 require (
 	github.com/AsynkronIT/protoactor-go v0.0.0-20190429152931-21e2d03dcae5
