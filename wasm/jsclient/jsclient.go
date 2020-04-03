@@ -56,7 +56,7 @@ func New(pubsub pubsubinterfaces.Pubsubber, humanConfig *config.NotaryGroup, sto
 		panic(errors.Wrap(err, "error getting notary group from config"))
 	}
 
-	cli := client.New(ng, pubsub, store)
+	cli := client.New(WithNotaryGroup(ng), WithPubsub(pubsub), WithDagStore(store))
 
 	return &JSClient{
 		client:      cli,
