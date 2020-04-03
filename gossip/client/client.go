@@ -97,6 +97,10 @@ func NewWithConfig(ctx context.Context, config *Config) (*Client, error) {
 	}, nil
 }
 
+func (c *Client) DagStore() nodestore.DagStore {
+	return c.store
+}
+
 func (c *Client) Start(ctx context.Context) error {
 	for _, hook := range c.onStartHooks {
 		err := hook(c)
