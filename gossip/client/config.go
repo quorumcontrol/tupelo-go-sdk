@@ -25,17 +25,20 @@ import (
 var DefaultNotaryGroup = "gossip4"
 
 type Config struct {
-	Group       *types.NotaryGroup
-	Logger      logging.EventLogger
-	Pubsub      pubsubinterfaces.Pubsubber
-	Storage     datastore.Batching
-	Store       nodestore.DagStore
-	Validators  []chaintree.BlockValidatorFunc
-	Transactors map[transactions.Transaction_Type]chaintree.TransactorFunc
-	subscriber  *roundSubscriber
+	Group        *types.NotaryGroup
+	Logger       logging.EventLogger
+	Pubsub       pubsubinterfaces.Pubsubber
+	Storage      datastore.Batching
+	Store        nodestore.DagStore
+	Validators   []chaintree.BlockValidatorFunc
+	Transactors  map[transactions.Transaction_Type]chaintree.TransactorFunc
+	OnStartHooks []OnStartHook
+	subscriber   *roundSubscriber
 }
 
 type Option func(c *Config) error
+
+type OnStartHook func(c *Client) error
 
 func (c *Config) SetDefaults(ctx context.Context) error {
 	var err error
@@ -191,6 +194,16 @@ func WithNotaryGroup(v *types.NotaryGroup) Option {
 	}
 }
 
+func WithOnStartHook(hook func(c *Client) error) Option {
+	return func(c *Config) error {
+		if c.OnStartHooks == nil {
+			c.OnStartHooks = make([]OnStartHook, 0)
+		}
+		c.OnStartHooks = append(c.OnStartHooks, hook)
+		return nil
+	}
+}
+
 func WithNotaryGroupToml(notaryGroupToml string) Option {
 	return func(c *Config) error {
 		ngConfig, err := types.TomlToConfig(notaryGroupToml)
@@ -266,12 +279,19 @@ func defaultP2P(ctx context.Context) Option {
 			return err
 		}
 
-		_, err = p2pHost.Bootstrap(c.Group.Config().BootstrapAddresses)
-		if err != nil {
-			return fmt.Errorf("error bootstrapping: %w", err)
-		}
+		err = WithOnStartHook(func(cli *Client) error {
+			_, err = p2pHost.Bootstrap(cli.Group.Config().BootstrapAddresses)
+			if err != nil {
+				return fmt.Errorf("error bootstrapping: %w", err)
+			}
 
-		if err = p2pHost.WaitForBootstrap(1+len(c.Group.Config().Signers)/2, 15*time.Second); err != nil {
+			if err = p2pHost.WaitForBootstrap(1+len(cli.Group.Config().Signers)/2, 30*time.Second); err != nil {
+				return err
+			}
+
+			return nil
+		})(c)
+		if err != nil {
 			return err
 		}
 

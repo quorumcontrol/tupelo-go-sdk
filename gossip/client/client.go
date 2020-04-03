@@ -35,11 +35,12 @@ var DefaultRoundWaitTimeout = 5 * time.Second
 // Client represents a Tupelo client for interacting with and
 // listening to ChainTree events
 type Client struct {
-	Group      *types.NotaryGroup
-	logger     logging.EventLogger
-	subscriber *roundSubscriber
-	pubsub     pubsubinterfaces.Pubsubber
-	store      nodestore.DagStore
+	Group        *types.NotaryGroup
+	logger       logging.EventLogger
+	subscriber   *roundSubscriber
+	pubsub       pubsubinterfaces.Pubsubber
+	store        nodestore.DagStore
+	onStartHooks []OnStartHook
 
 	validators  []chaintree.BlockValidatorFunc
 	transactors map[transactions.Transaction_Type]chaintree.TransactorFunc
@@ -85,17 +86,25 @@ func NewWithConfig(ctx context.Context, config *Config) (*Client, error) {
 		return nil, err
 	}
 	return &Client{
-		Group:       config.Group,
-		logger:      config.Logger,
-		pubsub:      config.Pubsub,
-		store:       config.Store,
-		validators:  config.Validators,
-		transactors: config.Transactors,
-		subscriber:  config.subscriber,
+		Group:        config.Group,
+		logger:       config.Logger,
+		pubsub:       config.Pubsub,
+		store:        config.Store,
+		validators:   config.Validators,
+		transactors:  config.Transactors,
+		subscriber:   config.subscriber,
+		onStartHooks: config.OnStartHooks,
 	}, nil
 }
 
 func (c *Client) Start(ctx context.Context) error {
+	for _, hook := range c.onStartHooks {
+		err := hook(c)
+		if err != nil {
+			return err
+		}
+	}
+
 	err := c.subscriber.start(ctx)
 	if err != nil {
 		return fmt.Errorf("error subscribing: %w", err)
