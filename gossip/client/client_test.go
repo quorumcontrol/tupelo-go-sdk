@@ -22,7 +22,6 @@ import (
 	"github.com/quorumcontrol/messages/v2/build/go/services"
 	"github.com/quorumcontrol/messages/v2/build/go/transactions"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
-	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client/pubsubinterfaces/pubsubwrapper"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/testhelpers"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
 	"github.com/quorumcontrol/tupelo-go-sdk/p2p"
@@ -109,24 +108,10 @@ func startRounds(t *testing.T, parentCtx context.Context, group *types.NotaryGro
 }
 
 func newClient(ctx context.Context, group *types.NotaryGroup, bootAddrs []string) (*Client, error) {
-	cliHost, peer, err := p2p.NewHostAndBitSwapPeer(ctx)
-	if err != nil {
-		return nil, err
-	}
+	group.Config().BootstrapAddresses = bootAddrs
+	cli := New(WithNotaryGroup(group))
 
-	_, err = cliHost.Bootstrap(bootAddrs)
-	if err != nil {
-		return nil, err
-	}
-
-	err = cliHost.WaitForBootstrap(len(group.AllSigners()), 45*time.Second)
-	if err != nil {
-		return nil, err
-	}
-
-	cli := New(group, pubsubwrapper.WrapLibp2p(cliHost.GetPubSub()), peer)
-
-	err = logging.SetLogLevel("g4-client", "debug")
+	err := logging.SetLogLevel("g4-client", "debug")
 	if err != nil {
 		return nil, err
 	}

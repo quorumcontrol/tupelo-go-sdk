@@ -20,11 +20,9 @@ import (
 	"github.com/quorumcontrol/messages/v2/build/go/gossip"
 	"github.com/quorumcontrol/messages/v2/build/go/services"
 	"github.com/quorumcontrol/messages/v2/build/go/transactions"
-	"github.com/quorumcontrol/tupelo-go-sdk/bls"
 	"github.com/quorumcontrol/tupelo-go-sdk/consensus"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/client/pubsubinterfaces"
 	"github.com/quorumcontrol/tupelo-go-sdk/gossip/types"
-	"github.com/quorumcontrol/tupelo-go-sdk/proof"
 )
 
 var ErrTimeout = errors.New("error timeout")
@@ -37,11 +35,12 @@ var DefaultRoundWaitTimeout = 5 * time.Second
 // Client represents a Tupelo client for interacting with and
 // listening to ChainTree events
 type Client struct {
-	Group      *types.NotaryGroup
-	logger     logging.EventLogger
-	subscriber *roundSubscriber
-	pubsub     pubsubinterfaces.Pubsubber
-	store      nodestore.DagStore
+	Group        *types.NotaryGroup
+	logger       logging.EventLogger
+	subscriber   *roundSubscriber
+	pubsub       pubsubinterfaces.Pubsubber
+	store        nodestore.DagStore
+	onStartHooks []OnStartHook
 
 	validators  []chaintree.BlockValidatorFunc
 	transactors map[transactions.Transaction_Type]chaintree.TransactorFunc
@@ -49,30 +48,67 @@ type Client struct {
 
 // New instantiates a Client specific to a ChainTree/NotaryGroup. The store should probably be a bitswap peer.
 // The store definitely needs access to the round confirmation, checkpoints, etc
-func New(group *types.NotaryGroup, pubsub pubsubinterfaces.Pubsubber, store nodestore.DagStore) *Client {
-	logger := logging.Logger("g4-client")
-	subscriber := newRoundSubscriber(logger, group, pubsub, store)
+func New(opts ...interface{}) *Client {
+	backwardCompatibleOpts := make([]Option, len(opts))
 
-	validators, err := blockValidators(context.TODO(), group)
+	for k, opt := range opts {
+		switch v := opt.(type) {
+		case Option:
+			backwardCompatibleOpts[k] = v
+		case *types.NotaryGroup:
+			backwardCompatibleOpts[k] = WithNotaryGroup(v)
+		case pubsubinterfaces.Pubsubber:
+			backwardCompatibleOpts[k] = WithPubsub(v)
+		case nodestore.DagStore:
+			backwardCompatibleOpts[k] = WithDagStore(v)
+		default:
+			panic(fmt.Sprintf("Unsupported option to client.New, must be client.Option"))
+		}
+	}
+
+	config := &Config{}
+	err := config.ApplyOptions(backwardCompatibleOpts...)
 	if err != nil {
-		panic(fmt.Errorf("error in client create that should never happen: %w", err))
+		panic(err)
 	}
 
-	transactors := group.Config().Transactions
+	client, err := NewWithConfig(context.TODO(), config)
+	if err != nil {
+		panic(err)
+	}
 
+	return client
+}
+
+func NewWithConfig(ctx context.Context, config *Config) (*Client, error) {
+	err := config.SetDefaults(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return &Client{
-		Group:      group,
-		logger:     logger,
-		subscriber: subscriber,
-		pubsub:     pubsub,
-		store:      store,
+		Group:        config.Group,
+		logger:       config.Logger,
+		pubsub:       config.Pubsub,
+		store:        config.Store,
+		validators:   config.Validators,
+		transactors:  config.Transactors,
+		subscriber:   config.subscriber,
+		onStartHooks: config.OnStartHooks,
+	}, nil
+}
 
-		validators:  validators,
-		transactors: transactors,
-	}
+func (c *Client) DagStore() nodestore.DagStore {
+	return c.store
 }
 
 func (c *Client) Start(ctx context.Context) error {
+	for _, hook := range c.onStartHooks {
+		err := hook(c)
+		if err != nil {
+			return err
+		}
+	}
+
 	err := c.subscriber.start(ctx)
 	if err != nil {
 		return fmt.Errorf("error subscribing: %w", err)
@@ -326,23 +362,4 @@ func (c *Client) SubscribeToAbr(ctx context.Context, abr *services.AddBlockReque
 
 func (c *Client) UnsubscribeFromAbr(s subscription) {
 	c.subscriber.unsubscribe(s)
-}
-
-func blockValidators(ctx context.Context, group *types.NotaryGroup) ([]chaintree.BlockValidatorFunc, error) {
-	quorumCount := group.QuorumCount()
-	signers := group.AllSigners()
-	verKeys := make([]*bls.VerKey, len(signers))
-	for i, signer := range signers {
-		verKeys[i] = signer.VerKey
-	}
-
-	proofVerifier := types.GenerateHasValidProof(func(prf *gossip.Proof) (bool, error) {
-		return proof.Verify(ctx, prf, quorumCount, verKeys)
-	})
-
-	blockValidators, err := group.BlockValidators(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error getting block validators: %v", err)
-	}
-	return append(blockValidators, proofVerifier), nil
 }
