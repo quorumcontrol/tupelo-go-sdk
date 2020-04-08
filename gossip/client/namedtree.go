@@ -26,7 +26,7 @@ type NamedChainTree struct {
 	owners     []string
 }
 
-type Options struct {
+type NamedChainTreeOptions struct {
 	Name              string
 	ObjectStorageType string
 	Client            *Client
@@ -44,7 +44,7 @@ func (g *Generator) GenesisKey(name string) (*ecdsa.PrivateKey, error) {
 	return consensus.PassPhraseKey([]byte(lowerCased), []byte(g.Namespace))
 }
 
-func (g *Generator) New(ctx context.Context, opts *Options) (*NamedChainTree, error) {
+func (g *Generator) New(ctx context.Context, opts *NamedChainTreeOptions) (*NamedChainTree, error) {
 	gKey, err := g.GenesisKey(opts.Name)
 	if err != nil {
 		return nil, err
