@@ -354,7 +354,7 @@ func NewEmptyTree(jsBlockService js.Value, jsPublicKeyBits js.Value) *then.Then 
 
 // NewNamedTree creates a new ChainTree who's id is deterministically generated
 // from both a namespace and name, but is owned by the specified owner keys.
-func (jsc *JSClient) NewNamedTree(jsNamespace js.Value, jsName js.Value, jsOwners js.Value, jsBlockService js.Value) *then.Then {
+func (jsc *JSClient) NewNamedTree(jsNamespace js.Value, jsName js.Value, jsOwners js.Value) *then.Then {
 	t := then.New()
 	ctx := context.TODO()
 	go func() {

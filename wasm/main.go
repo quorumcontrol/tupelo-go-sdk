@@ -74,6 +74,10 @@ func main() {
 				return jsclient.EcdsaPubkeyToAddress(args[0])
 			}))
 
+			jsObj.Set("newNamedTree", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				return jsclient.NewNamedTree(args[0], args[1], args[2])
+			}))
+
 			jsObj.Set("newEmptyTree", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				return jsclient.NewEmptyTree(args[0], args[1])
 			}))
